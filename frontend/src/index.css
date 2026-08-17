@@ -63,9 +63,6 @@
     width: 100%;
     max-width: 100%;
   }
-  .workspace-pane-header {
-    padding-top: calc(0.625rem + env(safe-area-inset-top, 0px));
-  }
   @media (min-width: 768px) {
     .drawer-panel {
       transition: none;
@@ -73,9 +70,6 @@
     }
     .workspace-pane {
       padding-bottom: 0;
-    }
-    .workspace-pane-header {
-      padding-top: 0.625rem;
     }
     .workspace-history-pane[aria-hidden="false"] {
       width: min(820px, calc(100vw - 360px));
@@ -150,6 +144,17 @@
 @layer utilities {
   .top-chrome {
     padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+  }
+  /* Fullscreen mobile drawers start at y=0, so their header clears the status
+     bar itself. This lives in the utilities layer because the headers also
+     carry a `py-*` utility, which would otherwise win over the inset. */
+  .workspace-pane-header {
+    padding-top: calc(0.625rem + env(safe-area-inset-top, 0px));
+  }
+  @media (min-width: 768px) {
+    .workspace-pane-header {
+      padding-top: 0.625rem;
+    }
   }
   .safe-bottom-control {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
@@ -700,6 +705,35 @@ html[data-theme="light"] .codex-composer-card {
   }
 }
 
+/* Tablet-sized viewports only (phones in landscape clear 768px width but not
+   this height): keep the window cards clear of the device status bar / home
+   indicator (iPad PWA with viewport-fit=cover). On desktop the insets are 0,
+   so every rule here resolves to the values above and nothing changes. */
+@media (min-width: 768px) and (min-height: 500px) {
+  .codex-app {
+    padding:
+      max(0.5rem, env(safe-area-inset-top, 0px))
+      max(0.5rem, env(safe-area-inset-right, 0px))
+      max(0.5rem, env(safe-area-inset-bottom, 0px))
+      max(0.5rem, env(safe-area-inset-left, 0px));
+  }
+
+  /* The app frame absorbs the insets above; the per-surface safe-area
+     paddings are for the fullscreen mobile layout and must not stack. */
+  .codex-sidebar.safe-top {
+    padding-top: 0;
+  }
+
+  .top-chrome {
+    padding-top: 0.5rem;
+  }
+
+  .safe-bottom-control,
+  .composer-form {
+    padding-bottom: 0.75rem;
+  }
+}
+
 html[data-theme="light"] .md-code-comment {
   color: #57606a !important;
 }
@@ -734,4 +768,39 @@ html[data-theme="light"] .scrollbar-thin {
 
 html[data-theme="light"] .scrollbar-thin::-webkit-scrollbar-thumb {
   background: #afb8c1;
+}
+
+@keyframes modal-card-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes modal-backdrop-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-card-pop {
+  animation: modal-card-pop 0.2s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.modal-backdrop-fade {
+  animation: modal-backdrop-fade 0.18s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-card-pop,
+  .modal-backdrop-fade {
+    animation: none;
+  }
 }

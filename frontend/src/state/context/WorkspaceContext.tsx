@@ -31,6 +31,8 @@ interface WorkspaceContextValue {
   showChat: () => void;
   showSettings: () => void;
   showProjectContainers: (projectId: string | null) => void;
+  openCreateProject: () => void;
+  closeCreateProject: () => void;
   createProject: (name: string) => Promise<ProjectMeta>;
   createChat: (projectId?: string) => Promise<ChatMeta>;
   deleteChat: (chatId: string) => Promise<void>;
@@ -150,6 +152,8 @@ export function WorkspaceProvider({
         showSettings: () => dispatch({ type: "show-settings" }),
         showProjectContainers: (projectId) =>
           dispatch({ type: "show-project-containers", projectId }),
+        openCreateProject: () => dispatch({ type: "open-create-project" }),
+        closeCreateProject: () => dispatch({ type: "close-create-project" }),
         createProject,
         createChat,
         deleteChat,
