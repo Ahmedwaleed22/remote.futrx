@@ -84,6 +84,12 @@ export const API_ROUTES = {
       `/api/projects/${encodeURIComponent(id)}/access/${encodeURIComponent(email)}`,
   },
   settings: "/api/me/settings",
+  push: {
+    config: "/api/push/config",
+    subscriptions: "/api/push/subscriptions",
+    test: "/api/push/test",
+    presence: "/api/push/presence",
+  },
   serverInfo: "/api/server/info",
   selfUpdate: {
     status: "/api/admin/update/status",

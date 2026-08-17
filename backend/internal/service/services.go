@@ -4,16 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/googleoauth"
+	"github.com/futrx-com/remote.futrx.com/internal/integration/webpush"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	servicepresence "github.com/futrx-com/remote.futrx.com/internal/service/presence"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
+	servicepush "github.com/futrx-com/remote.futrx.com/internal/service/push"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	"github.com/futrx-com/remote.futrx.com/internal/service/schedulecapability"
@@ -32,6 +36,14 @@ type TmuxClient interface {
 	servicetmux.SessionClient
 }
 
+// PushStore persists Web Push registrations and the server's long-lived VAPID
+// key pair. VAPIDKeys mints the pair on first use and returns the stored one
+// thereafter; rotating it would invalidate every browser subscription.
+type PushStore interface {
+	servicepush.Repository
+	VAPIDKeys(generate func() (private string, public string, err error)) (string, string, error)
+}
+
 type Dependencies struct {
 	Chats             servicechat.Repository
 	Projects          serviceproject.Repository
@@ -41,6 +53,7 @@ type Dependencies struct {
 	Auth              AuthStore
 	Users             serviceuser.Repository
 	UserSettings      serviceusersettings.Repository
+	Push              PushStore
 	AuthBaseURL       string
 	ProjectContainers serviceproject.ContainerDependencies
 	AgentContainers   provisioning.ContainerDependencies
@@ -74,6 +87,8 @@ type Services struct {
 	Skills       *serviceskills.Catalog
 	Tmux         *servicetmux.Service
 	Access       *serviceauth.AccessVerifier
+	Push         *servicepush.Service
+	Presence     *servicepresence.Service
 }
 
 func New(ctx context.Context, deps Dependencies) (Services, error) {
@@ -86,12 +101,18 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 
 	workspace := workspacehub.New()
 	var runs *runhub.Hub
+	// The notifier needs services that are built further down, so it is
+	// created empty here and populated once they exist — the same late
+	// binding the run hub uses above.
+	presenceService := servicepresence.New()
+	pushNotifier := &chatPushNotifier{chats: deps.Chats, presence: presenceService}
 	chats := notifyingChatRepository{
 		Repository: deps.Chats,
 		workspace:  workspace,
 		running: func(id servicechat.ID) bool {
 			return runs != nil && runs.IsRunning(id)
 		},
+		push: pushNotifier,
 	}
 	projects := notifyingProjectRepository{Repository: deps.Projects, workspace: workspace}
 	definitions := agentDefinitions()
@@ -178,6 +199,11 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		tmuxService = servicetmux.NewSessions(deps.TmuxClient)
 	}
 
+	pushService := newPush(deps.Push, deps.AuthBaseURL)
+	pushNotifier.push = pushService
+	pushNotifier.projects = projectService
+	pushNotifier.users = userService
+
 	return Services{
 		Chats:        chatService,
 		ChatAccess:   chatAccessService,
@@ -194,7 +220,39 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Skills:       skillCatalog,
 		Tmux:         tmuxService,
 		Access:       accessVerifier,
+		Push:         pushService,
+		Presence:     presenceService,
 	}, nil
+}
+
+// newPush builds the Web Push service. A deployment without a usable VAPID key
+// simply has notifications switched off; it is not a reason to refuse to boot.
+func newPush(store PushStore, baseURL string) *servicepush.Service {
+	if store == nil {
+		return servicepush.New(nil, nil)
+	}
+	private, _, err := store.VAPIDKeys(func() (string, string, error) {
+		key, err := webpush.GenerateVAPIDKey()
+		if err != nil {
+			return "", "", err
+		}
+		return key.PrivateKeyBase64(), key.PublicKeyBase64(), nil
+	})
+	if err != nil {
+		log.Printf("push: notifications disabled: %v", err)
+		return servicepush.New(nil, nil)
+	}
+	key, err := webpush.ParseVAPIDKey(private)
+	if err != nil {
+		log.Printf("push: notifications disabled: %v", err)
+		return servicepush.New(nil, nil)
+	}
+	client, err := webpush.NewClient(key, baseURL)
+	if err != nil {
+		log.Printf("push: notifications disabled: %v", err)
+		return servicepush.New(nil, nil)
+	}
+	return servicepush.New(store, webPushSender{client: client})
 }
 
 func (s Services) AuthEnabled() bool {

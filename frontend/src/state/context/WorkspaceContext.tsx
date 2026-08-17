@@ -12,6 +12,13 @@ import {
   type WorkspaceUiState,
 } from "../workspace/workspaceUiState";
 import { workspaceSidebarState } from "../workspace/workspaceSidebarState";
+import {
+  onNotificationOpen,
+  registerServiceWorker,
+  setVisibleChat,
+  takeRequestedChatId,
+} from "../push/serviceWorkerClient";
+import { setWatchedChat } from "../push/presenceClient";
 
 interface WorkspaceContextValue {
   chats: ChatMeta[];
@@ -45,8 +52,30 @@ export function WorkspaceProvider({
 }) {
   const data = useWorkspaceData(enabled);
   const { settings } = useUserSettingsContext();
-  const [ui, dispatch] = useReducer(workspaceUiState.reduce, workspaceUiState.createInitial());
+  const [ui, dispatch] = useReducer(
+    workspaceUiState.reduce,
+    null,
+    () => workspaceUiState.createInitial(takeRequestedChatId())
+  );
   const activeChat = workspaceSidebarState.activeChat(data.chats, ui.activeChatId);
+
+  // Register the worker on every boot so a deployed sw.js replaces the
+  // installed one, and route notification taps into chat selection.
+  useEffect(() => {
+    void registerServiceWorker();
+    onNotificationOpen((chatId) => {
+      if (chatId) dispatch({ type: "select-chat", chatId });
+    });
+  }, []);
+
+  // Say which chat is on screen, so nothing interrupts the user about the one
+  // they are already watching. The worker covers this browser; the server
+  // covers the user's other devices, which the worker cannot see.
+  useEffect(() => {
+    const onScreen = ui.view === "chat" ? ui.activeChatId : null;
+    setVisibleChat(onScreen);
+    setWatchedChat(onScreen);
+  }, [ui.activeChatId, ui.view]);
 
   useEffect(() => {
     const chatId = workspaceSidebarState.initialChatId(enabled, ui.activeChatId, data.chats);
@@ -54,10 +83,13 @@ export function WorkspaceProvider({
   }, [data.chats, enabled, ui.activeChatId]);
 
   useEffect(() => {
+    // Wait for the first snapshot: a chat id handed over by a notification tap
+    // would otherwise be discarded against a not-yet-populated list.
+    if (!data.loaded) return;
     if (workspaceSidebarState.isActiveChatMissing(data.chats, ui.activeChatId)) {
       dispatch({ type: "select-chat", chatId: null });
     }
-  }, [data.chats, ui.activeChatId]);
+  }, [data.chats, data.loaded, ui.activeChatId]);
 
   async function createProject(name: string): Promise<ProjectMeta> {
     const project = await projectApi.create(name);
