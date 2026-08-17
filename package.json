@@ -1,0 +1,11 @@
+{
+  "name": "Remote",
+  "version": "0.3.2",
+  "scripts": {
+    "build": "cd /opt/remote.futrx/frontend && npm install && npm run build && cd ../backend && go build -trimpath -o /opt/remote.futrx/backend/remote ./cmd/remote && systemctl restart remote.futrx.service",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6"
+  }
+}
