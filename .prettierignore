@@ -47,3 +47,5 @@ Thumbs.db
 # Agents
 .design-sync
 .ds-sync
+**/.ds-dts
+**/.ds-css
