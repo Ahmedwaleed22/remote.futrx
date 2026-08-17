@@ -40,20 +40,27 @@ export function ComposerModelPicker({
   }
 
   return (
-    <div ref={rootRef} class="codex-model-control relative w-[152px] flex-none sm:w-[168px]">
+    <div
+      ref={rootRef}
+      class="codex-model-control relative w-[152px] flex-none sm:w-[168px]"
+    >
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         class={`h-7 w-full min-w-0 rounded-md px-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60
                 ${open ? "bg-accent-blue/[0.12]" : "bg-white/[0.045] hover:bg-white/[0.075]"}`}
         disabled={streaming}
-        title={streaming ? "Cannot change model while streaming" : "Choose model"}
+        title={
+          streaming ? "Cannot change model while streaming" : "Choose model"
+        }
         aria-haspopup="listbox"
         aria-expanded={open}
       >
         <span class="flex min-w-0 items-center gap-1.5">
           <span class="sr-only">Model</span>
-          <span class="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-ink-100">{label}</span>
+          <span class="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-ink-100">
+            {label}
+          </span>
           <ChevronDown class="h-3 w-3 flex-none text-ink-400" />
         </span>
       </button>
@@ -90,10 +97,16 @@ export function ComposerModelPicker({
               >
                 <span class="flex items-center justify-between gap-3">
                   <span class="min-w-0">
-                    <span class="block truncate text-[13px] font-semibold">{option.label}</span>
-                    <span class="block truncate text-[12px] text-ink-300">{option.sub}</span>
+                    <span class="block truncate text-[13px] font-semibold">
+                      {option.label}
+                    </span>
+                    <span class="block truncate text-[12px] text-ink-300">
+                      {option.sub}
+                    </span>
                   </span>
-                  {active && <span class="h-2 w-2 flex-none rounded-full bg-accent-blue" />}
+                  {active && (
+                    <span class="h-2 w-2 flex-none rounded-full bg-accent-blue" />
+                  )}
                 </span>
               </button>
             );

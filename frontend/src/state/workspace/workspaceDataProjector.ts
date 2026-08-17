@@ -11,7 +11,10 @@ class WorkspaceDataProjector {
   }
 
   removeChat(current: ChatMeta[], chatId: string): ChatMeta[] {
-    return this.sortedChats(current.filter((chat) => chat.id !== chatId), current);
+    return this.sortedChats(
+      current.filter((chat) => chat.id !== chatId),
+      current
+    );
   }
 
   replaceProjects(next: ProjectMeta[], current: ProjectMeta[]): ProjectMeta[] {
@@ -38,12 +41,19 @@ class WorkspaceDataProjector {
   }
 
   private sortedChats(next: ChatMeta[], current: ChatMeta[]): ChatMeta[] {
-    const sorted = next.slice().sort((left, right) => right.lastMessageAt - left.lastMessageAt);
+    const sorted = next
+      .slice()
+      .sort((left, right) => right.lastMessageAt - left.lastMessageAt);
     return this.sameChats(current, sorted) ? current : sorted;
   }
 
-  private sortedProjects(next: ProjectMeta[], current: ProjectMeta[]): ProjectMeta[] {
-    const sorted = next.slice().sort((left, right) => this.compareProjects(left, right));
+  private sortedProjects(
+    next: ProjectMeta[],
+    current: ProjectMeta[]
+  ): ProjectMeta[] {
+    const sorted = next
+      .slice()
+      .sort((left, right) => this.compareProjects(left, right));
     return this.sameProjects(current, sorted) ? current : sorted;
   }
 
@@ -83,7 +93,10 @@ class WorkspaceDataProjector {
     return true;
   }
 
-  private sameProjects(leftProjects: ProjectMeta[], rightProjects: ProjectMeta[]): boolean {
+  private sameProjects(
+    leftProjects: ProjectMeta[],
+    rightProjects: ProjectMeta[]
+  ): boolean {
     if (leftProjects.length !== rightProjects.length) return false;
     for (let index = 0; index < leftProjects.length; index++) {
       const left = leftProjects[index];

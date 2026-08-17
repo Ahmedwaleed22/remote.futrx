@@ -17,7 +17,8 @@ export function ProviderLoginScreen() {
           <div>
             <div class="text-xl font-semibold">Connect an AI provider</div>
             <div class="text-sm text-ink-300 mt-1.5 leading-relaxed">
-              Sign in to at least one provider to continue. You can connect the others later.
+              Sign in to at least one provider to continue. You can connect the
+              others later.
             </div>
           </div>
         </div>

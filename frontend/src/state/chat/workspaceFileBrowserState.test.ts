@@ -4,18 +4,29 @@ import type { FileNode } from "../../models/files.ts";
 import { workspaceFileBrowserState } from "./workspaceFileBrowserState.ts";
 
 test("preserves independent directory loading and search state", () => {
-  const entry: FileNode = { name: "src", path: "src", isDir: true, size: 0, modTime: 1 };
-  const loading = workspaceFileBrowserState.reduce(workspaceFileBrowserState.createInitial(), {
-    type: "directory-load-started",
-    path: "",
-  });
+  const entry: FileNode = {
+    name: "src",
+    path: "src",
+    isDir: true,
+    size: 0,
+    modTime: 1,
+  };
+  const loading = workspaceFileBrowserState.reduce(
+    workspaceFileBrowserState.createInitial(),
+    {
+      type: "directory-load-started",
+      path: "",
+    }
+  );
   const loaded = workspaceFileBrowserState.reduce(loading, {
     type: "directory-load-succeeded",
     path: "",
     entries: [entry],
     truncated: true,
   });
-  const searching = workspaceFileBrowserState.reduce(loaded, { type: "search-started" });
+  const searching = workspaceFileBrowserState.reduce(loaded, {
+    type: "search-started",
+  });
   const failed = workspaceFileBrowserState.reduce(searching, {
     type: "search-failed",
     error: "unavailable",

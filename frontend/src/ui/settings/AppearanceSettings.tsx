@@ -32,9 +32,13 @@ export function AppearanceSettings({
         </div>
         <div class="flex-1 min-w-0">
           <div class="text-[14.5px] font-semibold text-ink-50">Appearance</div>
-          <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">Theme preference</div>
+          <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
+            Theme preference
+          </div>
         </div>
-        {(loading || saving) && <Loader class="w-4 h-4 mt-2 text-ink-300 animate-spin" />}
+        {(loading || saving) && (
+          <Loader class="w-4 h-4 mt-2 text-ink-300 animate-spin" />
+        )}
       </header>
 
       <div class="p-4 space-y-3">

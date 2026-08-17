@@ -8,8 +8,20 @@ test("projects chat events into the existing message and usage model", () => {
     { type: "user", text: "hello", t: 1 },
     { type: "assistant_text", text: "hel", t: 2 },
     { type: "assistant_text", text: "lo", t: 3 },
-    { type: "tool_use_start", id: "tool-1", name: "shell", input: { command: "pwd" }, t: 4 },
-    { type: "tool_use_end", id: "tool-1", output: "/workspace", isError: false, t: 5 },
+    {
+      type: "tool_use_start",
+      id: "tool-1",
+      name: "shell",
+      input: { command: "pwd" },
+      t: 4,
+    },
+    {
+      type: "tool_use_end",
+      id: "tool-1",
+      output: "/workspace",
+      isError: false,
+      t: 5,
+    },
     { type: "complete", usage: { input_tokens: 3, output_tokens: 5 }, t: 6 },
   ];
 

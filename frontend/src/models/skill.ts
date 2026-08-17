@@ -7,4 +7,3 @@ export interface RegisteredSkill {
   provider: ChatProvider;
   source?: "user" | "system" | "plugin" | string;
 }
-

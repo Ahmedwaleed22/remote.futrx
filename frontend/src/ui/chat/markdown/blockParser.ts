@@ -62,7 +62,10 @@ export function parseMarkdown(markdown: string): MarkdownBlock[] {
         quoteLines.push(lines[index].trimStart().replace(/^>\s?/, ""));
         index++;
       }
-      blocks.push({ type: "blockquote", children: parseMarkdown(quoteLines.join("\n")) });
+      blocks.push({
+        type: "blockquote",
+        children: parseMarkdown(quoteLines.join("\n")),
+      });
       continue;
     }
 
@@ -76,7 +79,11 @@ export function parseMarkdown(markdown: string): MarkdownBlock[] {
 
     const paragraph: string[] = [line.trim()];
     index++;
-    while (index < lines.length && !isBlank(lines[index]) && !isBlockStart(lines, index)) {
+    while (
+      index < lines.length &&
+      !isBlank(lines[index]) &&
+      !isBlockStart(lines, index)
+    ) {
       paragraph.push(lines[index].trim());
       index++;
     }
@@ -86,7 +93,11 @@ export function parseMarkdown(markdown: string): MarkdownBlock[] {
   return blocks;
 }
 
-function parseList(lines: string[], startIndex: number, ordered: boolean): { block: MarkdownBlock; next: number } {
+function parseList(
+  lines: string[],
+  startIndex: number,
+  ordered: boolean
+): { block: MarkdownBlock; next: number } {
   const items: ListItem[] = [];
   const first = lines[startIndex].match(listPattern);
   const start = ordered && first?.[3] ? Number(first[3]) : undefined;
@@ -98,7 +109,11 @@ function parseList(lines: string[], startIndex: number, ordered: boolean): { blo
 
     const item = parseListItem(match[4]);
     index++;
-    while (index < lines.length && /^\s{2,}\S/.test(lines[index]) && !listPattern.test(lines[index])) {
+    while (
+      index < lines.length &&
+      /^\s{2,}\S/.test(lines[index]) &&
+      !listPattern.test(lines[index])
+    ) {
       item.text += "\n" + lines[index].trim();
       index++;
     }
@@ -114,12 +129,19 @@ function parseListItem(raw: string): ListItem {
   return { text: task[2], checked: task[1].toLowerCase() === "x" };
 }
 
-function parseTable(lines: string[], startIndex: number): { block: MarkdownBlock; next: number } {
+function parseTable(
+  lines: string[],
+  startIndex: number
+): { block: MarkdownBlock; next: number } {
   const header = splitTableRow(lines[startIndex]);
   const rows: string[][] = [];
   let index = startIndex + 2;
 
-  while (index < lines.length && lines[index].includes("|") && !isBlank(lines[index])) {
+  while (
+    index < lines.length &&
+    lines[index].includes("|") &&
+    !isBlank(lines[index])
+  ) {
     rows.push(normalizeRow(splitTableRow(lines[index]), header.length));
     index++;
   }

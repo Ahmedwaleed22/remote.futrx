@@ -90,5 +90,14 @@ export function useSelfUpdate(enabled: boolean) {
     return () => window.clearInterval(interval);
   }, [enabled, running]);
 
-  return { status, loading, checking, applying, restarting, error, check, apply };
+  return {
+    status,
+    loading,
+    checking,
+    applying,
+    restarting,
+    error,
+    check,
+    apply,
+  };
 }

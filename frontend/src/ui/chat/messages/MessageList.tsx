@@ -40,7 +40,9 @@ export function MessageList({
   onLoadOlder: () => Promise<void>;
   onRewind: (t: number, text: string) => void;
 }) {
-  const [visibleBlockCount, setVisibleBlockCount] = useState(INITIAL_VISIBLE_BLOCKS);
+  const [visibleBlockCount, setVisibleBlockCount] = useState(
+    INITIAL_VISIBLE_BLOCKS
+  );
   const firstVisibleIndex = Math.max(0, blocks.length - visibleBlockCount);
   const hiddenCount = firstVisibleIndex;
   const visibleBlocks = useMemo(
@@ -82,7 +84,9 @@ export function MessageList({
           </div>
         )}
 
-        {status !== "loading" && blocks.length === 0 && <ThreadEmptyState cwd={cwd} />}
+        {status !== "loading" && blocks.length === 0 && (
+          <ThreadEmptyState cwd={cwd} />
+        )}
 
         {(hiddenCount > 0 || hasOlder) && (
           <div class="flex justify-center">
@@ -107,7 +111,9 @@ export function MessageList({
             <MessageBlock
               key={`${block.type}-${block.t}-${blockIndex}`}
               block={block}
-              streaming={status === "streaming" && blockIndex === blocks.length - 1}
+              streaming={
+                status === "streaming" && blockIndex === blocks.length - 1
+              }
               chatId={chatId}
               cwd={cwd}
               onAnswerQuestion={onAnswerQuestion}

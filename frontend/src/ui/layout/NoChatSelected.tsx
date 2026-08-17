@@ -35,7 +35,9 @@ export function NoChatSelected({
           </div>
           <div class="text-ink-200">
             <div class="font-semibold text-lg text-ink-50">
-              {hasProjects ? "Choose a chat or start fresh" : "Create your first project"}
+              {hasProjects
+                ? "Choose a chat or start fresh"
+                : "Create your first project"}
             </div>
             <div class="text-xs mt-2 leading-relaxed text-ink-300">
               {hasProjects

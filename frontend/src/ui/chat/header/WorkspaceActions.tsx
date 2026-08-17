@@ -1,5 +1,12 @@
 import { useId, useState } from "preact/hooks";
-import { CalendarClock, Clock, Code, Folder, Monitor, Terminal } from "../../primitives/icons";
+import {
+  CalendarClock,
+  Clock,
+  Code,
+  Folder,
+  Monitor,
+  Terminal,
+} from "../../primitives/icons";
 import { buildIdeUrl, defaultWorkspacePath } from "../ideLinks";
 
 const actionClass = `workspace-action relative inline-flex h-9 w-9 flex-none items-center justify-center rounded-md
@@ -40,7 +47,9 @@ export function WorkspaceActions({
   const tooltipPlacement = orientation === "horizontal" ? "below" : "left";
 
   return (
-    <div class={`flex items-center gap-2 ${orientation === "horizontal" ? "flex-row" : "flex-col"}`}>
+    <div
+      class={`flex items-center gap-2 ${orientation === "horizontal" ? "flex-row" : "flex-col"}`}
+    >
       <WorkspaceAction
         Icon={Code}
         href={ideUrl}
@@ -82,7 +91,9 @@ export function WorkspaceActions({
           Icon={CalendarClock}
           onClick={onToggleSchedules}
           label={schedulesOpen ? "Close scheduled tasks" : "Scheduled tasks"}
-          tooltip={schedulesOpen ? "Close scheduled tasks" : "View scheduled tasks"}
+          tooltip={
+            schedulesOpen ? "Close scheduled tasks" : "View scheduled tasks"
+          }
           expanded={schedulesOpen}
           controls="workspace-schedules-pane"
           action="schedules"

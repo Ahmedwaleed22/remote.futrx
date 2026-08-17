@@ -34,7 +34,10 @@ export function useServerInfo(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     void refresh();
-    const interval = window.setInterval(() => void refresh(), refreshIntervalMs);
+    const interval = window.setInterval(
+      () => void refresh(),
+      refreshIntervalMs
+    );
     return () => window.clearInterval(interval);
   }, [enabled, refresh]);
 

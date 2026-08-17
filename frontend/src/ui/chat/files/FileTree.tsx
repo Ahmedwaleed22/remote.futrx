@@ -14,11 +14,20 @@ import {
   Loader,
   Music,
 } from "../../primitives/icons";
-import { categorize, fileOpenAction, formatBytes, parentDir, type FileCategory } from "./fileMeta";
+import {
+  categorize,
+  fileOpenAction,
+  formatBytes,
+  parentDir,
+  type FileCategory,
+} from "./fileMeta";
 
 type IconComponent = (props: JSX.SVGAttributes<SVGSVGElement>) => JSX.Element;
 
-const CATEGORY_META: Record<FileCategory, { Icon: IconComponent; color: string }> = {
+const CATEGORY_META: Record<
+  FileCategory,
+  { Icon: IconComponent; color: string }
+> = {
   image: { Icon: Image, color: "text-[#34d399]" },
   video: { Icon: Film, color: "text-[#a78bfa]" },
   audio: { Icon: Music, color: "text-[#f472b6]" },
@@ -96,9 +105,13 @@ function FolderRow({
         ) : (
           <Folder class="w-4 h-4 flex-none text-accent-blue" />
         )}
-        <span class="flex-1 min-w-0 truncate text-[13px] text-ink-100">{node.name}</span>
+        <span class="flex-1 min-w-0 truncate text-[13px] text-ink-100">
+          {node.name}
+        </span>
         {children && (
-          <span class="text-[11px] text-ink-500 tabular-nums flex-none">{children.length}</span>
+          <span class="text-[11px] text-ink-500 tabular-nums flex-none">
+            {children.length}
+          </span>
         )}
         <a
           href={state.downloadUrl(node)}
@@ -151,9 +164,13 @@ function FileRow({
       >
         <span class="w-3.5 flex-none" aria-hidden="true" />
         <Icon class={`w-4 h-4 flex-none ${color}`} />
-        <span class="flex-1 min-w-0 truncate text-[13px] text-ink-100">{node.name}</span>
+        <span class="flex-1 min-w-0 truncate text-[13px] text-ink-100">
+          {node.name}
+        </span>
         {node.size != null && (
-          <span class="text-[11px] text-ink-500 tabular-nums flex-none">{formatBytes(node.size)}</span>
+          <span class="text-[11px] text-ink-500 tabular-nums flex-none">
+            {formatBytes(node.size)}
+          </span>
         )}
         <a
           href={downloadUrl(node)}
@@ -208,10 +225,16 @@ export function SearchResultRow({
         <Icon class={`w-4 h-4 flex-none ${color}`} />
         <div class="flex-1 min-w-0">
           <div class="truncate text-[13px] text-ink-100">{node.name}</div>
-          {dir && <div class="truncate text-[11px] text-ink-500 font-mono">{dir}/</div>}
+          {dir && (
+            <div class="truncate text-[11px] text-ink-500 font-mono">
+              {dir}/
+            </div>
+          )}
         </div>
         {!node.isDir && node.size != null && (
-          <span class="text-[11px] text-ink-500 tabular-nums flex-none">{formatBytes(node.size)}</span>
+          <span class="text-[11px] text-ink-500 tabular-nums flex-none">
+            {formatBytes(node.size)}
+          </span>
         )}
         <a
           href={downloadUrl(node)}
@@ -219,8 +242,16 @@ export function SearchResultRow({
           onClick={(event) => event.stopPropagation()}
           class="h-6 w-6 grid place-items-center rounded text-ink-400 hover:text-accent-blue hover:bg-white/[0.08]
                  opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity flex-none"
-          title={node.isDir ? `Download ${node.name} as zip` : `Download ${node.name}`}
-          aria-label={node.isDir ? `Download ${node.name} as zip` : `Download ${node.name}`}
+          title={
+            node.isDir
+              ? `Download ${node.name} as zip`
+              : `Download ${node.name}`
+          }
+          aria-label={
+            node.isDir
+              ? `Download ${node.name} as zip`
+              : `Download ${node.name}`
+          }
         >
           <Download class="w-3.5 h-3.5" />
         </a>

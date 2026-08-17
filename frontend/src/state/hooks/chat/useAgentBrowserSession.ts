@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { agentBrowserApi } from "../../../api/agents/agentBrowserApi";
-import type { AgentBrowserInfo, AgentBrowserStatus } from "../../../models/project";
+import type {
+  AgentBrowserInfo,
+  AgentBrowserStatus,
+} from "../../../models/project";
 
 const pollIntervalMs = 1500;
 const heartbeatIntervalMs = 15000;
@@ -10,7 +13,13 @@ const heartbeatIntervalMs = 15000;
 // flow here: once ready, the noVNC view loads as an iframe from the dev-URL
 // proxy. Closing the drawer stops only the human noVNC view; the agent-facing
 // browser core keeps running until explicitly stopped or reaped for idleness.
-export function useAgentBrowserSession({ projectId, enabled }: { projectId: string; enabled: boolean }) {
+export function useAgentBrowserSession({
+  projectId,
+  enabled,
+}: {
+  projectId: string;
+  enabled: boolean;
+}) {
   const [status, setStatus] = useState<AgentBrowserStatus>("idle");
   const [guiUrl, setGuiUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -65,16 +74,20 @@ export function useAgentBrowserSession({ projectId, enabled }: { projectId: stri
     setGuiUrl("");
     setError(null);
 
-    const isCurrent = () => mountedRef.current && !disposed && requestRef.current === requestId;
+    const isCurrent = () =>
+      mountedRef.current && !disposed && requestRef.current === requestId;
 
     async function pollStatus() {
       try {
         const info = await agentBrowserApi.fetchAgentBrowserStatus(projectId);
         if (!isCurrent()) return;
-        if (applyInfo(info)) pollTimer = window.setTimeout(pollStatus, pollIntervalMs);
+        if (applyInfo(info))
+          pollTimer = window.setTimeout(pollStatus, pollIntervalMs);
       } catch (err) {
         if (!isCurrent()) return;
-        setError((err as Error).message || "Failed to check the agent browser.");
+        setError(
+          (err as Error).message || "Failed to check the agent browser."
+        );
         setStatus("error");
       }
     }
@@ -89,14 +102,18 @@ export function useAgentBrowserSession({ projectId, enabled }: { projectId: stri
       }
     }
 
-    agentBrowserApi.startAgentBrowser(projectId)
+    agentBrowserApi
+      .startAgentBrowser(projectId)
       .then((info) => {
         if (!isCurrent()) return;
-        if (applyInfo(info)) pollTimer = window.setTimeout(pollStatus, pollIntervalMs);
+        if (applyInfo(info))
+          pollTimer = window.setTimeout(pollStatus, pollIntervalMs);
       })
       .catch((err) => {
         if (!isCurrent()) return;
-        setError((err as Error).message || "Failed to start the agent browser.");
+        setError(
+          (err as Error).message || "Failed to start the agent browser."
+        );
         setStatus("error");
       });
     heartbeatTimer = window.setInterval(() => {
@@ -118,7 +135,8 @@ export function useAgentBrowserSession({ projectId, enabled }: { projectId: stri
     setStatus("stopped");
     setGuiUrl("");
     setError(null);
-    agentBrowserApi.stopAgentBrowser(projectId)
+    agentBrowserApi
+      .stopAgentBrowser(projectId)
       .then(() => {
         if (!mountedRef.current || requestRef.current !== requestId) return;
         setGuiUrl("");

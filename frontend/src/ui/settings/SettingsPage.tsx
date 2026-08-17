@@ -4,7 +4,15 @@ import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { ServerInfo } from "../../models/serverInfo";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
-import { Bot, ChevronLeft, Download, Info, Menu, Monitor, Users } from "../primitives/icons";
+import {
+  Bot,
+  ChevronLeft,
+  Download,
+  Info,
+  Menu,
+  Monitor,
+  Users,
+} from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { ClaudeAuthSettings } from "./ClaudeAuthSettings";
 import { CodexAuthSettings } from "./CodexAuthSettings";
@@ -14,7 +22,8 @@ import { ServerInfoSettings } from "./ServerInfoSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
 import { UsersPanel } from "../account/UsersPanel";
 
-export type SettingsTab = "appearance" | "agents" | "users" | "updates" | "info";
+export type SettingsTab =
+  "appearance" | "agents" | "users" | "updates" | "info";
 
 const tabs: Array<{
   id: SettingsTab;
@@ -158,7 +167,9 @@ export function SettingsPage({
         </button>
         <div class="flex-1 min-w-0">
           <div class="text-[11px] text-ink-300">Preferences</div>
-          <div class="text-[15px] font-semibold text-ink-50 truncate">Settings</div>
+          <div class="text-[15px] font-semibold text-ink-50 truncate">
+            Settings
+          </div>
         </div>
       </header>
 
@@ -182,7 +193,9 @@ export function SettingsPage({
         >
           <div class="w-full px-4 py-5 md:px-6 md:py-7">
             <header class="mb-5">
-              <h1 class="text-xl font-semibold text-ink-50">{activeTabDetails.label}</h1>
+              <h1 class="text-xl font-semibold text-ink-50">
+                {activeTabDetails.label}
+              </h1>
               <p class="mt-1 text-[13px] leading-relaxed text-ink-300">
                 {activeTabDetails.description}
               </p>
@@ -198,13 +211,16 @@ export function SettingsPage({
               />
             )}
 
-            {activeTab === "agents" && (
-              isAdmin ? (
+            {activeTab === "agents" &&
+              (isAdmin ? (
                 <div class="rounded-lg border border-white/10 bg-[#101318] overflow-hidden">
                   <div class="px-4 py-3 border-b border-white/[0.06]">
-                    <div class="text-[14.5px] font-semibold text-ink-50">Agent authentication</div>
+                    <div class="text-[14.5px] font-semibold text-ink-50">
+                      Agent authentication
+                    </div>
                     <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
-                      Sign in once on the parent host and share the credentials with project containers.
+                      Sign in once on the parent host and share the credentials
+                      with project containers.
                     </div>
                   </div>
                   <div class="p-3 space-y-3">
@@ -232,8 +248,7 @@ export function SettingsPage({
                 <SettingsNotice>
                   Agent authentication is managed by server administrators.
                 </SettingsNotice>
-              )
-            )}
+              ))}
 
             {activeTab === "users" && (
               <div class="space-y-4">
@@ -323,7 +338,9 @@ function SettingsNavigation({
                   : "border-transparent text-ink-300 hover:text-ink-100 hover:bg-white/[0.05]"
               }`}
             >
-              <Icon class={`w-4 h-4 flex-none ${active ? "text-accent-blue" : "text-ink-400"}`} />
+              <Icon
+                class={`w-4 h-4 flex-none ${active ? "text-accent-blue" : "text-ink-400"}`}
+              />
               <span>{label}</span>
             </button>
           );

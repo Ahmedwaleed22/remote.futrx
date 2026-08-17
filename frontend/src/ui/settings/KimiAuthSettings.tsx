@@ -18,7 +18,10 @@ export function KimiAuthSettings({
 }) {
   const loginActive = !!deviceLogin?.active;
   const expiresAt = deviceLogin?.expiresAt
-    ? new Date(deviceLogin.expiresAt * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    ? new Date(deviceLogin.expiresAt * 1000).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      })
     : "";
 
   return (
@@ -29,7 +32,9 @@ export function KimiAuthSettings({
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <div class="text-[14px] font-semibold text-ink-100">Kimi authentication</div>
+            <div class="text-[14px] font-semibold text-ink-100">
+              Kimi authentication
+            </div>
             {loading ? (
               <Loader class="w-3.5 h-3.5 text-ink-300 animate-spin" />
             ) : authenticated ? (
@@ -41,9 +46,9 @@ export function KimiAuthSettings({
             )}
           </div>
           <div class="text-[12px] text-ink-300 mt-1 leading-relaxed">
-            Starts <span class="font-mono text-ink-100">kimi login</span> on the host.
-            Signs in with your Kimi Code subscription via a device code — no API key, billed against
-            your membership quota.
+            Starts <span class="font-mono text-ink-100">kimi login</span> on the
+            host. Signs in with your Kimi Code subscription via a device code —
+            no API key, billed against your membership quota.
           </div>
         </div>
       </div>
@@ -55,14 +60,22 @@ export function KimiAuthSettings({
           disabled={starting || loginActive}
           class="h-10 px-3 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50"
         >
-          {starting ? "Starting..." : loginActive ? "Login in progress" : authenticated ? "Refresh Kimi login" : "Sign in with Kimi"}
+          {starting
+            ? "Starting..."
+            : loginActive
+              ? "Login in progress"
+              : authenticated
+                ? "Refresh Kimi login"
+                : "Sign in with Kimi"}
         </button>
         {loading && <Loader class="w-4 h-4 text-ink-300 animate-spin" />}
       </div>
 
       {loginActive && (
         <div class="rounded border border-accent-blue/25 bg-accent-blue/[0.08] p-3 space-y-2">
-          <div class="text-[12px] text-ink-200">Open the link and confirm this code:</div>
+          <div class="text-[12px] text-ink-200">
+            Open the link and confirm this code:
+          </div>
           <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
             <div class="font-mono text-[18px] tracking-wide text-ink-50 bg-black/30 border border-white/10 rounded px-3 py-2">
               {deviceLogin?.userCode || "Waiting for code..."}
@@ -78,7 +91,11 @@ export function KimiAuthSettings({
               </a>
             )}
           </div>
-          {expiresAt && <div class="text-[11px] text-ink-400">Code expires around {expiresAt}.</div>}
+          {expiresAt && (
+            <div class="text-[11px] text-ink-400">
+              Code expires around {expiresAt}.
+            </div>
+          )}
         </div>
       )}
 

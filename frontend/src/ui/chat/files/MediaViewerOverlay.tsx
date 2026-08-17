@@ -8,7 +8,9 @@ import { Download, ExternalLink, X } from "../../primitives/icons";
 // Full-screen host for the in-app media viewer. Mounted once per chat view;
 // renders whatever mediaViewerState currently holds.
 export function MediaViewerOverlay() {
-  const [item, setItem] = useState<MediaViewerItem | null>(mediaViewerState.current);
+  const [item, setItem] = useState<MediaViewerItem | null>(
+    mediaViewerState.current
+  );
 
   useEffect(() => mediaViewerState.subscribe(setItem), []);
 
@@ -35,7 +37,10 @@ export function MediaViewerOverlay() {
         class="flex-none flex items-center gap-2 px-3 md:px-4 py-2.5 bg-[#101318]/90 border-b border-white/10"
         onClick={(event) => event.stopPropagation()}
       >
-        <div class="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink-50" title={item.name}>
+        <div
+          class="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink-50"
+          title={item.name}
+        >
           {item.name}
         </div>
         <a
@@ -103,7 +108,9 @@ function MediaContent({ item }: { item: MediaViewerItem }) {
           class="w-[440px] max-w-[86vw] rounded-lg border border-white/10 bg-[#101318] p-4 shadow-2xl"
           onClick={stop}
         >
-          <div class="mb-3 truncate text-[13px] text-ink-100" title={item.name}>{item.name}</div>
+          <div class="mb-3 truncate text-[13px] text-ink-100" title={item.name}>
+            {item.name}
+          </div>
           <audio src={item.url} controls autoPlay class="w-full" />
         </div>
       );

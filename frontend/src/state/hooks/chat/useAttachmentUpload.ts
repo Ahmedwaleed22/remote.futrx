@@ -54,17 +54,19 @@ export function useAttachmentUpload(
         return { id, displayName: file.name, uploadFile };
       });
 
-      const queued: Attachment[] = items.map(({ id, displayName, uploadFile }) => ({
-        id,
-        name: displayName,
-        size: uploadFile.size,
-        serverPath: "",
-        isImage: uploadFile.type.startsWith("image/"),
-        objectUrl: uploadFile.type.startsWith("image/")
-          ? URL.createObjectURL(uploadFile)
-          : undefined,
-        progress: 0,
-      }));
+      const queued: Attachment[] = items.map(
+        ({ id, displayName, uploadFile }) => ({
+          id,
+          name: displayName,
+          size: uploadFile.size,
+          serverPath: "",
+          isImage: uploadFile.type.startsWith("image/"),
+          objectUrl: uploadFile.type.startsWith("image/")
+            ? URL.createObjectURL(uploadFile)
+            : undefined,
+          progress: 0,
+        })
+      );
 
       setAttachments((prev) => [...prev, ...queued]);
       setUploading(true);
@@ -78,7 +80,9 @@ export function useAttachmentUpload(
             onProgress(loaded, total) {
               const ratio = total > 0 ? loaded / total : 0;
               setAttachments((prev) =>
-                prev.map((a) => (a.id === att.id ? { ...a, progress: ratio } : a))
+                prev.map((a) =>
+                  a.id === att.id ? { ...a, progress: ratio } : a
+                )
               );
             },
             onSuccess() {

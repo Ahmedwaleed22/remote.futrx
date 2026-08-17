@@ -1,4 +1,8 @@
-import type { ChatStatus, PromptOutcome, QueuedPrompt } from "../../models/chat";
+import type {
+  ChatStatus,
+  PromptOutcome,
+  QueuedPrompt,
+} from "../../models/chat";
 
 // Delivery policy for queued prompts. A queued prompt is only removed once the
 // server acknowledges that a run accepted it; a rejected or unacknowledged
@@ -12,7 +16,7 @@ class PromptQueueState {
     prompts: QueuedPrompt[],
     inflightId: string | null,
     status: ChatStatus,
-    canSendPrompt: boolean,
+    canSendPrompt: boolean
   ): QueuedPrompt | null {
     if (status !== "ready" || !canSendPrompt) return null;
     if (inflightId !== null) return null;
@@ -21,14 +25,21 @@ class PromptQueueState {
 
   // Prompts remaining after the server's verdict: accepted removes the prompt
   // (it now lives in the transcript), rejected keeps it for the next window.
-  promptsAfterOutcome(prompts: QueuedPrompt[], outcome: PromptOutcome): QueuedPrompt[] {
+  promptsAfterOutcome(
+    prompts: QueuedPrompt[],
+    outcome: PromptOutcome
+  ): QueuedPrompt[] {
     if (!outcome.accepted) return prompts;
-    if (!prompts.some((prompt) => prompt.id === outcome.clientId)) return prompts;
+    if (!prompts.some((prompt) => prompt.id === outcome.clientId))
+      return prompts;
     return prompts.filter((prompt) => prompt.id !== outcome.clientId);
   }
 
   // The latch after an outcome: any verdict for the in-flight prompt frees it.
-  inflightAfterOutcome(inflightId: string | null, outcome: PromptOutcome): string | null {
+  inflightAfterOutcome(
+    inflightId: string | null,
+    outcome: PromptOutcome
+  ): string | null {
     return inflightId === outcome.clientId ? null : inflightId;
   }
 }

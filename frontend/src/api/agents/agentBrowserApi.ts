@@ -4,10 +4,7 @@ import { API_ROUTES } from "../../config/routes";
 
 export const agentBrowserApi = {
   fetchAgentBrowserStatus: (id: string) =>
-    requestJson<AgentBrowserInfo>(
-      "GET",
-      API_ROUTES.projects.agentBrowser(id)
-    ),
+    requestJson<AgentBrowserInfo>("GET", API_ROUTES.projects.agentBrowser(id)),
 
   startAgentBrowser: (id: string) =>
     requestJson<AgentBrowserInfo>(

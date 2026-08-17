@@ -44,15 +44,18 @@ export function useUserDirectory(enabled: boolean): UserDirectory {
 
   async function remove(email: string): Promise<void> {
     await userApi.remove(email);
-    setUsers((current) => current?.filter((user) => user.email !== email) ?? []);
+    setUsers(
+      (current) => current?.filter((user) => user.email !== email) ?? []
+    );
   }
 
   async function setRole(email: string, role: UserRole): Promise<void> {
     const updated = await userApi.setRole(email, role);
-    setUsers((current) =>
-      current?.map((user) =>
-        user.email === email ? { ...user, role: updated.role } : user
-      ) ?? []
+    setUsers(
+      (current) =>
+        current?.map((user) =>
+          user.email === email ? { ...user, role: updated.role } : user
+        ) ?? []
     );
   }
 

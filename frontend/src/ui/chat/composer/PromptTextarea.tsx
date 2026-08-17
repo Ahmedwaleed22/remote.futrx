@@ -23,7 +23,9 @@ export function PromptTextarea({
     <textarea
       ref={textareaRef}
       value={text}
-      onInput={(event) => onTextChange((event.currentTarget as HTMLTextAreaElement).value)}
+      onInput={(event) =>
+        onTextChange((event.currentTarget as HTMLTextAreaElement).value)
+      }
       onKeyDown={(event) => {
         if (
           event.key === "Enter" &&
@@ -44,10 +46,13 @@ export function PromptTextarea({
       autocorrect="off"
       spellcheck={false}
       placeholder={
-        uploading ? "Uploading..." :
-        streaming ? "Queue next prompt while the agent is working" :
-        disconnected ? "Connecting..." :
-        "Ask anything, @ to add files, / for commands"
+        uploading
+          ? "Uploading..."
+          : streaming
+            ? "Queue next prompt while the agent is working"
+            : disconnected
+              ? "Connecting..."
+              : "Ask anything, @ to add files, / for commands"
       }
       disabled={disconnected}
       class="codex-composer-textarea flex-1 resize-none rounded-md

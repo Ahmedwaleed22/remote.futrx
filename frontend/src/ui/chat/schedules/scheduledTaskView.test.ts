@@ -37,7 +37,10 @@ test("sortScheduledTasks prioritizes enabled tasks and their next run", () => {
     task({ id: "soon", nextRunAt: 200 }),
   ]);
 
-  assert.deepEqual(result.map((item) => item.id), ["soon", "later", "disabled"]);
+  assert.deepEqual(
+    result.map((item) => item.id),
+    ["soon", "later", "disabled"]
+  );
 });
 
 test("scheduleDefinition describes cron schedules with their timezone", () => {
@@ -48,33 +51,84 @@ test("scheduleDefinition describes cron schedules with their timezone", () => {
 });
 
 test("scheduleRunCount includes a bounded task's progress", () => {
-  assert.equal(scheduleRunCount(task({ runCount: 3, maxRuns: 12 })), "3 of 12 runs");
+  assert.equal(
+    scheduleRunCount(task({ runCount: 3, maxRuns: 12 })),
+    "3 of 12 runs"
+  );
 });
 
 test("canResumeScheduledTask only permits paused tasks", () => {
-  assert.equal(canResumeScheduledTask(task({ enabled: false, status: "paused" })), true);
-  assert.equal(canResumeScheduledTask(task({ enabled: false, status: "completed" })), false);
-  assert.equal(canResumeScheduledTask(task({ enabled: false, status: "exhausted" })), false);
-  assert.equal(canResumeScheduledTask(task({ enabled: false, status: "error" })), false);
-  assert.equal(canResumeScheduledTask(task({ enabled: true, status: "paused" })), false);
+  assert.equal(
+    canResumeScheduledTask(task({ enabled: false, status: "paused" })),
+    true
+  );
+  assert.equal(
+    canResumeScheduledTask(task({ enabled: false, status: "completed" })),
+    false
+  );
+  assert.equal(
+    canResumeScheduledTask(task({ enabled: false, status: "exhausted" })),
+    false
+  );
+  assert.equal(
+    canResumeScheduledTask(task({ enabled: false, status: "error" })),
+    false
+  );
+  assert.equal(
+    canResumeScheduledTask(task({ enabled: true, status: "paused" })),
+    false
+  );
 });
 
 test("isAwaitingArm flags parked agent-created tasks only", () => {
-  const parked = task({ createdByAgent: true, enabled: false, status: "paused", runCount: 0 });
+  const parked = task({
+    createdByAgent: true,
+    enabled: false,
+    status: "paused",
+    runCount: 0,
+  });
   assert.equal(isAwaitingArm(parked), true);
-  assert.equal(isAwaitingArm(task({ createdByAgent: true, enabled: true, status: "active" })), false);
   assert.equal(
-    isAwaitingArm(task({ createdByAgent: true, enabled: false, status: "paused", runCount: 3 })),
-    false,
+    isAwaitingArm(
+      task({ createdByAgent: true, enabled: true, status: "active" })
+    ),
+    false
   );
-  assert.equal(isAwaitingArm(task({ enabled: false, status: "paused", runCount: 0 })), false);
+  assert.equal(
+    isAwaitingArm(
+      task({
+        createdByAgent: true,
+        enabled: false,
+        status: "paused",
+        runCount: 3,
+      })
+    ),
+    false
+  );
+  assert.equal(
+    isAwaitingArm(task({ enabled: false, status: "paused", runCount: 0 })),
+    false
+  );
 });
 
 test("toggleActionLabel arms parked tasks and pauses running ones", () => {
-  assert.equal(toggleActionLabel(task({ enabled: true, status: "active" })), "Pause");
   assert.equal(
-    toggleActionLabel(task({ createdByAgent: true, enabled: false, status: "paused", runCount: 0 })),
-    "Arm",
+    toggleActionLabel(task({ enabled: true, status: "active" })),
+    "Pause"
   );
-  assert.equal(toggleActionLabel(task({ enabled: false, status: "paused", runCount: 2 })), "Resume");
+  assert.equal(
+    toggleActionLabel(
+      task({
+        createdByAgent: true,
+        enabled: false,
+        status: "paused",
+        runCount: 0,
+      })
+    ),
+    "Arm"
+  );
+  assert.equal(
+    toggleActionLabel(task({ enabled: false, status: "paused", runCount: 2 })),
+    "Resume"
+  );
 });

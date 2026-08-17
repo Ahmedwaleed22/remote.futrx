@@ -11,8 +11,12 @@ class ChatBrowserState {
     let latest = "";
     for (const block of blocks) {
       for (const text of this.blockTexts(block)) {
-        for (const candidate of projectPreviewUrlsInText(text, PUBLIC_HOSTNAME)) {
-          if (isProjectPreviewUrl(candidate, projectSlug, PUBLIC_HOSTNAME)) latest = candidate;
+        for (const candidate of projectPreviewUrlsInText(
+          text,
+          PUBLIC_HOSTNAME
+        )) {
+          if (isProjectPreviewUrl(candidate, projectSlug, PUBLIC_HOSTNAME))
+            latest = candidate;
         }
       }
     }
@@ -25,7 +29,8 @@ class ChatBrowserState {
     lines.push(`Selector: ${capture.selector || ""}`);
     lines.push(`Tag: ${capture.tag || ""}`);
     if (capture.id) lines.push(`ID: ${capture.id}`);
-    if (capture.classes?.length) lines.push(`Classes: ${capture.classes.join(" ")}`);
+    if (capture.classes?.length)
+      lines.push(`Classes: ${capture.classes.join(" ")}`);
     if (capture.role) lines.push(`Role: ${capture.role}`);
     if (capture.ariaLabel) lines.push(`ARIA label: ${capture.ariaLabel}`);
     if (capture.rect) {
@@ -34,9 +39,12 @@ class ChatBrowserState {
       );
     }
     if (capture.viewport) {
-      lines.push(`Viewport: ${capture.viewport.width}x${capture.viewport.height}`);
+      lines.push(
+        `Viewport: ${capture.viewport.width}x${capture.viewport.height}`
+      );
     }
-    if (capture.parents?.length) lines.push(`Parents: ${capture.parents.join(" > ")}`);
+    if (capture.parents?.length)
+      lines.push(`Parents: ${capture.parents.join(" > ")}`);
     if (capture.styles && Object.keys(capture.styles).length) {
       lines.push("Styles:");
       for (const [key, value] of Object.entries(capture.styles)) {

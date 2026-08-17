@@ -20,7 +20,10 @@ export function CodexAuthSettings({
 }) {
   const loginActive = !!deviceLogin?.active;
   const expiresAt = deviceLogin?.expiresAt
-    ? new Date(deviceLogin.expiresAt * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    ? new Date(deviceLogin.expiresAt * 1000).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      })
     : "";
 
   return (
@@ -31,7 +34,9 @@ export function CodexAuthSettings({
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <div class="text-[14px] font-semibold text-ink-100">Codex authentication</div>
+            <div class="text-[14px] font-semibold text-ink-100">
+              Codex authentication
+            </div>
             {loading ? (
               <Loader class="w-3.5 h-3.5 text-ink-300 animate-spin" />
             ) : authenticated ? (
@@ -39,14 +44,20 @@ export function CodexAuthSettings({
                 <Check class="w-3.5 h-3.5" /> ChatGPT signed in
               </span>
             ) : usesApiKey ? (
-              <span class="text-[11px] text-accent-red">API-key login detected</span>
+              <span class="text-[11px] text-accent-red">
+                API-key login detected
+              </span>
             ) : (
               <span class="text-[11px] text-ink-400">not configured</span>
             )}
           </div>
           <div class="text-[12px] text-ink-300 mt-1 leading-relaxed">
-            Starts <span class="font-mono text-ink-100">codex login --device-auth</span> on the host.
-            This signs in with ChatGPT so Codex uses subscription limits, not API-key billing.
+            Starts{" "}
+            <span class="font-mono text-ink-100">
+              codex login --device-auth
+            </span>{" "}
+            on the host. This signs in with ChatGPT so Codex uses subscription
+            limits, not API-key billing.
           </div>
         </div>
       </div>
@@ -58,20 +69,29 @@ export function CodexAuthSettings({
           disabled={starting || loginActive}
           class="h-10 px-3 rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[13px] font-medium disabled:opacity-50"
         >
-          {starting ? "Starting..." : loginActive ? "Login in progress" : authenticated ? "Refresh ChatGPT login" : "Sign in with ChatGPT"}
+          {starting
+            ? "Starting..."
+            : loginActive
+              ? "Login in progress"
+              : authenticated
+                ? "Refresh ChatGPT login"
+                : "Sign in with ChatGPT"}
         </button>
         {loading && <Loader class="w-4 h-4 text-ink-300 animate-spin" />}
       </div>
 
       {usesApiKey && !authenticated && (
         <div class="text-[12px] text-accent-red bg-accent-red/[0.08] border border-accent-red/25 rounded px-2.5 py-2">
-          Codex is currently logged in with an API key. Complete the ChatGPT login before running Codex so prompts use subscription limits.
+          Codex is currently logged in with an API key. Complete the ChatGPT
+          login before running Codex so prompts use subscription limits.
         </div>
       )}
 
       {loginActive && (
         <div class="rounded border border-accent-blue/25 bg-accent-blue/[0.08] p-3 space-y-2">
-          <div class="text-[12px] text-ink-200">Open the link and enter this code:</div>
+          <div class="text-[12px] text-ink-200">
+            Open the link and enter this code:
+          </div>
           <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
             <div class="font-mono text-[18px] tracking-wide text-ink-50 bg-black/30 border border-white/10 rounded px-3 py-2">
               {deviceLogin?.userCode || "Waiting for code..."}
@@ -87,7 +107,11 @@ export function CodexAuthSettings({
               </a>
             )}
           </div>
-          {expiresAt && <div class="text-[11px] text-ink-400">Code expires around {expiresAt}.</div>}
+          {expiresAt && (
+            <div class="text-[11px] text-ink-400">
+              Code expires around {expiresAt}.
+            </div>
+          )}
         </div>
       )}
 

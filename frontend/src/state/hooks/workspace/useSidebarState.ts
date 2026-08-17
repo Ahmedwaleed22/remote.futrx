@@ -27,7 +27,9 @@ export function useSidebarState(
   useEffect(() => {
     setCollapsed((current) => {
       const next = workspaceSidebarState.collapsedProjects(projects, chats);
-      return workspaceSidebarState.hasSameCollapsedProjects(current, next) ? current : next;
+      return workspaceSidebarState.hasSameCollapsedProjects(current, next)
+        ? current
+        : next;
     });
   }, [projects, chats]);
 

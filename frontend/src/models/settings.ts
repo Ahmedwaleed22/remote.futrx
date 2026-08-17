@@ -1,4 +1,9 @@
-import type { ChatMode, ChatProvider, ReasoningEffort, ServiceTier } from "./chat";
+import type {
+  ChatMode,
+  ChatProvider,
+  ReasoningEffort,
+  ServiceTier,
+} from "./chat";
 
 export type AppearanceTheme = "system" | "dark" | "light";
 

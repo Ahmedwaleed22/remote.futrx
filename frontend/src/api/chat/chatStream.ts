@@ -24,7 +24,8 @@ class ReconnectingChatStream implements ChatStream {
     callbacks: ChatStreamCallbacks
   ) {
     this.#connection = new ReconnectingJsonWebSocket({
-      resolveUrl: () => webSocketUrl(WEB_SOCKET_ROUTES.chat(chatId, latestSeq())),
+      resolveUrl: () =>
+        webSocketUrl(WEB_SOCKET_ROUTES.chat(chatId, latestSeq())),
       onOpen: callbacks.onOpen,
       onMessage: callbacks.onEvent,
       onClose: callbacks.onClose,
@@ -40,7 +41,11 @@ class ReconnectingChatStream implements ChatStream {
   }
 
   sendPrompt(text: string, clientId?: string): boolean {
-    return this.#connection.send({ type: CHAT_STREAM_MESSAGE_TYPES.prompt, text, clientId });
+    return this.#connection.send({
+      type: CHAT_STREAM_MESSAGE_TYPES.prompt,
+      text,
+      clientId,
+    });
   }
 
   cancel(): boolean {

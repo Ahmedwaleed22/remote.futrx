@@ -26,7 +26,8 @@ export function ComposerOptionDropdown<T extends string>({
   const [menuAlignment, setMenuAlignment] = useState<"start" | "end">("start");
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const selected = options.find((option) => option.value === value) || options[0];
+  const selected =
+    options.find((option) => option.value === value) || options[0];
 
   useEffect(() => {
     if (!open) return;
@@ -47,8 +48,11 @@ export function ComposerOptionDropdown<T extends string>({
       if (!rootBounds || !menuWidth) return;
 
       const viewportGutter = 12;
-      const availableWidthAfterTrigger = window.innerWidth - viewportGutter - rootBounds.left;
-      setMenuAlignment(menuWidth > availableWidthAfterTrigger ? "end" : "start");
+      const availableWidthAfterTrigger =
+        window.innerWidth - viewportGutter - rootBounds.left;
+      setMenuAlignment(
+        menuWidth > availableWidthAfterTrigger ? "end" : "start"
+      );
     }
 
     placeMenuWithinViewport();
@@ -81,7 +85,9 @@ export function ComposerOptionDropdown<T extends string>({
           <Icon class="h-3 w-3" />
         </span>
         <span class="sr-only">{label}</span>
-        <span class="max-w-[5.5rem] truncate font-semibold text-ink-100">{selected?.label || "Auto"}</span>
+        <span class="max-w-[5.5rem] truncate font-semibold text-ink-100">
+          {selected?.label || "Auto"}
+        </span>
         <ChevronDown class="h-3 w-3 flex-none text-ink-400" />
       </button>
 

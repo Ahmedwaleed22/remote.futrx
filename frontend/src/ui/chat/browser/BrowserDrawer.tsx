@@ -17,7 +17,10 @@ const maxBrowserWidth = 1100;
 const minChatWidth = 360;
 
 function clampWidth(width: number, maxWidth = maxBrowserWidth): number {
-  return Math.min(Math.max(width, minBrowserWidth), Math.max(minBrowserWidth, maxWidth));
+  return Math.min(
+    Math.max(width, minBrowserWidth),
+    Math.max(minBrowserWidth, maxWidth)
+  );
 }
 
 function readBrowserWidth(): number {
@@ -65,7 +68,7 @@ export function BrowserDrawer({
 
   const url = useMemo(
     () => buildProjectPreviewUrl(projectSlug, selectedPort, PUBLIC_HOSTNAME),
-    [projectSlug, selectedPort],
+    [projectSlug, selectedPort]
   );
   const inspectorUrl = useMemo(() => buildInspectorUrl(url), [url]);
   const iframeUrl = useInspectorFrame && inspectorUrl ? inspectorUrl : url;
@@ -112,11 +115,17 @@ export function BrowserDrawer({
     if (!inspectMode || !frameOrigin) return;
     function onMessage(event: MessageEvent) {
       if (event.origin !== frameOrigin) return;
-      const data = event.data as { type?: string; payload?: BrowserElementCapture };
+      const data = event.data as {
+        type?: string;
+        payload?: BrowserElementCapture;
+      };
       if (!data || typeof data.type !== "string") return;
       if (data.type === "remote-inspector:ready") {
         postInspectState(inspectMode);
-      } else if (data.type === "remote-inspector:element-selected" && data.payload) {
+      } else if (
+        data.type === "remote-inspector:element-selected" &&
+        data.payload
+      ) {
         onCaptureElement(data.payload);
         setInspectMode(false);
       }
@@ -135,7 +144,10 @@ export function BrowserDrawer({
       const container = asideRef.current?.parentElement;
       const bounds = container?.getBoundingClientRect();
       if (!bounds) return;
-      const availableWidth = Math.min(maxBrowserWidth, Math.max(minBrowserWidth, bounds.width - minChatWidth));
+      const availableWidth = Math.min(
+        maxBrowserWidth,
+        Math.max(minBrowserWidth, bounds.width - minChatWidth)
+      );
       setBrowserWidth((width) => clampWidth(width, availableWidth));
     }
     clampToContainer();
@@ -167,7 +179,10 @@ export function BrowserDrawer({
       const bounds = container?.getBoundingClientRect();
       if (!bounds) return;
 
-      const availableWidth = Math.min(maxBrowserWidth, Math.max(minBrowserWidth, bounds.width - minChatWidth));
+      const availableWidth = Math.min(
+        maxBrowserWidth,
+        Math.max(minBrowserWidth, bounds.width - minChatWidth)
+      );
       const next = bounds.right - moveEvent.clientX;
       setBrowserWidth(clampWidth(next, availableWidth));
     }
@@ -224,7 +239,10 @@ export function BrowserDrawer({
       aria-hidden={!open}
       aria-label="Browser preview"
     >
-      <BrowserResizeHandle resizing={resizing} onPointerDown={handleResizeStart} />
+      <BrowserResizeHandle
+        resizing={resizing}
+        onPointerDown={handleResizeStart}
+      />
       <div
         class={`h-full min-h-0 w-full flex flex-col transition-transform duration-200 ease-out
                 ${open ? "translate-x-0" : "translate-x-full"}`}

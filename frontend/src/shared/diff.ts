@@ -11,7 +11,8 @@ export function diffLines(oldText: string, newText: string): LineDiffPart[] {
   const newLength = newLines.length;
 
   if (oldLength === 0) return newLines.map((value) => ({ value, added: true }));
-  if (newLength === 0) return oldLines.map((value) => ({ value, removed: true }));
+  if (newLength === 0)
+    return oldLines.map((value) => ({ value, removed: true }));
 
   const max = oldLength + newLength;
   const offset = max;
@@ -41,7 +42,9 @@ export function diffLines(oldText: string, newText: string): LineDiffPart[] {
 
       furthest[index] = oldIndex;
       if (oldIndex >= oldLength && newIndex >= newLength) {
-        return compactParts(backtrack(trace, oldLines, newLines, distance, offset));
+        return compactParts(
+          backtrack(trace, oldLines, newLines, distance, offset)
+        );
       }
     }
   }
@@ -69,7 +72,8 @@ function backtrack(
     const diagonal = oldIndex - newIndex;
     const previousDiagonal =
       diagonal === -step ||
-      (diagonal !== step && furthest[offset + diagonal - 1] < furthest[offset + diagonal + 1])
+      (diagonal !== step &&
+        furthest[offset + diagonal - 1] < furthest[offset + diagonal + 1])
         ? diagonal + 1
         : diagonal - 1;
     const previousOldIndex = furthest[offset + previousDiagonal];
@@ -98,7 +102,11 @@ function backtrack(
 function compactParts(parts: LineDiffPart[]): LineDiffPart[] {
   return parts.reduce<LineDiffPart[]>((merged, part) => {
     const previous = merged[merged.length - 1];
-    if (previous && previous.added === part.added && previous.removed === part.removed) {
+    if (
+      previous &&
+      previous.added === part.added &&
+      previous.removed === part.removed
+    ) {
       previous.value += part.value;
     } else {
       merged.push({ ...part });

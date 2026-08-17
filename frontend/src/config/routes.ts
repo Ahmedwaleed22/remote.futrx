@@ -36,8 +36,7 @@ export const API_ROUTES = {
       `/api/chats/${encodeURIComponent(id)}/history/diff?${query}`,
     historyCheckout: (id: string) =>
       `/api/chats/${encodeURIComponent(id)}/history/checkout`,
-    schedules: (id: string) =>
-      `/api/chats/${encodeURIComponent(id)}/schedules`,
+    schedules: (id: string) => `/api/chats/${encodeURIComponent(id)}/schedules`,
   },
   schedules: {
     item: (id: string) => `/api/schedules/${encodeURIComponent(id)}`,
@@ -66,8 +65,7 @@ export const API_ROUTES = {
     restart: (id: string) => `/api/projects/${encodeURIComponent(id)}/restart`,
     container: (id: string) =>
       `/api/projects/${encodeURIComponent(id)}/container`,
-    limits: (id: string) =>
-      `/api/projects/${encodeURIComponent(id)}/limits`,
+    limits: (id: string) => `/api/projects/${encodeURIComponent(id)}/limits`,
     repairNetwork: (id: string) =>
       `/api/projects/${encodeURIComponent(id)}/repair-network`,
     apps: (id: string) => `/api/projects/${encodeURIComponent(id)}/apps`,
@@ -75,8 +73,7 @@ export const API_ROUTES = {
       `/api/projects/${encodeURIComponent(id)}/agent-browser${scope ? `?scope=${encodeURIComponent(scope)}` : ""}`,
     startAgentBrowser: (id: string) =>
       `/api/projects/${encodeURIComponent(id)}/agent-browser/start`,
-    secrets: (id: string) =>
-      `/api/projects/${encodeURIComponent(id)}/secrets`,
+    secrets: (id: string) => `/api/projects/${encodeURIComponent(id)}/secrets`,
     secret: (id: string, key: string) =>
       `/api/projects/${encodeURIComponent(id)}/secrets/${encodeURIComponent(key)}`,
     access: (id: string) => `/api/projects/${encodeURIComponent(id)}/access`,
@@ -94,8 +91,7 @@ export const API_ROUTES = {
   uploads: "/api/uploads",
   users: {
     collection: "/api/admin/users",
-    item: (email: string) =>
-      `/api/admin/users/${encodeURIComponent(email)}`,
+    item: (email: string) => `/api/admin/users/${encodeURIComponent(email)}`,
     role: (email: string) =>
       `/api/admin/users/${encodeURIComponent(email)}/role`,
   },
@@ -108,9 +104,7 @@ export const WEB_SOCKET_ROUTES = {
   kimiAuthStatus: applicationPath("/ws/kimi/auth-status"),
   chat: (chatId: string, sinceSeq: number): ApplicationPath => {
     const route = applicationPath(`/ws/chat/${encodeURIComponent(chatId)}`);
-    return sinceSeq > 0
-      ? applicationPath(`${route}?since=${sinceSeq}`)
-      : route;
+    return sinceSeq > 0 ? applicationPath(`${route}?since=${sinceSeq}`) : route;
   },
   terminal: (chatId: string): ApplicationPath =>
     applicationPath(`/ws/terminal?chat=${encodeURIComponent(chatId)}`),

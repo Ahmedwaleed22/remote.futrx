@@ -18,7 +18,10 @@ export function useLocalAuthController({
   const params = new URLSearchParams(location.search);
   const oauthError = params.get("error");
   const errorEmail = params.get("email") ?? "";
-  const returnTo = returnUrlPolicy.safeTarget(params.get("return_to") ?? "", location.origin);
+  const returnTo = returnUrlPolicy.safeTarget(
+    params.get("return_to") ?? "",
+    location.origin
+  );
   const [email, setEmail] = useState(mode === "legacy-setup" ? adminEmail : "");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");

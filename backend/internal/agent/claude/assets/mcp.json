@@ -2,7 +2,12 @@
   "mcpServers": {
     "browser": {
       "command": "npx",
-      "args": ["@playwright/mcp", "--cdp-endpoint", "http://127.0.0.1:9222", "--caps=vision"]
+      "args": [
+        "@playwright/mcp",
+        "--cdp-endpoint",
+        "http://127.0.0.1:9222",
+        "--caps=vision"
+      ]
     }
   }
 }

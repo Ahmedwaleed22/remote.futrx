@@ -16,7 +16,9 @@ export function AttachmentChip({
       ? Math.max(0, Math.min(1, attachment.progress))
       : 0;
   const pctLabel = pending ? `${Math.round(pct * 100)}%` : null;
-  const title = failed ? attachment.error : attachment.serverPath || attachment.name;
+  const title = failed
+    ? attachment.error
+    : attachment.serverPath || attachment.name;
 
   if (attachment.isImage && attachment.objectUrl) {
     return (

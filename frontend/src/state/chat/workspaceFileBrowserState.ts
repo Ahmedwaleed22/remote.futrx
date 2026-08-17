@@ -17,7 +17,12 @@ export interface WorkspaceFileBrowserState {
 export type WorkspaceFileBrowserAction =
   | { type: "reset" }
   | { type: "directory-load-started"; path: string }
-  | { type: "directory-load-succeeded"; path: string; entries: FileNode[]; truncated: boolean }
+  | {
+      type: "directory-load-succeeded";
+      path: string;
+      entries: FileNode[];
+      truncated: boolean;
+    }
   | { type: "directory-load-failed"; path: string; error: string }
   | { type: "directory-toggled"; path: string }
   | { type: "query-changed"; query: string }
@@ -99,7 +104,12 @@ class WorkspaceFileBrowserStateTransitions {
       case "query-changed":
         return { ...state, query: action.query };
       case "search-idle":
-        return { ...state, searchResults: null, searchError: null, searching: false };
+        return {
+          ...state,
+          searchResults: null,
+          searchError: null,
+          searching: false,
+        };
       case "search-started":
         return { ...state, searching: true };
       case "search-succeeded":
@@ -121,4 +131,5 @@ class WorkspaceFileBrowserStateTransitions {
   };
 }
 
-export const workspaceFileBrowserState = new WorkspaceFileBrowserStateTransitions();
+export const workspaceFileBrowserState =
+  new WorkspaceFileBrowserStateTransitions();

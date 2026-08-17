@@ -6,11 +6,9 @@ export const projectAccessApi = {
     requestJson<string[]>("GET", API_ROUTES.projects.access(id)),
 
   addAccess: (id: string, email: string) =>
-    requestJson<{ email: string }>(
-      "POST",
-      API_ROUTES.projects.access(id),
-      { email }
-    ),
+    requestJson<{ email: string }>("POST", API_ROUTES.projects.access(id), {
+      email,
+    }),
 
   removeAccess: (id: string, email: string) =>
     requestJson<{ ok: boolean }>(

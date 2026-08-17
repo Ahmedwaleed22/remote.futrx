@@ -7,7 +7,10 @@ export const chatFilesApi = {
     requestJson<DirListing>("GET", API_ROUTES.chats.files(id, path)),
 
   searchFiles: (id: string, query: string) =>
-    requestJson<FileSearchResult>("GET", API_ROUTES.chats.filesSearch(id, query)),
+    requestJson<FileSearchResult>(
+      "GET",
+      API_ROUTES.chats.filesSearch(id, query)
+    ),
 
   fileDownloadUrl: (id: string, path: string) =>
     API_ROUTES.chats.fileDownload(id, path),

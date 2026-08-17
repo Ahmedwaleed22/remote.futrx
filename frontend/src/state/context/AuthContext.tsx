@@ -2,7 +2,10 @@ import type { ComponentChildren } from "preact";
 import { createContext } from "preact";
 import { useContext } from "preact/hooks";
 import { useAuth, type AuthState } from "../hooks/auth/useAuth";
-import { useClaudeAuth, type ClaudeAuthState } from "../hooks/auth/useClaudeAuth";
+import {
+  useClaudeAuth,
+  type ClaudeAuthState,
+} from "../hooks/auth/useClaudeAuth";
 import { useCodexAuth, type CodexAuthState } from "../hooks/auth/useCodexAuth";
 import { useKimiAuth, type KimiAuthState } from "../hooks/auth/useKimiAuth";
 
@@ -27,10 +30,14 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
   const claudeAuth = useClaudeAuth(providerAuthEnabled);
   const codexAuth = useCodexAuth(providerAuthEnabled);
   const kimiAuth = useKimiAuth(providerAuthEnabled);
-  const providerAuthChecked = claudeAuth.checked && codexAuth.checked && kimiAuth.checked;
+  const providerAuthChecked =
+    claudeAuth.checked && codexAuth.checked && kimiAuth.checked;
   const providerAuthenticated =
-    claudeAuth.authenticated || codexAuth.authenticated || kimiAuth.authenticated;
-  const gateOpen = providerAuthEnabled && providerAuthChecked && providerAuthenticated;
+    claudeAuth.authenticated ||
+    codexAuth.authenticated ||
+    kimiAuth.authenticated;
+  const gateOpen =
+    providerAuthEnabled && providerAuthChecked && providerAuthenticated;
 
   return (
     <AuthContext.Provider
@@ -52,6 +59,7 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
 
 export function useAuthContext(): AuthContextValue {
   const value = useContext(AuthContext);
-  if (!value) throw new Error("useAuthContext must be used inside AuthProvider");
+  if (!value)
+    throw new Error("useAuthContext must be used inside AuthProvider");
   return value;
 }

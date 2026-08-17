@@ -18,12 +18,16 @@ export function AuthGate() {
     providerAuthenticated,
     gateOpen,
   } = useAuthContext();
-  const [WorkspaceRoute, setWorkspaceRoute] = useState<WorkspaceRouteComponent | null>(null);
+  const [WorkspaceRoute, setWorkspaceRoute] =
+    useState<WorkspaceRouteComponent | null>(null);
   const currentUserCanSetupLocalAdmin =
     auth.isAdmin && auth.email.toLowerCase() === auth.adminEmail.toLowerCase();
   const waitingForAdminSetup =
-    !auth.loading && auth.claimed && appAuthOk &&
-    !auth.localAdminConfigured && !currentUserCanSetupLocalAdmin;
+    !auth.loading &&
+    auth.claimed &&
+    appAuthOk &&
+    !auth.localAdminConfigured &&
+    !currentUserCanSetupLocalAdmin;
 
   useAdminSetupPolling(auth.refresh, waitingForAdminSetup);
 

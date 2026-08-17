@@ -50,5 +50,8 @@ export function useDragUpload(onFiles: (files: File[]) => void) {
 }
 
 function hasFiles(event: DragEvent): boolean {
-  return !!event.dataTransfer && Array.from(event.dataTransfer.types).includes("Files");
+  return (
+    !!event.dataTransfer &&
+    Array.from(event.dataTransfer.types).includes("Files")
+  );
 }

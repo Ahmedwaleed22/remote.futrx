@@ -27,9 +27,17 @@ export function ProjectSecretsSection({
         </div>
       )}
       <SecretEditor onSave={onSave} />
-      <SecretsList list={record.data ?? []} loading={record.loading && !record.data} onSave={onSave} onDelete={onDelete} />
+      <SecretsList
+        list={record.data ?? []}
+        loading={record.loading && !record.data}
+        onSave={onSave}
+        onDelete={onDelete}
+      />
       <p class="text-[11.5px] text-ink-400 leading-relaxed">
-        Secrets are passed to the selected agent CLI as <span class="font-mono">--env KEY=VALUE</span> on every prompt run. They never land in the container's filesystem and are not synced back from it.
+        Secrets are passed to the selected agent CLI as{" "}
+        <span class="font-mono">--env KEY=VALUE</span> on every prompt run. They
+        never land in the container's filesystem and are not synced back from
+        it.
       </p>
     </>
   );
@@ -70,7 +78,10 @@ function SecretEditor({
   };
 
   return (
-    <form onSubmit={submit} class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 space-y-2">
+    <form
+      onSubmit={submit}
+      class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 space-y-2"
+    >
       <div class="grid gap-2 sm:grid-cols-[1fr_2fr_auto] items-start">
         <input
           value={key}
@@ -80,7 +91,9 @@ function SecretEditor({
         />
         <textarea
           value={value}
-          onInput={(event) => setValue((event.target as HTMLTextAreaElement).value)}
+          onInput={(event) =>
+            setValue((event.target as HTMLTextAreaElement).value)
+          }
           placeholder="value (multi-line OK — paste PEM keys, JSON, etc.)"
           rows={1}
           spellcheck={false}
@@ -117,7 +130,12 @@ function SecretsList({
   return (
     <div class="space-y-2">
       {list.map((secret) => (
-        <SecretRow key={secret.key} secret={secret} onSave={onSave} onDelete={onDelete} />
+        <SecretRow
+          key={secret.key}
+          secret={secret}
+          onSave={onSave}
+          onDelete={onDelete}
+        />
       ))}
     </div>
   );
@@ -166,7 +184,9 @@ function SecretRow({
   return (
     <div class="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 space-y-1">
       <div class="flex items-center gap-2 min-w-0">
-        <span class="font-mono text-[12.5px] text-ink-50 truncate">{secret.key}</span>
+        <span class="font-mono text-[12.5px] text-ink-50 truncate">
+          {secret.key}
+        </span>
         <span class="text-[11px] text-ink-400 ml-auto whitespace-nowrap">
           updated {formatUnixTime(secret.updatedAt)}
         </span>
@@ -175,7 +195,9 @@ function SecretRow({
         <div class="flex items-start gap-2 flex-wrap">
           <textarea
             value={draft}
-            onInput={(event) => setDraft((event.target as HTMLTextAreaElement).value)}
+            onInput={(event) =>
+              setDraft((event.target as HTMLTextAreaElement).value)
+            }
             rows={1}
             spellcheck={false}
             class="flex-1 min-h-8 max-h-48 px-2 py-1 rounded border border-white/10 bg-black/30 text-[12.5px] font-mono text-ink-50 focus:outline-none focus:border-accent-blue/50 resize-y leading-[1.45] overflow-y-auto"

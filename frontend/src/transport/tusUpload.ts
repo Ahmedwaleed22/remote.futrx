@@ -11,7 +11,7 @@ import { RESUMABLE_UPLOAD_CONFIG } from "../config/transport";
  */
 export function startResumableUpload(
   file: File,
-  options: ResumableUploadOptions,
+  options: ResumableUploadOptions
 ): ResumableUploadHandle {
   return new TusResumableUpload(file, options);
 }

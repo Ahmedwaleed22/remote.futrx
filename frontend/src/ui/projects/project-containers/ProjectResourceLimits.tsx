@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { ContainerLimits } from "../../../models/project";
-import { AlertCircle, Cpu, HardDrive, Loader, MemoryStick, RotateCcw } from "../../primitives/icons";
+import {
+  AlertCircle,
+  Cpu,
+  HardDrive,
+  Loader,
+  MemoryStick,
+  RotateCcw,
+} from "../../primitives/icons";
 import { formatBytes } from "./projectContainerFormat";
 
 const sizePattern = /^[1-9][0-9]*(MiB|GiB|TiB)$/;
@@ -87,7 +94,9 @@ export function ProjectResourceLimits({
           <Cpu class="w-4 h-4 text-ink-200" />
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-[14.5px] font-semibold text-ink-50">Resource limits</div>
+          <div class="text-[14.5px] font-semibold text-ink-50">
+            Resource limits
+          </div>
           <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
             Define the CPU, memory, and storage available to this container.
           </div>
@@ -96,13 +105,29 @@ export function ProjectResourceLimits({
 
       <div class="p-4 space-y-4">
         <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <EffectiveLimit Icon={Cpu} label="Effective CPU" value={effective?.cpu || "Inherited"} />
-          <EffectiveLimit Icon={MemoryStick} label="Effective memory" value={effective?.memory || "Inherited"} />
-          <EffectiveLimit Icon={HardDrive} label="Effective disk quota" value={effective?.disk || "No quota"} />
+          <EffectiveLimit
+            Icon={Cpu}
+            label="Effective CPU"
+            value={effective?.cpu || "Inherited"}
+          />
+          <EffectiveLimit
+            Icon={MemoryStick}
+            label="Effective memory"
+            value={effective?.memory || "Inherited"}
+          />
+          <EffectiveLimit
+            Icon={HardDrive}
+            label="Effective disk quota"
+            value={effective?.disk || "No quota"}
+          />
           <EffectiveLimit
             Icon={MemoryStick}
             label="Server total memory"
-            value={serverMemoryLoading ? "Loading…" : formatBytes(serverMemoryTotalBytes)}
+            value={
+              serverMemoryLoading
+                ? "Loading…"
+                : formatBytes(serverMemoryTotalBytes)
+            }
           />
         </div>
 
@@ -143,7 +168,10 @@ export function ProjectResourceLimits({
             <div class="flex items-start gap-2 rounded-md border border-accent-orange/25 bg-accent-orange/[0.07] px-3 py-2.5 text-[12px] leading-relaxed text-ink-200">
               <AlertCircle class="mt-0.5 w-4 h-4 flex-none text-accent-orange" />
               <span>
-                Changes apply live. Lowering memory can stop container processes, and a disk quota cannot be smaller than the data already stored. Leave a field blank to inherit the fleet default.
+                Changes apply live. Lowering memory can stop container
+                processes, and a disk quota cannot be smaller than the data
+                already stored. Leave a field blank to inherit the fleet
+                default.
               </span>
             </div>
 

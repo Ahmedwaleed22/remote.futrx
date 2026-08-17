@@ -32,7 +32,8 @@ export function UpdatesSettings({
   const lastCheck = status?.lastCheck ?? null;
   const runActive = run?.state === "running";
   const latestTag = lastCheck?.latestTag ?? "";
-  const updateAvailable = !runActive && lastCheck?.updateAvailable === true && latestTag !== "";
+  const updateAvailable =
+    !runActive && lastCheck?.updateAvailable === true && latestTag !== "";
 
   return (
     <div class="space-y-4">
@@ -42,9 +43,14 @@ export function UpdatesSettings({
             <Download class="w-4 h-4 text-ink-200" />
           </div>
           <div class="flex-1 min-w-0">
-            <div class="text-[14.5px] font-semibold text-ink-50">Application version</div>
+            <div class="text-[14.5px] font-semibold text-ink-50">
+              Application version
+            </div>
             <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
-              Running <span class="font-mono text-ink-100">{status?.currentVersion || "unknown"}</span>
+              Running{" "}
+              <span class="font-mono text-ink-100">
+                {status?.currentVersion || "unknown"}
+              </span>
               {lastCheck && !lastCheck.error && (
                 <>
                   {" · "}
@@ -62,8 +68,12 @@ export function UpdatesSettings({
             disabled={checking || runActive}
             class="h-9 px-2.5 rounded-md inline-flex items-center gap-2 text-[12px] text-ink-200 hover:text-ink-50 hover:bg-white/[0.08] disabled:opacity-60"
           >
-            <RotateCcw class={`w-3.5 h-3.5 ${checking ? "animate-spin" : ""}`} />
-            <span class="hidden sm:inline">{checking ? "Checking…" : "Check for updates"}</span>
+            <RotateCcw
+              class={`w-3.5 h-3.5 ${checking ? "animate-spin" : ""}`}
+            />
+            <span class="hidden sm:inline">
+              {checking ? "Checking…" : "Check for updates"}
+            </span>
           </button>
         </header>
         {lastCheck?.error && (
@@ -84,9 +94,10 @@ export function UpdatesSettings({
             Release {latestTag} is ready to install
           </div>
           <p class="mt-1 text-[12.5px] leading-relaxed text-ink-300">
-            Updating pulls the release onto the server, rebuilds the application, restarts it,
-            and recycles idle project containers onto the fresh base image. Containers with a
-            running agent are skipped. Expect a few minutes where the app is unreachable.
+            Updating pulls the release onto the server, rebuilds the
+            application, restarts it, and recycles idle project containers onto
+            the fresh base image. Containers with a running agent are skipped.
+            Expect a few minutes where the app is unreachable.
           </p>
           <button
             type="button"
@@ -117,18 +128,22 @@ export function UpdatesSettings({
               <div class="flex items-center gap-2 text-[13.5px] font-semibold text-accent-red">
                 <AlertCircle class="w-4 h-4 flex-none" />
                 Update to {run.target} failed
-                {typeof run.exitCode === "number" ? ` (exit ${run.exitCode})` : ""}
+                {typeof run.exitCode === "number"
+                  ? ` (exit ${run.exitCode})`
+                  : ""}
               </div>
             )}
             <div class="text-[12px] text-ink-300 mt-0.5">
               Started {formatTime(run.startedAt)}
               {run.startedBy ? ` by ${run.startedBy}` : ""}
-              {run.finishedAt ? ` · finished ${formatTime(run.finishedAt)}` : ""}
+              {run.finishedAt
+                ? ` · finished ${formatTime(run.finishedAt)}`
+                : ""}
             </div>
             {run.state === "running" && restarting && (
               <div class="mt-2 text-[12px] text-accent-yellow">
-                The server is restarting as part of the update — reconnecting… This can take a
-                few minutes while containers are recycled.
+                The server is restarting as part of the update — reconnecting…
+                This can take a few minutes while containers are recycled.
               </div>
             )}
             {run.state === "succeeded" && (

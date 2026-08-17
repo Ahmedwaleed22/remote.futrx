@@ -5,7 +5,13 @@ import { ProjectGroup } from "./ProjectGroup";
 import { SidebarEmptyState, SidebarNoMatches } from "./SidebarEmptyState";
 import { WorkspaceSearch } from "./WorkspaceSearch";
 import { AccountFooter } from "./AccountFooter";
-import { ChevronLeft, ChevronRight, Plus, Settings, X } from "../primitives/icons";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Settings,
+  X,
+} from "../primitives/icons";
 import { useState } from "preact/hooks";
 
 export function Sidebar({
@@ -56,7 +62,9 @@ export function Sidebar({
   const sidebarWidth = sidebarCollapsed ? "md:w-[64px]" : "md:w-[300px]";
   const expandedOnly = sidebarCollapsed ? "md:hidden" : "";
   const [dragProjectId, setDragProjectId] = useState<string | null>(null);
-  const [dragOverProjectId, setDragOverProjectId] = useState<string | null>(null);
+  const [dragOverProjectId, setDragOverProjectId] = useState<string | null>(
+    null
+  );
   const canReorderProjects = !model.query && model.visibleProjects.length > 1;
 
   function reorderProjectList(sourceId: string, targetId: string) {
@@ -86,11 +94,17 @@ export function Sidebar({
                 bg-[#101318] border-r border-white/10 flex flex-col shadow-2xl md:shadow-none
                 transition-[width,transform] duration-200 ease-out`}
       >
-        <header class={`px-3 pt-3 pb-2 border-b border-white/10 ${sidebarCollapsed ? "md:px-2" : ""}`}>
-          <div class={`flex items-center gap-2 min-h-11 ${sidebarCollapsed ? "md:justify-center" : ""}`}>
+        <header
+          class={`px-3 pt-3 pb-2 border-b border-white/10 ${sidebarCollapsed ? "md:px-2" : ""}`}
+        >
+          <div
+            class={`flex items-center gap-2 min-h-11 ${sidebarCollapsed ? "md:justify-center" : ""}`}
+          >
             <div class={`flex-1 min-w-0 ${expandedOnly}`}>
               <div class="text-[11px] text-ink-300">Workspace</div>
-              <div class="text-[15px] font-semibold text-ink-50 truncate">Projects</div>
+              <div class="text-[15px] font-semibold text-ink-50 truncate">
+                Projects
+              </div>
             </div>
             <button
               type="button"
@@ -105,10 +119,16 @@ export function Sidebar({
               type="button"
               onClick={onToggleSidebar}
               class="hidden md:grid h-10 w-10 rounded-md bg-white/5 text-ink-200 place-items-center hover:bg-white/[0.09] hover:text-ink-50 active:scale-[0.98] transition"
-              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={
+                sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
               title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              {sidebarCollapsed ? <ChevronRight class="w-5 h-5" /> : <ChevronLeft class="w-5 h-5" />}
+              {sidebarCollapsed ? (
+                <ChevronRight class="w-5 h-5" />
+              ) : (
+                <ChevronLeft class="w-5 h-5" />
+              )}
             </button>
             <button
               type="button"
@@ -122,7 +142,11 @@ export function Sidebar({
           </div>
 
           <div class={expandedOnly}>
-            <WorkspaceSearch query={query} onQueryChange={onQueryChange} onClear={onClearQuery} />
+            <WorkspaceSearch
+              query={query}
+              onQueryChange={onQueryChange}
+              onClear={onClearQuery}
+            />
           </div>
         </header>
 
@@ -151,7 +175,9 @@ export function Sidebar({
           </div>
         )}
 
-        <div class={`px-3 py-2 flex items-center justify-between gap-2 text-[12px] text-ink-300 ${expandedOnly}`}>
+        <div
+          class={`px-3 py-2 flex items-center justify-between gap-2 text-[12px] text-ink-300 ${expandedOnly}`}
+        >
           <span>
             {model.totalProjects} project{model.totalProjects === 1 ? "" : "s"}
             {" - "}
@@ -159,7 +185,9 @@ export function Sidebar({
           </span>
         </div>
 
-        <div class={`flex-1 min-h-0 overflow-y-auto touch-scroll px-2 pb-3 space-y-2 ${expandedOnly}`}>
+        <div
+          class={`flex-1 min-h-0 overflow-y-auto touch-scroll px-2 pb-3 space-y-2 ${expandedOnly}`}
+        >
           {model.totalProjects === 0 && model.totalChats === 0 && (
             <SidebarEmptyState onNewProject={onNewProject} />
           )}
@@ -183,12 +211,16 @@ export function Sidebar({
               onForkChat={onForkChat}
               draggable={canReorderProjects}
               dragging={dragProjectId === node.project.id}
-              dragOver={dragOverProjectId === node.project.id && dragProjectId !== node.project.id}
+              dragOver={
+                dragOverProjectId === node.project.id &&
+                dragProjectId !== node.project.id
+              }
               onDragStart={(event) => {
                 if (!canReorderProjects) return;
                 setDragProjectId(node.project.id);
                 event.dataTransfer?.setData("text/plain", node.project.id);
-                if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+                if (event.dataTransfer)
+                  event.dataTransfer.effectAllowed = "move";
               }}
               onDragOver={(event) => {
                 if (!canReorderProjects || !dragProjectId) return;
@@ -198,7 +230,10 @@ export function Sidebar({
               onDrop={(event) => {
                 if (!canReorderProjects) return;
                 event.preventDefault();
-                const sourceId = dragProjectId || event.dataTransfer?.getData("text/plain") || "";
+                const sourceId =
+                  dragProjectId ||
+                  event.dataTransfer?.getData("text/plain") ||
+                  "";
                 reorderProjectList(sourceId, node.project.id);
                 setDragProjectId(null);
                 setDragOverProjectId(null);
@@ -234,7 +269,10 @@ export function Sidebar({
 
         {account?.authenticated && (
           <div class={expandedOnly}>
-            <AccountFooter email={account.email} onOpenSettings={onOpenSettings} />
+            <AccountFooter
+              email={account.email}
+              onOpenSettings={onOpenSettings}
+            />
           </div>
         )}
       </aside>

@@ -34,7 +34,10 @@ class ChatPreferenceState {
     };
   }
 
-  selectedSkill(skill: RegisteredSkill, defaultProvider: ChatProvider): SelectedSkill {
+  selectedSkill(
+    skill: RegisteredSkill,
+    defaultProvider: ChatProvider
+  ): SelectedSkill {
     return {
       name: skill.name,
       command: skill.command || skill.name,
@@ -49,7 +52,9 @@ class ChatPreferenceState {
     defaultProvider: ChatProvider
   ): boolean {
     const key = this.skillKey(skill, defaultProvider);
-    return selectedSkills.some((selected) => this.skillKey(selected, defaultProvider) === key);
+    return selectedSkills.some(
+      (selected) => this.skillKey(selected, defaultProvider) === key
+    );
   }
 
   withoutSkill(
@@ -58,7 +63,9 @@ class ChatPreferenceState {
     defaultProvider: ChatProvider
   ): SelectedSkill[] {
     const key = this.skillKey(skill, defaultProvider);
-    return selectedSkills.filter((selected) => this.skillKey(selected, defaultProvider) !== key);
+    return selectedSkills.filter(
+      (selected) => this.skillKey(selected, defaultProvider) !== key
+    );
   }
 
   private skillKey(
@@ -70,7 +77,8 @@ class ChatPreferenceState {
     // Remote initially advertises this reserved skill from its built-in
     // catalog, then provisions the same skill into the project workspace.
     // Keep its identity stable across that source transition.
-    const source = command === "scheduled-tasks" ? "remote" : skill.source || "";
+    const source =
+      command === "scheduled-tasks" ? "remote" : skill.source || "";
     return `${provider}:${source.toLowerCase()}:${command}`;
   }
 }

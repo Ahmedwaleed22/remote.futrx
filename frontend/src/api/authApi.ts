@@ -33,8 +33,7 @@ export const localAuthApi = {
 };
 
 export const googleOAuthApi = {
-  get: () =>
-    requestJson<GoogleOAuthSettings>("GET", API_ROUTES.googleOAuth),
+  get: () => requestJson<GoogleOAuthSettings>("GET", API_ROUTES.googleOAuth),
   save: (clientId: string, clientSecret: string) =>
     requestJson<GoogleOAuthSettings>("PUT", API_ROUTES.googleOAuth, {
       clientId,
@@ -42,7 +41,11 @@ export const googleOAuthApi = {
     }),
 };
 
-async function requestLocalAuth(url: string, email: string, password: string): Promise<AuthSession> {
+async function requestLocalAuth(
+  url: string,
+  email: string,
+  password: string
+): Promise<AuthSession> {
   const response = await sendHttpRequest("POST", url, { email, password });
   if (!response.ok) {
     let message = `${response.status}`;

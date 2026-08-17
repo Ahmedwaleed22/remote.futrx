@@ -5,7 +5,10 @@ import {
 } from "../../../config/chat";
 import { Activity, Cpu, MessageSquare } from "../../primitives/icons";
 import { ComposerOptionDropdown } from "./ComposerOptionDropdown";
-import type { ComposerPreferenceActions, ComposerPreferences } from "./preferences";
+import type {
+  ComposerPreferenceActions,
+  ComposerPreferences,
+} from "./preferences";
 
 export function ComposerExecutionControls({
   preferences,
@@ -16,8 +19,12 @@ export function ComposerExecutionControls({
   preferenceActions: ComposerPreferenceActions;
   streaming: boolean;
 }) {
-  const reasoningEffortOptions = reasoningEffortOptionsForProvider(preferences.provider);
-  const serviceTierOptions = serviceTierOptionsForProvider(preferences.provider);
+  const reasoningEffortOptions = reasoningEffortOptionsForProvider(
+    preferences.provider
+  );
+  const serviceTierOptions = serviceTierOptionsForProvider(
+    preferences.provider
+  );
 
   return (
     <div class="codex-composer-execution-controls flex min-w-0 flex-wrap items-center gap-1">

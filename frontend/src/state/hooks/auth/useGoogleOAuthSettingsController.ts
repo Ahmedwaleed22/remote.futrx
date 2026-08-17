@@ -14,7 +14,8 @@ export function useGoogleOAuthSettingsController() {
 
   useEffect(() => {
     let cancelled = false;
-    googleOAuthApi.get()
+    googleOAuthApi
+      .get()
       .then((value) => {
         if (cancelled) return;
         setSettings(value);
@@ -22,7 +23,9 @@ export function useGoogleOAuthSettingsController() {
       })
       .catch((cause) => !cancelled && setError((cause as Error).message))
       .finally(() => !cancelled && setLoading(false));
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function save(event: Event) {
@@ -34,7 +37,10 @@ export function useGoogleOAuthSettingsController() {
     setSaving(true);
     setError(null);
     try {
-      const value = await googleOAuthApi.save(clientId.trim(), clientSecret.trim());
+      const value = await googleOAuthApi.save(
+        clientId.trim(),
+        clientSecret.trim()
+      );
       setSettings(value);
       setClientId(value.clientId);
       setClientSecret("");

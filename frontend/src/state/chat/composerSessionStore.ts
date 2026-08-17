@@ -57,14 +57,18 @@ class ChatComposerSessionStore {
     try {
       const raw = this.storage.getItem(STORAGE_KEY);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<PersistedComposerSession> | null;
+      const parsed = JSON.parse(
+        raw
+      ) as Partial<PersistedComposerSession> | null;
       for (const [chatId, text] of Object.entries(parsed?.drafts ?? {})) {
         if (typeof text === "string" && text) this.drafts.set(chatId, text);
       }
       for (const [chatId, prompts] of Object.entries(parsed?.queues ?? {})) {
         const valid = (Array.isArray(prompts) ? prompts : []).filter(
           (prompt): prompt is QueuedPrompt =>
-            !!prompt && typeof prompt.id === "string" && typeof prompt.text === "string",
+            !!prompt &&
+            typeof prompt.id === "string" &&
+            typeof prompt.text === "string"
         );
         if (valid.length) this.promptQueues.set(chatId, valid);
       }

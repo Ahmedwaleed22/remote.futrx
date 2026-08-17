@@ -28,7 +28,9 @@ export function useAuth(): AuthState {
     setState({ ...session, loading: false });
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   return { ...state, refresh };
 }

@@ -12,7 +12,7 @@ const projectsPrefix = "/var/lib/remote/projects/";
 // equivalent in-container path (/workspace[/rel]). Returns null for non-project
 // paths (e.g. the platform's own repo).
 function projectSlugAndContainerPath(
-  hostPath: string,
+  hostPath: string
 ): { slug: string; containerPath: string } | null {
   const norm = normalizeAbsolutePath(hostPath);
   if (!norm.startsWith(projectsPrefix)) return null;
@@ -23,7 +23,10 @@ function projectSlugAndContainerPath(
   const after = rest.slice(slash + 1);
   if (after === "workspace") return { slug, containerPath: "/workspace" };
   if (after.startsWith("workspace/"))
-    return { slug, containerPath: "/workspace/" + after.slice("workspace/".length) };
+    return {
+      slug,
+      containerPath: "/workspace/" + after.slice("workspace/".length),
+    };
   return null;
 }
 
@@ -31,7 +34,7 @@ export function buildIdeUrl(
   folderPath: string,
   filePath?: string,
   line?: number,
-  column?: number,
+  column?: number
 ): string {
   const folder = normalizeAbsolutePath(folderPath) || defaultWorkspacePath;
   const proj = projectSlugAndContainerPath(folder);
@@ -43,7 +46,10 @@ export function buildIdeUrl(
     if (filePath) {
       const f = projectSlugAndContainerPath(normalizeAbsolutePath(filePath));
       if (f && f.slug === proj.slug) {
-        url.searchParams.set("payload", openFilePayload(url.host, f.containerPath, line, column));
+        url.searchParams.set(
+          "payload",
+          openFilePayload(url.host, f.containerPath, line, column)
+        );
       }
     }
     return url.toString();
@@ -54,7 +60,7 @@ export function buildIdeUrl(
   if (filePath) {
     url.searchParams.set(
       "payload",
-      openFilePayload(url.host, normalizeAbsolutePath(filePath), line, column),
+      openFilePayload(url.host, normalizeAbsolutePath(filePath), line, column)
     );
   }
   return url.toString();
@@ -69,7 +75,7 @@ export function openFilePayload(
   host: string,
   absolutePath: string,
   line?: number,
-  column?: number,
+  column?: number
 ): string {
   const encodedPath = absolutePath.split("/").map(encodeURIComponent).join("/");
   let fileUri = `vscode-remote://${host}${encodedPath}`;
@@ -91,11 +97,15 @@ function currentIdeBaseUrl(): string {
   return url.toString();
 }
 
-export function internalPathOpenUrl(href: string, context: IdeLinkContext = {}): string | null {
+export function internalPathOpenUrl(
+  href: string,
+  context: IdeLinkContext = {}
+): string | null {
   const ref = splitLineReference(stripPathSuffix(href));
   const path = normalizeAbsolutePath(ref.path);
   if (!path) return null;
-  if (!isContainerWorkspacePath(path) && !isHostWorkspacePath(path)) return null;
+  if (!isContainerWorkspacePath(path) && !isHostWorkspacePath(path))
+    return null;
 
   if (context.chatId) {
     const params = new URLSearchParams({ path: refToString(path, ref) });
@@ -112,15 +122,23 @@ export function internalPathOpenUrl(href: string, context: IdeLinkContext = {}):
       workspaceRoot,
       hostPath === workspaceRoot ? undefined : hostPath,
       ref.line,
-      ref.column,
+      ref.column
     );
   }
 
   const folder = workspaceRootFromCwd(path) || workspaceRoot || path;
-  return buildIdeUrl(folder, path === folder ? undefined : path, ref.line, ref.column);
+  return buildIdeUrl(
+    folder,
+    path === folder ? undefined : path,
+    ref.line,
+    ref.column
+  );
 }
 
-export function internalPathIdeUrl(href: string, context: IdeLinkContext = {}): string | null {
+export function internalPathIdeUrl(
+  href: string,
+  context: IdeLinkContext = {}
+): string | null {
   return internalPathOpenUrl(href, context);
 }
 
@@ -142,14 +160,19 @@ function splitLineReference(raw: string): PathLineReference {
   if (lastColon < 0) return { path: trimmed };
   const lastPart = trimmed.slice(lastColon + 1);
   const lastNumber = Number(lastPart);
-  if (!Number.isInteger(lastNumber) || lastNumber <= 0) return { path: trimmed };
+  if (!Number.isInteger(lastNumber) || lastNumber <= 0)
+    return { path: trimmed };
 
   const beforeLast = trimmed.slice(0, lastColon);
   const secondColon = beforeLast.lastIndexOf(":");
   if (secondColon >= 0) {
     const maybeLine = Number(beforeLast.slice(secondColon + 1));
     if (Number.isInteger(maybeLine) && maybeLine > 0) {
-      return { path: beforeLast.slice(0, secondColon), line: maybeLine, column: lastNumber };
+      return {
+        path: beforeLast.slice(0, secondColon),
+        line: maybeLine,
+        column: lastNumber,
+      };
     }
   }
   return { path: beforeLast, line: lastNumber };
@@ -173,7 +196,10 @@ function workspaceRootFromCwd(cwd?: string): string {
 }
 
 function isContainerWorkspacePath(path: string): boolean {
-  return path === containerWorkspacePath || path.startsWith(`${containerWorkspacePath}/`);
+  return (
+    path === containerWorkspacePath ||
+    path.startsWith(`${containerWorkspacePath}/`)
+  );
 }
 
 function isHostWorkspacePath(path: string): boolean {
@@ -182,7 +208,8 @@ function isHostWorkspacePath(path: string): boolean {
 
 function workspaceMarkerIndex(path: string): number {
   if (path === workspaceSegment) return 0;
-  if (path.endsWith(workspaceSegment)) return path.length - workspaceSegment.length;
+  if (path.endsWith(workspaceSegment))
+    return path.length - workspaceSegment.length;
   return path.indexOf(`${workspaceSegment}/`);
 }
 
@@ -195,6 +222,8 @@ function normalizeAbsolutePath(path: string): string {
 function stripPathSuffix(href: string): string {
   const hashIndex = href.indexOf("#");
   const queryIndex = href.indexOf("?");
-  const cut = [hashIndex, queryIndex].filter((index) => index >= 0).sort((a, b) => a - b)[0];
+  const cut = [hashIndex, queryIndex]
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b)[0];
   return cut === undefined ? href : href.slice(0, cut);
 }

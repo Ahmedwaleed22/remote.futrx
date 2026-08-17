@@ -45,16 +45,28 @@ export function WorkspaceProvider({
 }) {
   const data = useWorkspaceData(enabled);
   const { settings } = useUserSettingsContext();
-  const [ui, dispatch] = useReducer(workspaceUiState.reduce, workspaceUiState.createInitial());
-  const activeChat = workspaceSidebarState.activeChat(data.chats, ui.activeChatId);
+  const [ui, dispatch] = useReducer(
+    workspaceUiState.reduce,
+    workspaceUiState.createInitial()
+  );
+  const activeChat = workspaceSidebarState.activeChat(
+    data.chats,
+    ui.activeChatId
+  );
 
   useEffect(() => {
-    const chatId = workspaceSidebarState.initialChatId(enabled, ui.activeChatId, data.chats);
+    const chatId = workspaceSidebarState.initialChatId(
+      enabled,
+      ui.activeChatId,
+      data.chats
+    );
     if (chatId) dispatch({ type: "select-chat", chatId });
   }, [data.chats, enabled, ui.activeChatId]);
 
   useEffect(() => {
-    if (workspaceSidebarState.isActiveChatMissing(data.chats, ui.activeChatId)) {
+    if (
+      workspaceSidebarState.isActiveChatMissing(data.chats, ui.activeChatId)
+    ) {
       dispatch({ type: "select-chat", chatId: null });
     }
   }, [data.chats, ui.activeChatId]);
@@ -135,6 +147,9 @@ export function WorkspaceProvider({
 
 export function useWorkspaceContext(): WorkspaceContextValue {
   const value = useContext(WorkspaceContext);
-  if (!value) throw new Error("useWorkspaceContext must be used inside WorkspaceProvider");
+  if (!value)
+    throw new Error(
+      "useWorkspaceContext must be used inside WorkspaceProvider"
+    );
   return value;
 }

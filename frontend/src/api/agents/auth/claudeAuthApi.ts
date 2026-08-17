@@ -9,7 +9,11 @@ export const claudeAuthApi = {
   startLogin: () =>
     requestJson<ClaudeLoginStart>("POST", API_ROUTES.claudeAuth.startLogin, {}),
   submitCode: (code: string) =>
-    requestJson<{ success: boolean }>("POST", API_ROUTES.claudeAuth.submitCode, { code }),
+    requestJson<{ success: boolean }>(
+      "POST",
+      API_ROUTES.claudeAuth.submitCode,
+      { code }
+    ),
   cancelLogin: () =>
     requestJson<{ ok: boolean }>("POST", API_ROUTES.claudeAuth.cancelLogin, {}),
   subscribe: (onStatus: (status: ClaudeAuthStatus) => void) =>

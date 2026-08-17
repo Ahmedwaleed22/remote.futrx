@@ -65,18 +65,19 @@
 // OUTPUT — written to /workspace/.browser/ (override with $BROWSER_OUT_DIR).
 //   Output path is printed on stdout so callers can `Read` the file.
 
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { dirname, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const CONFIG_PATH = process.env.BROWSER_AUTH_CONFIG || '/workspace/.agents/browser-auth.json';
-const OUT_DIR = process.env.BROWSER_OUT_DIR || '/workspace/.browser';
+const CONFIG_PATH =
+  process.env.BROWSER_AUTH_CONFIG || "/workspace/.agents/browser-auth.json";
+const OUT_DIR = process.env.BROWSER_OUT_DIR || "/workspace/.browser";
 const VIEWPORT = { width: 1280, height: 720 };
 
 function die(code, msg) {
-  process.stderr.write(msg + '\n');
+  process.stderr.write(msg + "\n");
   process.exit(code);
 }
 
@@ -89,28 +90,31 @@ function hasFlag(args, name) {
 }
 
 function usage() {
-  die(2, [
-    'usage:',
-    '  node /workspace/scripts/browser.mjs screenshot <url> [--out <path>] [--full]',
-    '  node /workspace/scripts/browser.mjs record     <url> [--duration <ms>] [--out <path>]',
-    '  node /workspace/scripts/browser.mjs run        <recipe.mjs> [--record] [--out <path>] [--timeout <ms>]',
-    '  node /workspace/scripts/browser.mjs connect    [recipe.mjs] [--timeout <ms>]',
-    '',
-    `config: ${CONFIG_PATH}`,
-    `output: ${OUT_DIR} (override with $BROWSER_OUT_DIR)`,
-  ].join('\n'));
+  die(
+    2,
+    [
+      "usage:",
+      "  node /workspace/scripts/browser.mjs screenshot <url> [--out <path>] [--full]",
+      "  node /workspace/scripts/browser.mjs record     <url> [--duration <ms>] [--out <path>]",
+      "  node /workspace/scripts/browser.mjs run        <recipe.mjs> [--record] [--out <path>] [--timeout <ms>]",
+      "  node /workspace/scripts/browser.mjs connect    [recipe.mjs] [--timeout <ms>]",
+      "",
+      `config: ${CONFIG_PATH}`,
+      `output: ${OUT_DIR} (override with $BROWSER_OUT_DIR)`,
+    ].join("\n")
+  );
 }
 
 const args = process.argv.slice(2);
 const [cmd, posArg, ...rest] = args;
 if (!cmd) usage();
-if (!['screenshot', 'record', 'run', 'connect'].includes(cmd)) usage();
+if (!["screenshot", "record", "run", "connect"].includes(cmd)) usage();
 // connect's recipe arg is optional (no recipe = report open tabs); the
 // other commands all require their positional arg.
-if (cmd !== 'connect' && !posArg) usage();
+if (cmd !== "connect" && !posArg) usage();
 
 let url;
-if (cmd === 'screenshot' || cmd === 'record') {
+if (cmd === "screenshot" || cmd === "record") {
   try {
     url = new URL(posArg);
   } catch {
@@ -132,12 +136,12 @@ if (cmd === 'screenshot' || cmd === 'record') {
 // directly; the CJS entry exposes it via `.default.chromium`).
 async function loadChromium() {
   try {
-    return (await import('playwright')).chromium;
+    return (await import("playwright")).chromium;
   } catch {}
-  const { readdir } = await import('node:fs/promises');
+  const { readdir } = await import("node:fs/promises");
   let entries = [];
   try {
-    entries = await readdir('/workspace', { withFileTypes: true });
+    entries = await readdir("/workspace", { withFileTypes: true });
   } catch {}
   for (const e of entries) {
     if (!e.isDirectory()) continue;
@@ -145,7 +149,7 @@ async function loadChromium() {
     if (!existsSync(pkgJson)) continue;
     try {
       const requireFrom = createRequire(`/workspace/${e.name}/package.json`);
-      const mod = requireFrom('playwright');
+      const mod = requireFrom("playwright");
       return mod.chromium || mod.default?.chromium;
     } catch {}
   }
@@ -154,19 +158,22 @@ async function loadChromium() {
 
 const chromium = await loadChromium();
 if (!chromium) {
-  die(4, [
-    'playwright is not installed in this workspace.',
-    '',
-    'Either install at workspace level (recommended, available to every',
-    'project script):',
-    '  cd /workspace && npm init -y >/dev/null && npm install --save-dev playwright',
-    '  npx playwright install chromium',
-    '',
-    'Or install inside one of your project subdirs and re-run; this script',
-    'discovers /workspace/*/node_modules/playwright automatically.',
-    '',
-    'First install downloads ~200MB of Chromium; cached for subsequent runs.',
-  ].join('\n'));
+  die(
+    4,
+    [
+      "playwright is not installed in this workspace.",
+      "",
+      "Either install at workspace level (recommended, available to every",
+      "project script):",
+      "  cd /workspace && npm init -y >/dev/null && npm install --save-dev playwright",
+      "  npx playwright install chromium",
+      "",
+      "Or install inside one of your project subdirs and re-run; this script",
+      "discovers /workspace/*/node_modules/playwright automatically.",
+      "",
+      "First install downloads ~200MB of Chromium; cached for subsequent runs.",
+    ].join("\n")
+  );
 }
 
 // --- connect: drive the live GUI browser the user logged into ------------
@@ -180,18 +187,21 @@ if (!chromium) {
 // Write policy (v1): before any public or irreversible action (post, reply,
 // DM, follow, purchase, settings change) the agent must confirm with the
 // user first. The human can also watch and intervene through the noVNC view.
-if (cmd === 'connect') {
-  const cdpURL = process.env.BROWSER_CDP_URL || 'http://127.0.0.1:9222';
+if (cmd === "connect") {
+  const cdpURL = process.env.BROWSER_CDP_URL || "http://127.0.0.1:9222";
   let browser;
   try {
     browser = await chromium.connectOverCDP(cdpURL);
   } catch {
-    die(6, [
-      `could not connect to the GUI browser at ${cdpURL}.`,
-      '',
-      'Ask the user to open the Browser pane (that starts the session) and,',
-      'for authenticated sites, log in first; then retry.',
-    ].join('\n'));
+    die(
+      6,
+      [
+        `could not connect to the GUI browser at ${cdpURL}.`,
+        "",
+        "Ask the user to open the Browser pane (that starts the session) and,",
+        "for authenticated sites, log in first; then retry.",
+      ].join("\n")
+    );
   }
   const context = browser.contexts()[0] || (await browser.newContext());
   let exitCode = 0;
@@ -205,34 +215,40 @@ if (cmd === 'connect') {
       } catch (err) {
         die(9, `failed to load recipe ${recipePath}: ${err.message}`);
       }
-      if (typeof mod.default !== 'function') {
-        die(9, `recipe ${recipePath} must export a default async function (page, context)`);
+      if (typeof mod.default !== "function") {
+        die(
+          9,
+          `recipe ${recipePath} must export a default async function (page, context)`
+        );
       }
       const page = context.pages()[0] || (await context.newPage());
-      const timeoutMs = parseInt(flag(rest, 'timeout') || '300000', 10);
+      const timeoutMs = parseInt(flag(rest, "timeout") || "300000", 10);
       const result = await Promise.race([
         mod.default(page, context),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`recipe exceeded --timeout ${timeoutMs}ms`)), timeoutMs),
+          setTimeout(
+            () => reject(new Error(`recipe exceeded --timeout ${timeoutMs}ms`)),
+            timeoutMs
+          )
         ),
       ]);
       if (result !== undefined) {
         try {
-          process.stdout.write(JSON.stringify(result) + '\n');
+          process.stdout.write(JSON.stringify(result) + "\n");
         } catch {
-          process.stdout.write(String(result) + '\n');
+          process.stdout.write(String(result) + "\n");
         }
       }
     } else {
       const tabs = [];
       for (const pg of context.pages()) {
-        tabs.push({ url: pg.url(), title: await pg.title().catch(() => '') });
+        tabs.push({ url: pg.url(), title: await pg.title().catch(() => "") });
       }
-      process.stdout.write(JSON.stringify({ cdp: cdpURL, tabs }) + '\n');
+      process.stdout.write(JSON.stringify({ cdp: cdpURL, tabs }) + "\n");
     }
   } catch (err) {
     process.stderr.write(`error: ${err.message}\n`);
-    if (err.stack) process.stderr.write(err.stack + '\n');
+    if (err.stack) process.stderr.write(err.stack + "\n");
     exitCode = 1;
   } finally {
     await browser.close(); // disconnects CDP; leaves the GUI browser running
@@ -244,20 +260,20 @@ if (cmd === 'connect') {
 let config = {};
 if (existsSync(CONFIG_PATH)) {
   try {
-    config = JSON.parse(await readFile(CONFIG_PATH, 'utf8'));
+    config = JSON.parse(await readFile(CONFIG_PATH, "utf8"));
   } catch (err) {
     die(5, `failed to parse ${CONFIG_PATH}: ${err.message}`);
   }
 } else {
   // Create an empty config so the agent has a file to add to.
   await mkdir(dirname(CONFIG_PATH), { recursive: true });
-  await writeFile(CONFIG_PATH, '{}\n');
+  await writeFile(CONFIG_PATH, "{}\n");
 }
 
 function pickEntry(host) {
   if (config[host]) return config[host];
   for (const key of Object.keys(config)) {
-    if (key.startsWith('*.')) {
+    if (key.startsWith("*.")) {
       const suffix = key.slice(1); // ".example.com"
       if (host.endsWith(suffix) && host !== suffix.slice(1)) return config[key];
     }
@@ -270,10 +286,10 @@ function cookieFromEntry(c, fallbackHost) {
     name: c.name,
     value: process.env[c.secret],
     domain: c.domain || fallbackHost,
-    path: c.path || '/',
+    path: c.path || "/",
     httpOnly: c.httpOnly !== false,
     secure: c.secure !== false,
-    sameSite: c.sameSite || 'None',
+    sameSite: c.sameSite || "None",
     ...(c.expires != null ? { expires: c.expires } : {}),
   };
 }
@@ -285,14 +301,14 @@ function basicAuthFromEntry(entry, origin) {
   if (!entry?.basicAuth) return undefined;
   const raw = process.env[entry.basicAuth];
   if (!raw) return undefined;
-  const i = raw.indexOf(':');
+  const i = raw.indexOf(":");
   if (i < 0) return undefined;
   return { username: raw.slice(0, i), password: raw.slice(i + 1), origin };
 }
 
 let cookies = [];
 let httpCredentials;
-if (cmd === 'screenshot' || cmd === 'record') {
+if (cmd === "screenshot" || cmd === "record") {
   // URL-driven: if this host has an entry, every cookie's secret must be
   // set (fail loud — agent should not silently take a logged-out shot of
   // an app that's supposed to be authenticated). If the host has no
@@ -302,22 +318,28 @@ if (cmd === 'screenshot' || cmd === 'record') {
   if (entry) {
     cookies = (entry.cookies || []).map((c) => {
       if (!c.secret) {
-        die(7, `${CONFIG_PATH}: cookie for ${url.host} is missing "secret" (the env-var name holding the cookie value)`);
+        die(
+          7,
+          `${CONFIG_PATH}: cookie for ${url.host} is missing "secret" (the env-var name holding the cookie value)`
+        );
       }
       if (!process.env[c.secret]) {
-        die(8, [
-          `secret ${c.secret} is not set in the environment.`,
-          '',
-          `Ask the user to add it via the project Containers → Secrets UI.`,
-          `Tell them which cookie to copy: ${c.name} from ${c.domain}.`,
-        ].join('\n'));
+        die(
+          8,
+          [
+            `secret ${c.secret} is not set in the environment.`,
+            "",
+            `Ask the user to add it via the project Containers → Secrets UI.`,
+            `Tell them which cookie to copy: ${c.name} from ${c.domain}.`,
+          ].join("\n")
+        );
       }
       return cookieFromEntry(c, url.host);
     });
     httpCredentials = basicAuthFromEntry(entry, url.origin);
   }
   // No entry → public site / not-configured-yet; proceed with cookies = [].
-} else if (cmd === 'run') {
+} else if (cmd === "run") {
   // Recipe-driven: we don't know up-front which sites the recipe will
   // visit, so attach every cookie whose secret is set. Skip the rest
   // silently — if the recipe needs them, it'll hit a logged-out page and
@@ -327,7 +349,9 @@ if (cmd === 'screenshot' || cmd === 'record') {
     if (entry?.cookies) {
       for (const c of entry.cookies) {
         if (!c.secret || !process.env[c.secret]) continue;
-        cookies.push(cookieFromEntry(c, host.startsWith('*.') ? host.slice(2) : host));
+        cookies.push(
+          cookieFromEntry(c, host.startsWith("*.") ? host.slice(2) : host)
+        );
       }
     }
     // First entry with a usable basicAuth wins (context-level, no origin so it
@@ -341,7 +365,8 @@ if (cmd === 'screenshot' || cmd === 'record') {
 // --- Launch + drive Playwright ------------------------------------------
 await mkdir(OUT_DIR, { recursive: true });
 
-const recordingEnabled = cmd === 'record' || (cmd === 'run' && hasFlag(rest, 'record'));
+const recordingEnabled =
+  cmd === "record" || (cmd === "run" && hasFlag(rest, "record"));
 
 const launchOpts = { headless: true };
 const contextOpts = { viewport: VIEWPORT };
@@ -355,7 +380,7 @@ if (httpCredentials) {
 // For `run`, resolve the recipe up-front so we fail fast on bad path
 // before launching Chromium.
 let recipeModule;
-if (cmd === 'run') {
+if (cmd === "run") {
   const recipePath = resolve(posArg);
   if (!existsSync(recipePath)) die(2, `recipe not found: ${recipePath}`);
   try {
@@ -363,8 +388,11 @@ if (cmd === 'run') {
   } catch (err) {
     die(9, `failed to load recipe ${recipePath}: ${err.message}`);
   }
-  if (typeof recipeModule.default !== 'function') {
-    die(9, `recipe ${recipePath} must export a default async function (page, context)`);
+  if (typeof recipeModule.default !== "function") {
+    die(
+      9,
+      `recipe ${recipePath} must export a default async function (page, context)`
+    );
   }
 }
 
@@ -376,24 +404,32 @@ const page = await context.newPage();
 let exitCode = 0;
 let recordOverride;
 try {
-  if (cmd === 'screenshot') {
-    await page.goto(url.toString(), { waitUntil: 'networkidle', timeout: 30_000 });
-    const out = resolve(flag(rest, 'out') || `${OUT_DIR}/screenshot-${ts()}.png`);
+  if (cmd === "screenshot") {
+    await page.goto(url.toString(), {
+      waitUntil: "networkidle",
+      timeout: 30_000,
+    });
+    const out = resolve(
+      flag(rest, "out") || `${OUT_DIR}/screenshot-${ts()}.png`
+    );
     await mkdir(dirname(out), { recursive: true });
-    await page.screenshot({ path: out, fullPage: hasFlag(rest, 'full') });
-    process.stdout.write(out + '\n');
-  } else if (cmd === 'record') {
-    const duration = parseInt(flag(rest, 'duration') || '5000', 10);
+    await page.screenshot({ path: out, fullPage: hasFlag(rest, "full") });
+    process.stdout.write(out + "\n");
+  } else if (cmd === "record") {
+    const duration = parseInt(flag(rest, "duration") || "5000", 10);
     await page.goto(url.toString(), { timeout: 30_000 });
     await page.waitForTimeout(duration);
-    recordOverride = flag(rest, 'out');
-  } else if (cmd === 'run') {
-    const timeoutMs = parseInt(flag(rest, 'timeout') || '300000', 10);
-    recordOverride = flag(rest, 'out');
+    recordOverride = flag(rest, "out");
+  } else if (cmd === "run") {
+    const timeoutMs = parseInt(flag(rest, "timeout") || "300000", 10);
+    recordOverride = flag(rest, "out");
     const result = await Promise.race([
       recipeModule.default(page, context),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`recipe exceeded --timeout ${timeoutMs}ms`)), timeoutMs),
+        setTimeout(
+          () => reject(new Error(`recipe exceeded --timeout ${timeoutMs}ms`)),
+          timeoutMs
+        )
       ),
     ]);
     if (result !== undefined) {
@@ -401,15 +437,15 @@ try {
       // callers can parse stdout. Video path (if any) prints separately
       // in the finally block.
       try {
-        process.stdout.write(JSON.stringify(result) + '\n');
+        process.stdout.write(JSON.stringify(result) + "\n");
       } catch {
-        process.stdout.write(String(result) + '\n');
+        process.stdout.write(String(result) + "\n");
       }
     }
   }
 } catch (err) {
   process.stderr.write(`error: ${err.message}\n`);
-  if (err.stack) process.stderr.write(err.stack + '\n');
+  if (err.stack) process.stderr.write(err.stack + "\n");
   exitCode = 1;
 } finally {
   const video = recordingEnabled ? page.video() : null;
@@ -422,9 +458,9 @@ try {
       const target = resolve(recordOverride);
       await mkdir(dirname(target), { recursive: true });
       await rename(defaultPath, target);
-      process.stdout.write(target + '\n');
+      process.stdout.write(target + "\n");
     } else {
-      process.stdout.write(defaultPath + '\n');
+      process.stdout.write(defaultPath + "\n");
     }
   }
 }
@@ -433,6 +469,6 @@ process.exit(exitCode);
 
 function ts() {
   const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
+  const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }

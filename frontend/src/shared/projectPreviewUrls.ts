@@ -1,7 +1,7 @@
 export function buildProjectPreviewUrl(
   slug: string,
   port: number | null,
-  publicHostname: string,
+  publicHostname: string
 ): string {
   const hostSuffix = projectPreviewHostSuffix(publicHostname);
   if (!slug || !port || !hostSuffix) return "";
@@ -10,22 +10,23 @@ export function buildProjectPreviewUrl(
 
 export function projectPreviewUrlsInText(
   text: string,
-  publicHostname: string,
+  publicHostname: string
 ): string[] {
   const hostname = normalizeHostname(publicHostname);
   if (!hostname) return [];
   const pattern = new RegExp(
     `https:\\/\\/[a-z0-9][a-z0-9-]*--\\d{4,5}\\.dev\\.${escapeRegExp(hostname)}[^\\s<>)\\]]*`,
-    "g",
+    "g"
   );
-  return [...text.matchAll(pattern)]
-    .map((match) => match[0].replace(/[.,;:!?]+$/, ""));
+  return [...text.matchAll(pattern)].map((match) =>
+    match[0].replace(/[.,;:!?]+$/, "")
+  );
 }
 
 export function isProjectPreviewUrl(
   raw: string,
   slug: string,
-  publicHostname: string,
+  publicHostname: string
 ): boolean {
   try {
     const url = new URL(raw);
@@ -37,7 +38,7 @@ export function isProjectPreviewUrl(
       url.hostname.startsWith(portStart) &&
       url.hostname.endsWith(hostSuffix) &&
       isValidProjectPreviewPort(
-        url.hostname.slice(portStart.length, -hostSuffix.length),
+        url.hostname.slice(portStart.length, -hostSuffix.length)
       )
     );
   } catch {

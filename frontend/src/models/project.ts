@@ -1,17 +1,8 @@
 export type ProjectStatus =
-  | ""
-  | "provisioning"
-  | "running"
-  | "stopped"
-  | "error"
-  | "missing";
+  "" | "provisioning" | "running" | "stopped" | "error" | "missing";
 
 export type ContainerState =
-  | "RUNNING"
-  | "STOPPED"
-  | "FROZEN"
-  | "MISSING"
-  | "UNKNOWN";
+  "RUNNING" | "STOPPED" | "FROZEN" | "MISSING" | "UNKNOWN";
 
 export interface ProjectMeta {
   id: string;
@@ -139,7 +130,8 @@ export interface ContainerApp {
   pid?: number;
 }
 
-export type AgentBrowserStatus = "idle" | "starting" | "ready" | "core-ready" | "error" | "stopped";
+export type AgentBrowserStatus =
+  "idle" | "starting" | "ready" | "core-ready" | "error" | "stopped";
 export type AgentBrowserServerStatus = Exclude<AgentBrowserStatus, "idle">;
 
 export interface AgentBrowserInfo {

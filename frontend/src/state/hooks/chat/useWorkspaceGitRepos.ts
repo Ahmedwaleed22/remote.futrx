@@ -5,7 +5,13 @@ import type { ChatStatus } from "../../../models/chat";
 // Whether the chat's workspace contains at least one git repository. Drives
 // the History button: it only appears once a repo is confirmed. Re-checked
 // when a run finishes, since the agent may have just created or cloned one.
-export function useWorkspaceGitRepos({ chatId, status }: { chatId: string; status: ChatStatus }) {
+export function useWorkspaceGitRepos({
+  chatId,
+  status,
+}: {
+  chatId: string;
+  status: ChatStatus;
+}) {
   const [hasRepos, setHasRepos] = useState(false);
   const checkedRunRef = useRef(false);
 

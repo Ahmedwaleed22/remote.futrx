@@ -21,7 +21,11 @@ export function useChatPreferences({
   refreshMeta: () => Promise<void>;
 }) {
   const { settings, setChatSettings } = useUserSettingsContext();
-  const displayMeta = chatPreferenceState.resolveMeta(chat, loadedMeta, settings.chat);
+  const displayMeta = chatPreferenceState.resolveMeta(
+    chat,
+    loadedMeta,
+    settings.chat
+  );
   const displayProvider = displayMeta.provider;
   const displayMode = displayMeta.mode;
   const selectedSkills = displayMeta.selectedSkills || [];
@@ -29,13 +33,27 @@ export function useChatPreferences({
 
   function changeProvider(provider: ChatProvider) {
     if (provider === displayProvider) return;
-    metaActions.applyMeta({ provider, model: "", reasoningEffort: "", serviceTier: "", selectedSkills: [] });
-    void setChatSettings({ provider, model: "", reasoningEffort: "", serviceTier: "" });
+    metaActions.applyMeta({
+      provider,
+      model: "",
+      reasoningEffort: "",
+      serviceTier: "",
+      selectedSkills: [],
+    });
+    void setChatSettings({
+      provider,
+      model: "",
+      reasoningEffort: "",
+      serviceTier: "",
+    });
   }
 
   function selectSkill(skill: RegisteredSkill) {
     const next = chatPreferenceState.selectedSkill(skill, displayProvider);
-    if (chatPreferenceState.includesSkill(selectedSkills, next, displayProvider)) return;
+    if (
+      chatPreferenceState.includesSkill(selectedSkills, next, displayProvider)
+    )
+      return;
     metaActions.applyMeta({ selectedSkills: [...selectedSkills, next] });
   }
 

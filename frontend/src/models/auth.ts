@@ -72,9 +72,4 @@ export interface KimiDeviceLogin {
 }
 
 export type ClaudeLoginPhase =
-  | "idle"
-  | "starting"
-  | "awaiting-code"
-  | "submitting"
-  | "done"
-  | "error";
+  "idle" | "starting" | "awaiting-code" | "submitting" | "done" | "error";

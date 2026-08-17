@@ -35,14 +35,23 @@ export const REASONING_EFFORT_OPTIONS = [
   { value: "none", label: "None", providers: ["codex"] },
   { value: "minimal", label: "Minimal", providers: ["codex"] },
   { value: "low", label: "Low", providers: ["claude", "codex", "antigravity"] },
-  { value: "medium", label: "Medium", providers: ["claude", "codex", "antigravity"] },
-  { value: "high", label: "High", providers: ["claude", "codex", "antigravity"] },
+  {
+    value: "medium",
+    label: "Medium",
+    providers: ["claude", "codex", "antigravity"],
+  },
+  {
+    value: "high",
+    label: "High",
+    providers: ["claude", "codex", "antigravity"],
+  },
   { value: "xhigh", label: "XHigh", providers: ["claude", "codex"] },
   { value: "max", label: "Max", providers: ["claude", "codex"] },
   { value: "ultra", label: "Ultra", providers: ["claude", "codex"] },
 ] as const;
 
-export type ReasoningEffort = (typeof REASONING_EFFORT_OPTIONS)[number]["value"];
+export type ReasoningEffort =
+  (typeof REASONING_EFFORT_OPTIONS)[number]["value"];
 
 // Codex `service_tier` is the only headless speed lever across our providers.
 // Values are model-gated; "Auto" ("") omits the flag entirely.
@@ -77,7 +86,9 @@ const MODEL_OPTIONS_BY_PROVIDER = {
   antigravity: [{ value: "", label: "Auto", sub: "antigravity default" }],
 } as const satisfies Record<ChatProvider, readonly ModelOption[]>;
 
-export function modelOptionsForProvider(provider?: ChatProvider): readonly ModelOption[] {
+export function modelOptionsForProvider(
+  provider?: ChatProvider
+): readonly ModelOption[] {
   if (provider === "codex") return MODEL_OPTIONS_BY_PROVIDER.codex;
   if (provider === "kimi") return MODEL_OPTIONS_BY_PROVIDER.kimi;
   if (provider === "antigravity") return MODEL_OPTIONS_BY_PROVIDER.antigravity;
@@ -85,31 +96,39 @@ export function modelOptionsForProvider(provider?: ChatProvider): readonly Model
 }
 
 export function reasoningEffortOptionsForProvider(
-  provider?: ChatProvider,
+  provider?: ChatProvider
 ): readonly LabeledOption<ReasoningEffort>[] {
   const effectiveProvider = provider ?? "codex";
   return REASONING_EFFORT_OPTIONS.filter((option) =>
-    supportsProvider(option, effectiveProvider),
+    supportsProvider(option, effectiveProvider)
   );
 }
 
 export function serviceTierOptionsForProvider(
-  provider?: ChatProvider,
+  provider?: ChatProvider
 ): readonly LabeledOption<ServiceTier>[] {
   const effectiveProvider = provider ?? "codex";
   return SERVICE_TIER_OPTIONS.filter((option) =>
-    supportsProvider(option, effectiveProvider),
+    supportsProvider(option, effectiveProvider)
   );
 }
 
 export function providerDisplayLabel(provider?: ChatProvider): string {
-  return CHAT_PROVIDER_OPTIONS.find((option) => option.value === provider)?.label ?? "Claude";
+  return (
+    CHAT_PROVIDER_OPTIONS.find((option) => option.value === provider)?.label ??
+    "Claude"
+  );
 }
 
-export function modelDisplayLabel(model?: string, provider?: ChatProvider): string {
+export function modelDisplayLabel(
+  model?: string,
+  provider?: ChatProvider
+): string {
   if (!model) return "Auto";
   if (provider === "codex") {
-    const match = MODEL_OPTIONS_BY_PROVIDER.codex.find((option) => option.value === model);
+    const match = MODEL_OPTIONS_BY_PROVIDER.codex.find(
+      (option) => option.value === model
+    );
     return match?.label ?? model;
   }
   return matchingClaudeModel(model)?.label ?? model;
@@ -122,7 +141,7 @@ export function modelShortLabel(model?: string): string {
 
 function supportsProvider(
   option: { readonly providers: readonly ChatProvider[] },
-  provider: ChatProvider,
+  provider: ChatProvider
 ): boolean {
   return option.providers.includes(provider);
 }
@@ -130,6 +149,6 @@ function supportsProvider(
 function matchingClaudeModel(model: string): ModelOption | undefined {
   const lower = model.toLowerCase();
   return MODEL_OPTIONS_BY_PROVIDER.claude.find(
-    (option) => option.value !== "" && lower.includes(option.value),
+    (option) => option.value !== "" && lower.includes(option.value)
   );
 }

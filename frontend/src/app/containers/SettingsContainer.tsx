@@ -1,8 +1,5 @@
 import { useState } from "preact/hooks";
-import {
-  SettingsPage,
-  type SettingsTab,
-} from "../../ui/settings/SettingsPage";
+import { SettingsPage, type SettingsTab } from "../../ui/settings/SettingsPage";
 import { useAuthContext } from "../../state/context/AuthContext";
 import { useUserSettingsContext } from "../../state/context/UserSettingsContext";
 import { useUserDirectory } from "../../state/hooks/users/useUserDirectory";

@@ -133,7 +133,9 @@ function AddUserForm({
         />
         <select
           value={role}
-          onChange={(e) => setRole((e.target as HTMLSelectElement).value as UserRole)}
+          onChange={(e) =>
+            setRole((e.target as HTMLSelectElement).value as UserRole)
+          }
           class="h-9 px-2 rounded border border-white/10 bg-black/30 text-[13px] text-ink-50 focus:outline-none focus:border-accent-blue/50"
         >
           <option value="member">member</option>
@@ -259,7 +261,9 @@ function UserRow({
             onClick={toggleRole}
             disabled={busy}
             class="h-7 px-2 rounded text-[11px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08] disabled:opacity-50"
-            title={user.role === "admin" ? "Demote to member" : "Promote to admin"}
+            title={
+              user.role === "admin" ? "Demote to member" : "Promote to admin"
+            }
           >
             {user.role === "admin" ? "demote" : "promote"}
           </button>

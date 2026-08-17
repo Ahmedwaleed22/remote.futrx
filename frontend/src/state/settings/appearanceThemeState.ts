@@ -25,7 +25,9 @@ class AppearanceThemeState {
   private resolve(theme: AppearanceTheme): "dark" | "light" {
     if (theme === "light" || theme === "dark") return theme;
     if (typeof window === "undefined") return "dark";
-    return window.matchMedia(SYSTEM_LIGHT_MEDIA_QUERY).matches ? "light" : "dark";
+    return window.matchMedia(SYSTEM_LIGHT_MEDIA_QUERY).matches
+      ? "light"
+      : "dark";
   }
 }
 

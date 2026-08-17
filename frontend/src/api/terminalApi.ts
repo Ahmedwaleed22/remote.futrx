@@ -19,7 +19,10 @@ type TerminalClientMessage =
     };
 
 export const terminalApi = {
-  connect(chatId: string, callbacks: TerminalConnectionCallbacks): TerminalConnection {
+  connect(
+    chatId: string,
+    callbacks: TerminalConnectionCallbacks
+  ): TerminalConnection {
     return new WebSocketTerminalConnection(chatId, callbacks);
   },
 };

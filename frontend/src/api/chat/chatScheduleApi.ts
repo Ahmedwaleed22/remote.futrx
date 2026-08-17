@@ -37,7 +37,9 @@ export const chatScheduleApi = {
       "POST",
       API_ROUTES.schedules.run(id),
       {}
-    ).then((result) => "id" in result ? normalizeScheduledTask(result) : result),
+    ).then((result) =>
+      "id" in result ? normalizeScheduledTask(result) : result
+    ),
 };
 
 function normalizeScheduledTask(task: ScheduledTaskWire): ScheduledTask {

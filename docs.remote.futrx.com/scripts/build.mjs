@@ -5,7 +5,10 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const projectDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const projectDirectory = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  ".."
+);
 const docsDirectory = path.resolve(projectDirectory, "../docs");
 const docsAssetsDirectory = path.join(docsDirectory, "assets");
 const staticDirectory = path.join(projectDirectory, "static");
@@ -13,17 +16,23 @@ const outputDirectory = path.join(projectDirectory, "dist");
 const homeDocumentPath = "01-overview/README.md";
 const homeDocumentDirectory = path.posix.dirname(homeDocumentPath);
 const privateRepositoryUrl = "https://github.com/futrx-com/remote.futrx.com";
-const excludedDocumentDirectories = new Set(["assets", "codex-analysis", "fable-analysis"]);
+const excludedDocumentDirectories = new Set([
+  "assets",
+  "codex-analysis",
+  "fable-analysis",
+]);
 
 const listFiles = async (directory, relativeDirectory = "") => {
   const entries = await fs.readdir(directory, { withFileTypes: true });
   const files = [];
 
-  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+  for (const entry of entries.sort((left, right) =>
+    left.name.localeCompare(right.name)
+  )) {
     const relativePath = path.posix.join(relativeDirectory, entry.name);
     const absolutePath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      files.push(...await listFiles(absolutePath, relativePath));
+      files.push(...(await listFiles(absolutePath, relativePath)));
     } else if (entry.isFile()) {
       files.push(relativePath);
     }
@@ -49,15 +58,21 @@ const writeStaticAssets = async () => {
   await fs.cp(staticDirectory, assetsDirectory, { recursive: true });
   await fs.copyFile(
     path.join(staticDirectory, "site.css"),
-    path.join(assetsDirectory, stylesheetFilename),
+    path.join(assetsDirectory, stylesheetFilename)
   );
 
-  const script = await fs.readFile(path.join(staticDirectory, "site.js"), "utf8");
+  const script = await fs.readFile(
+    path.join(staticDirectory, "site.js"),
+    "utf8"
+  );
   const versionedScript = script.replace(
     /(from\s+["'])(\.\/modules\/[^"']+)(["'])/g,
-    `$1$2?v=${version}$3`,
+    `$1$2?v=${version}$3`
   );
-  await fs.writeFile(path.join(assetsDirectory, scriptFilename), versionedScript);
+  await fs.writeFile(
+    path.join(assetsDirectory, scriptFilename),
+    versionedScript
+  );
 
   return {
     script: `/assets/${scriptFilename}`,
@@ -66,29 +81,32 @@ const writeStaticAssets = async () => {
   };
 };
 
-const htmlEscape = (value = "") => String(value)
-  .replaceAll("&", "&amp;")
-  .replaceAll("<", "&lt;")
-  .replaceAll(">", "&gt;")
-  .replaceAll('"', "&quot;")
-  .replaceAll("'", "&#039;");
+const htmlEscape = (value = "") =>
+  String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 
-const stripMarkdown = (value = "") => String(value)
-  .replace(/```[\s\S]*?```/g, " ")
-  .replace(/`([^`]+)`/g, "$1")
-  .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-  .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-  .replace(/<[^>]+>/g, " ")
-  .replace(/[*_~>#|]/g, " ")
-  .replace(/\s+/g, " ")
-  .trim();
+const stripMarkdown = (value = "") =>
+  String(value)
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[*_~>#|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-const slugify = (value = "") => stripMarkdown(value)
-  .toLowerCase()
-  .normalize("NFKD")
-  .replace(/[\u0300-\u036f]/g, "")
-  .replace(/[^a-z0-9]+/g, "-")
-  .replace(/^-|-$/g, "") || "section";
+const slugify = (value = "") =>
+  stripMarkdown(value)
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "section";
 
 const fileToSlug = (filename) => {
   if (filename.toLowerCase() === "readme.md") return "";
@@ -100,7 +118,10 @@ const getDescription = (markdown) => {
     .split(/\n\s*\n/)
     .map((part) => part.trim())
     .find((part) => part && !/^(#|```|\||-|\*\s|<)/.test(part));
-  return stripMarkdown(paragraph || "Documentation for remote.futrx.").slice(0, 180);
+  return stripMarkdown(paragraph || "Documentation for remote.futrx.").slice(
+    0,
+    180
+  );
 };
 
 const compareNames = (left, right) => {
@@ -109,26 +130,40 @@ const compareNames = (left, right) => {
   return left.localeCompare(right, undefined, { numeric: true });
 };
 
-const sectionLabel = (directoryName) => directoryName
-  .replace(/^\d+[\s_-]*/, "")
-  .replace(/[-_]+/g, " ")
-  .replace(/\b\w/g, (character) => character.toUpperCase());
+const sectionLabel = (directoryName) =>
+  directoryName
+    .replace(/^\d+[\s_-]*/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 
 const readDocuments = async () => {
   const entries = await fs.readdir(docsDirectory, { withFileTypes: true });
   const rootFiles = entries
-    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".md"))
+    .filter(
+      (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".md")
+    )
     .map((entry) => entry.name)
     .sort(compareNames);
   const directories = entries
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith(".") && !excludedDocumentDirectories.has(entry.name))
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        !entry.name.startsWith(".") &&
+        !excludedDocumentDirectories.has(entry.name)
+    )
     .map((entry) => entry.name)
     .sort(compareNames);
   const sectionSources = [];
 
   for (const directory of directories) {
-    const filenames = (await fs.readdir(path.join(docsDirectory, directory), { withFileTypes: true }))
-      .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".md"))
+    const filenames = (
+      await fs.readdir(path.join(docsDirectory, directory), {
+        withFileTypes: true,
+      })
+    )
+      .filter(
+        (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".md")
+      )
       .map((entry) => entry.name)
       .sort(compareNames);
     if (!filenames.length) continue;
@@ -140,11 +175,13 @@ const readDocuments = async () => {
     }));
 
     if (directory === homeDocumentDirectory) {
-      files.push(...rootFiles.map((filename) => ({
-        filename,
-        relativePath: filename,
-        isRootDocument: true,
-      })));
+      files.push(
+        ...rootFiles.map((filename) => ({
+          filename,
+          relativePath: filename,
+          isRootDocument: true,
+        }))
+      );
     }
 
     sectionSources.push({ directory, label, slug: slugify(label), files });
@@ -156,9 +193,15 @@ const readDocuments = async () => {
 
     for (const [sectionDocumentOrder, file] of source.files.entries()) {
       const { filename, relativePath, isRootDocument } = file;
-      const markdown = await fs.readFile(path.join(docsDirectory, relativePath), "utf8");
+      const markdown = await fs.readFile(
+        path.join(docsDirectory, relativePath),
+        "utf8"
+      );
       const headingMatches = [...markdown.matchAll(/^(#{1,3})\s+(.+)$/gm)];
-      const title = stripMarkdown(headingMatches.find((match) => match[1].length === 1)?.[2] || filename.replace(/\.md$/i, ""));
+      const title = stripMarkdown(
+        headingMatches.find((match) => match[1].length === 1)?.[2] ||
+          filename.replace(/\.md$/i, "")
+      );
       const headingSlugs = new Map();
       const headings = headingMatches
         .filter((match) => match[1].length > 1)
@@ -167,7 +210,11 @@ const readDocuments = async () => {
           const base = slugify(text);
           const count = headingSlugs.get(base) || 0;
           headingSlugs.set(base, count + 1);
-          return { depth: match[1].length, text, id: count ? `${base}-${count + 1}` : base };
+          return {
+            depth: match[1].length,
+            text,
+            id: count ? `${base}-${count + 1}` : base,
+          };
         });
       const document = {
         filename,
@@ -187,15 +234,20 @@ const readDocuments = async () => {
     }
   }
 
-  const homeDocument = documents.find((document) => document.relativePath === homeDocumentPath);
-  if (!homeDocument) throw new Error(`Required home document not found: ${homeDocumentPath}`);
+  const homeDocument = documents.find(
+    (document) => document.relativePath === homeDocumentPath
+  );
+  if (!homeDocument)
+    throw new Error(`Required home document not found: ${homeDocumentPath}`);
   homeDocument.isSiteHome = true;
 
   const routes = new Map();
   for (const document of documents) {
     const route = pagePath(document);
     if (routes.has(route)) {
-      throw new Error(`Duplicate documentation route ${route}: ${routes.get(route)} and ${document.relativePath}`);
+      throw new Error(
+        `Duplicate documentation route ${route}: ${routes.get(route)} and ${document.relativePath}`
+      );
     }
     routes.set(route, document.relativePath);
   }
@@ -206,8 +258,12 @@ const readDocuments = async () => {
 const pagePath = (document) => {
   if (document.isSiteHome) return "/";
   if (document.isRootDocument) return `/${document.slug}/`;
-  const sectionPrefix = document.section.slug ? `/${document.section.slug}` : "";
-  return document.slug ? `${sectionPrefix}/${document.slug}/` : `${sectionPrefix}/`;
+  const sectionPrefix = document.section.slug
+    ? `/${document.section.slug}`
+    : "";
+  return document.slug
+    ? `${sectionPrefix}/${document.slug}/`
+    : `${sectionPrefix}/`;
 };
 
 const safeDecodeURIComponent = (value) => {
@@ -222,58 +278,101 @@ const resolveLink = (href, documents, currentDocument) => {
   let resolvedHref = href.trim();
   const pathPart = resolvedHref.split("#")[0] || "";
   const markdownTarget = safeDecodeURIComponent(pathPart);
-  const hash = resolvedHref.includes("#") ? `#${resolvedHref.split("#").slice(1).join("#")}` : "";
+  const hash = resolvedHref.includes("#")
+    ? `#${resolvedHref.split("#").slice(1).join("#")}`
+    : "";
 
   if (markdownTarget.toLowerCase().endsWith(".md")) {
-    const targetPath = path.posix.normalize(path.posix.join(path.posix.dirname(currentDocument.relativePath), markdownTarget));
-    const exactTarget = documents.find((document) => document.relativePath.toLowerCase() === targetPath.toLowerCase());
+    const targetPath = path.posix.normalize(
+      path.posix.join(
+        path.posix.dirname(currentDocument.relativePath),
+        markdownTarget
+      )
+    );
+    const exactTarget = documents.find(
+      (document) =>
+        document.relativePath.toLowerCase() === targetPath.toLowerCase()
+    );
     const targetName = path.posix.basename(markdownTarget);
-    const matchingNames = documents.filter((document) => document.filename.toLowerCase() === targetName.toLowerCase());
-    const target = exactTarget || (matchingNames.length === 1 ? matchingNames[0] : undefined);
+    const matchingNames = documents.filter(
+      (document) => document.filename.toLowerCase() === targetName.toLowerCase()
+    );
+    const target =
+      exactTarget ||
+      (matchingNames.length === 1 ? matchingNames[0] : undefined);
     if (target) {
       resolvedHref = `${pagePath(target)}${hash}`;
-    } else if (resolvedHref.startsWith("../") || resolvedHref.startsWith("./")) {
+    } else if (
+      resolvedHref.startsWith("../") ||
+      resolvedHref.startsWith("./")
+    ) {
       resolvedHref = "#";
     }
   } else if (resolvedHref.startsWith("../") || resolvedHref.startsWith("./")) {
-    const documentPath = path.posix.normalize(path.posix.join(path.posix.dirname(currentDocument.relativePath), pathPart));
+    const documentPath = path.posix.normalize(
+      path.posix.join(
+        path.posix.dirname(currentDocument.relativePath),
+        pathPart
+      )
+    );
     resolvedHref = documentPath.startsWith("assets/")
       ? `/assets/docs/${documentPath.slice("assets/".length)}${hash}`
       : "#";
   }
 
-  if (/^[a-z][a-z\d+.-]*:/i.test(resolvedHref) && !/^(https?:|mailto:)/i.test(resolvedHref)) return "#";
+  if (
+    /^[a-z][a-z\d+.-]*:/i.test(resolvedHref) &&
+    !/^(https?:|mailto:)/i.test(resolvedHref)
+  )
+    return "#";
   return resolvedHref;
 };
 
-const isPrivateRepositoryHref = (href) => href === privateRepositoryUrl || href.startsWith(`${privateRepositoryUrl}/`);
+const isPrivateRepositoryHref = (href) =>
+  href === privateRepositoryUrl || href.startsWith(`${privateRepositoryUrl}/`);
 
 const renderInline = (value, documents, currentDocument) => {
   const placeholders = [];
   const hold = (html) => `\u0000${placeholders.push(html) - 1}\u0000`;
   let text = String(value);
 
-  text = text.replace(/!\[([^\]]*)\]\((\S+?)(?:\s+["']([^"']*)["'])?\)/g, (_, alt, source, title) => {
-    const resolvedSource = resolveLink(source, documents, currentDocument);
-    const titleAttribute = title ? ` title="${htmlEscape(title)}"` : "";
-    return hold(`<img src="${htmlEscape(resolvedSource)}" alt="${htmlEscape(stripMarkdown(alt))}"${titleAttribute} loading="lazy" decoding="async">`);
-  });
-
-  text = text.replace(/\[([^\]]+)\]\((\S+?)(?:\s+["']([^"']*)["'])?\)/g, (_, label, href, title) => {
-    const resolvedHref = resolveLink(href, documents, currentDocument);
-    const renderedLabel = renderInline(label, documents, currentDocument);
-    if (resolvedHref === "#" || isPrivateRepositoryHref(resolvedHref)) {
-      const reason = isPrivateRepositoryHref(resolvedHref)
-        ? "Source repository is currently private"
-        : "This source link is unavailable in the public documentation";
-      return hold(`<span class="disabled-link" title="${reason}">${renderedLabel}</span>`);
+  text = text.replace(
+    /!\[([^\]]*)\]\((\S+?)(?:\s+["']([^"']*)["'])?\)/g,
+    (_, alt, source, title) => {
+      const resolvedSource = resolveLink(source, documents, currentDocument);
+      const titleAttribute = title ? ` title="${htmlEscape(title)}"` : "";
+      return hold(
+        `<img src="${htmlEscape(resolvedSource)}" alt="${htmlEscape(stripMarkdown(alt))}"${titleAttribute} loading="lazy" decoding="async">`
+      );
     }
-    const titleAttribute = title ? ` title="${htmlEscape(title)}"` : "";
-    const external = /^https?:\/\//.test(resolvedHref) ? ' target="_blank" rel="noreferrer"' : "";
-    return hold(`<a href="${htmlEscape(resolvedHref)}"${titleAttribute}${external}>${renderedLabel}</a>`);
-  });
+  );
 
-  text = text.replace(/`([^`\n]+)`/g, (_, code) => hold(`<code>${htmlEscape(code)}</code>`));
+  text = text.replace(
+    /\[([^\]]+)\]\((\S+?)(?:\s+["']([^"']*)["'])?\)/g,
+    (_, label, href, title) => {
+      const resolvedHref = resolveLink(href, documents, currentDocument);
+      const renderedLabel = renderInline(label, documents, currentDocument);
+      if (resolvedHref === "#" || isPrivateRepositoryHref(resolvedHref)) {
+        const reason = isPrivateRepositoryHref(resolvedHref)
+          ? "Source repository is currently private"
+          : "This source link is unavailable in the public documentation";
+        return hold(
+          `<span class="disabled-link" title="${reason}">${renderedLabel}</span>`
+        );
+      }
+      const titleAttribute = title ? ` title="${htmlEscape(title)}"` : "";
+      const external = /^https?:\/\//.test(resolvedHref)
+        ? ' target="_blank" rel="noreferrer"'
+        : "";
+      return hold(
+        `<a href="${htmlEscape(resolvedHref)}"${titleAttribute}${external}>${renderedLabel}</a>`
+      );
+    }
+  );
+
+  text = text.replace(/`([^`\n]+)`/g, (_, code) =>
+    hold(`<code>${htmlEscape(code)}</code>`)
+  );
   text = htmlEscape(text);
   text = text
     .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
@@ -282,7 +381,10 @@ const renderInline = (value, documents, currentDocument) => {
     .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>")
     .replace(/(^|[^_])_([^_\n]+)_(?!_)/g, "$1<em>$2</em>");
 
-  return text.replace(/\u0000(\d+)\u0000/g, (_, index) => placeholders[Number(index)]);
+  return text.replace(
+    /\u0000(\d+)\u0000/g,
+    (_, index) => placeholders[Number(index)]
+  );
 };
 
 const renderCodeBlock = (text, language = "") => {
@@ -293,12 +395,13 @@ const renderCodeBlock = (text, language = "") => {
   return `<div class="code-block"><div class="code-bar"><span>${htmlEscape(label)}</span><button type="button" data-copy-code>Copy</button></div><pre><code class="language-${htmlEscape(label)}">${htmlEscape(text)}</code></pre></div>`;
 };
 
-const splitTableRow = (line) => line
-  .trim()
-  .replace(/^\|/, "")
-  .replace(/\|$/, "")
-  .split("|")
-  .map((cell) => cell.trim());
+const splitTableRow = (line) =>
+  line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
 
 const isTableDivider = (line = "") => {
   const cells = splitTableRow(line);
@@ -344,15 +447,21 @@ const renderMarkdown = (markdown, documents, currentDocument) => {
       continue;
     }
 
-    const standaloneImage = line.match(/^!\[([^\]]*)\]\((\S+?)(?:\s+["']([^"']*)["'])?\)\s*$/);
+    const standaloneImage = line.match(
+      /^!\[([^\]]*)\]\((\S+?)(?:\s+["']([^"']*)["'])?\)\s*$/
+    );
     if (standaloneImage) {
       const [, alt, source, title] = standaloneImage;
       const resolvedSource = resolveLink(source, documents, currentDocument);
       const cleanAlt = stripMarkdown(alt);
       const caption = stripMarkdown(title || alt);
       const titleAttribute = title ? ` title="${htmlEscape(title)}"` : "";
-      const captionElement = caption ? `<figcaption>${htmlEscape(caption)}</figcaption>` : "";
-      output.push(`<figure class="doc-figure"><img src="${htmlEscape(resolvedSource)}" alt="${htmlEscape(cleanAlt)}"${titleAttribute} loading="lazy" decoding="async">${captionElement}</figure>`);
+      const captionElement = caption
+        ? `<figcaption>${htmlEscape(caption)}</figcaption>`
+        : "";
+      output.push(
+        `<figure class="doc-figure"><img src="${htmlEscape(resolvedSource)}" alt="${htmlEscape(cleanAlt)}"${titleAttribute} loading="lazy" decoding="async">${captionElement}</figure>`
+      );
       index += 1;
       continue;
     }
@@ -365,7 +474,9 @@ const renderMarkdown = (markdown, documents, currentDocument) => {
       const count = headingCounts.get(base) || 0;
       headingCounts.set(base, count + 1);
       const id = count ? `${base}-${count + 1}` : base;
-      output.push(`<h${depth} id="${htmlEscape(id)}">${renderInline(heading[2], documents, currentDocument)}<a class="heading-link" href="#${htmlEscape(id)}" aria-label="Link to ${htmlEscape(plainText)}">#</a></h${depth}>`);
+      output.push(
+        `<h${depth} id="${htmlEscape(id)}">${renderInline(heading[2], documents, currentDocument)}<a class="heading-link" href="#${htmlEscape(id)}" aria-label="Link to ${htmlEscape(plainText)}">#</a></h${depth}>`
+      );
       index += 1;
       continue;
     }
@@ -378,14 +489,26 @@ const renderMarkdown = (markdown, documents, currentDocument) => {
 
     if (line.includes("|") && isTableDivider(lines[index + 1])) {
       const headers = splitTableRow(line);
-      const alignments = splitTableRow(lines[index + 1]).map((cell) => cell.startsWith(":") && cell.endsWith(":") ? "center" : cell.endsWith(":") ? "right" : "left");
+      const alignments = splitTableRow(lines[index + 1]).map((cell) =>
+        cell.startsWith(":") && cell.endsWith(":")
+          ? "center"
+          : cell.endsWith(":")
+            ? "right"
+            : "left"
+      );
       const rows = [];
       index += 2;
-      while (index < lines.length && lines[index].includes("|") && lines[index].trim()) {
+      while (
+        index < lines.length &&
+        lines[index].includes("|") &&
+        lines[index].trim()
+      ) {
         rows.push(splitTableRow(lines[index]));
         index += 1;
       }
-      output.push(`<table><thead><tr>${headers.map((cell, cellIndex) => `<th style="text-align:${alignments[cellIndex] || "left"}">${renderInline(cell, documents, currentDocument)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((_, cellIndex) => `<td style="text-align:${alignments[cellIndex] || "left"}">${renderInline(row[cellIndex] || "", documents, currentDocument)}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+      output.push(
+        `<table><thead><tr>${headers.map((cell, cellIndex) => `<th style="text-align:${alignments[cellIndex] || "left"}">${renderInline(cell, documents, currentDocument)}</th>`).join("")}</tr></thead><tbody>${rows.map((row) => `<tr>${headers.map((_, cellIndex) => `<td style="text-align:${alignments[cellIndex] || "left"}">${renderInline(row[cellIndex] || "", documents, currentDocument)}</td>`).join("")}</tr>`).join("")}</tbody></table>`
+      );
       continue;
     }
 
@@ -395,7 +518,9 @@ const renderMarkdown = (markdown, documents, currentDocument) => {
         quote.push(lines[index].replace(/^ {0,3}>\s?/, ""));
         index += 1;
       }
-      output.push(`<blockquote>${renderMarkdown(quote.join("\n"), documents, currentDocument)}</blockquote>`);
+      output.push(
+        `<blockquote>${renderMarkdown(quote.join("\n"), documents, currentDocument)}</blockquote>`
+      );
       continue;
     }
 
@@ -408,10 +533,20 @@ const renderMarkdown = (markdown, documents, currentDocument) => {
 
       while (index < lines.length) {
         const item = listMatch(lines[index]);
-        if (!item || item[1].length !== indentation || /^\d/.test(item[2]) !== ordered) break;
+        if (
+          !item ||
+          item[1].length !== indentation ||
+          /^\d/.test(item[2]) !== ordered
+        )
+          break;
         const parts = [item[3]];
         index += 1;
-        while (index < lines.length && lines[index].trim() && !listMatch(lines[index]) && /^\s+/.test(lines[index])) {
+        while (
+          index < lines.length &&
+          lines[index].trim() &&
+          !listMatch(lines[index]) &&
+          /^\s+/.test(lines[index])
+        ) {
           parts.push(lines[index].trim());
           index += 1;
         }
@@ -420,38 +555,58 @@ const renderMarkdown = (markdown, documents, currentDocument) => {
 
       const tag = ordered ? "ol" : "ul";
       const startAttribute = ordered && start !== 1 ? ` start="${start}"` : "";
-      output.push(`<${tag}${startAttribute}>${items.map((item) => `<li>${renderInline(item, documents, currentDocument)}</li>`).join("")}</${tag}>`);
+      output.push(
+        `<${tag}${startAttribute}>${items.map((item) => `<li>${renderInline(item, documents, currentDocument)}</li>`).join("")}</${tag}>`
+      );
       continue;
     }
 
     const paragraph = [line.trim()];
     index += 1;
-    while (index < lines.length && lines[index].trim() && !startsBlock(lines, index)) {
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !startsBlock(lines, index)
+    ) {
       paragraph.push(lines[index].trim());
       index += 1;
     }
-    output.push(`<p>${renderInline(paragraph.join(" "), documents, currentDocument)}</p>`);
+    output.push(
+      `<p>${renderInline(paragraph.join(" "), documents, currentDocument)}</p>`
+    );
   }
 
   return output.join("\n");
 };
 
 const topNavigation = (documents, current) => {
-  const sections = [...new Map(documents.map((document) => [document.section.order, document.section])).values()];
+  const sections = [
+    ...new Map(
+      documents.map((document) => [document.section.order, document.section])
+    ).values(),
+  ];
   return `
     <nav class="top-navigation" aria-label="Documentation sections">
-      ${sections.map((section) => `
-        <a class="top-navigation-link${section.order === current.section.order ? " is-active" : ""}" href="${pagePath(section.documents[0])}"${section.order === current.section.order ? ' aria-current="page"' : ""}>${htmlEscape(section.label)}</a>`).join("")}
+      ${sections
+        .map(
+          (section) => `
+        <a class="top-navigation-link${section.order === current.section.order ? " is-active" : ""}" href="${pagePath(section.documents[0])}"${section.order === current.section.order ? ' aria-current="page"' : ""}>${htmlEscape(section.label)}</a>`
+        )
+        .join("")}
     </nav>`;
 };
 
 const navigation = (current) => `
   <p class="sidebar-label">${htmlEscape(current.section.label)}</p>
   <nav class="sidebar-nav" aria-label="${htmlEscape(current.section.label)} pages">
-    ${current.section.documents.map((document) => `
+    ${current.section.documents
+      .map(
+        (document) => `
       <a class="sidebar-link${document.relativePath === current.relativePath ? " is-active" : ""}" href="${pagePath(document)}"${document.relativePath === current.relativePath ? ' aria-current="page"' : ""}>
         <span>${htmlEscape(document.title)}</span>
-      </a>`).join("")}
+      </a>`
+      )
+      .join("")}
   </nav>`;
 
 const tableOfContents = (document) => {
@@ -465,7 +620,8 @@ const tableOfContents = (document) => {
 };
 
 const pageTemplate = ({ document, documents, content, staticAssets }) => {
-  const previous = document.section.documents[document.sectionDocumentOrder - 1];
+  const previous =
+    document.section.documents[document.sectionDocumentOrder - 1];
   const next = document.section.documents[document.sectionDocumentOrder + 1];
   const description = document.description || "Documentation for remote.futrx.";
 
@@ -577,26 +733,43 @@ const notFoundTemplate = (staticAssets) => `<!doctype html>
 
 const build = async () => {
   const documents = await readDocuments();
-  if (!documents.length) throw new Error(`No Markdown files found in ${docsDirectory}`);
+  if (!documents.length)
+    throw new Error(`No Markdown files found in ${docsDirectory}`);
 
   await fs.rm(outputDirectory, { recursive: true, force: true });
   await fs.mkdir(outputDirectory, { recursive: true });
   const staticAssets = await writeStaticAssets();
   const docsAssets = await fs.stat(docsAssetsDirectory).catch(() => null);
   if (docsAssets?.isDirectory()) {
-    await fs.cp(docsAssetsDirectory, path.join(outputDirectory, "assets", "docs"), { recursive: true });
+    await fs.cp(
+      docsAssetsDirectory,
+      path.join(outputDirectory, "assets", "docs"),
+      { recursive: true }
+    );
   }
   await fs.mkdir(path.join(outputDirectory, "_source"), { recursive: true });
 
   for (const document of documents) {
     const content = renderMarkdown(document.markdown, documents, document);
     const outputPath = pagePath(document).replace(/^\/|\/$/g, "");
-    const pageDirectory = outputPath ? path.join(outputDirectory, outputPath) : outputDirectory;
-    const sourcePath = path.join(outputDirectory, "_source", document.relativePath);
+    const pageDirectory = outputPath
+      ? path.join(outputDirectory, outputPath)
+      : outputDirectory;
+    const sourcePath = path.join(
+      outputDirectory,
+      "_source",
+      document.relativePath
+    );
     await fs.mkdir(pageDirectory, { recursive: true });
-    await fs.writeFile(path.join(pageDirectory, "index.html"), pageTemplate({ document, documents, content, staticAssets }));
+    await fs.writeFile(
+      path.join(pageDirectory, "index.html"),
+      pageTemplate({ document, documents, content, staticAssets })
+    );
     await fs.mkdir(path.dirname(sourcePath), { recursive: true });
-    await fs.copyFile(path.join(docsDirectory, document.relativePath), sourcePath);
+    await fs.copyFile(
+      path.join(docsDirectory, document.relativePath),
+      sourcePath
+    );
   }
 
   const searchIndex = documents.map((document) => ({
@@ -607,19 +780,43 @@ const build = async () => {
     content: stripMarkdown(document.markdown).slice(0, 24000),
   }));
 
-  await fs.writeFile(path.join(outputDirectory, "search-index.json"), JSON.stringify(searchIndex));
-  await fs.writeFile(path.join(outputDirectory, "404.html"), notFoundTemplate(staticAssets));
-  await fs.writeFile(path.join(outputDirectory, "docs-manifest.json"), JSON.stringify(documents.map((document) => ({
-    section: document.section.label,
-    source: document.relativePath,
-    title: document.title,
-    url: pagePath(document),
-  })), null, 2));
-  await fs.writeFile(path.join(outputDirectory, "robots.txt"), "User-agent: *\nAllow: /\nSitemap: https://docs.remote.futrx.com/sitemap.xml\n");
-  await fs.writeFile(path.join(outputDirectory, "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${documents.map((document) => `<url><loc>https://docs.remote.futrx.com${pagePath(document)}</loc></url>`).join("")}</urlset>\n`);
-  await fs.writeFile(path.join(outputDirectory, "_headers"), `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n\n/assets/*\n  Cache-Control: public, max-age=3600\n`);
+  await fs.writeFile(
+    path.join(outputDirectory, "search-index.json"),
+    JSON.stringify(searchIndex)
+  );
+  await fs.writeFile(
+    path.join(outputDirectory, "404.html"),
+    notFoundTemplate(staticAssets)
+  );
+  await fs.writeFile(
+    path.join(outputDirectory, "docs-manifest.json"),
+    JSON.stringify(
+      documents.map((document) => ({
+        section: document.section.label,
+        source: document.relativePath,
+        title: document.title,
+        url: pagePath(document),
+      })),
+      null,
+      2
+    )
+  );
+  await fs.writeFile(
+    path.join(outputDirectory, "robots.txt"),
+    "User-agent: *\nAllow: /\nSitemap: https://docs.remote.futrx.com/sitemap.xml\n"
+  );
+  await fs.writeFile(
+    path.join(outputDirectory, "sitemap.xml"),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${documents.map((document) => `<url><loc>https://docs.remote.futrx.com${pagePath(document)}</loc></url>`).join("")}</urlset>\n`
+  );
+  await fs.writeFile(
+    path.join(outputDirectory, "_headers"),
+    `/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n\n/assets/*\n  Cache-Control: public, max-age=3600\n`
+  );
 
-  console.log(`Built ${documents.length} Markdown pages into dist/ with assets ${staticAssets.version}`);
+  console.log(
+    `Built ${documents.length} Markdown pages into dist/ with assets ${staticAssets.version}`
+  );
 };
 
 const mimeTypes = {
@@ -636,13 +833,19 @@ const serve = async () => {
   const port = Number(process.env.PORT || 4173);
   const server = createServer(async (request, response) => {
     try {
-      const requestPath = decodeURIComponent(new URL(request.url, `http://${request.headers.host}`).pathname);
+      const requestPath = decodeURIComponent(
+        new URL(request.url, `http://${request.headers.host}`).pathname
+      );
       let filePath = path.join(outputDirectory, requestPath);
       const stat = await fs.stat(filePath).catch(() => null);
       if (stat?.isDirectory()) filePath = path.join(filePath, "index.html");
-      if (!stat && !path.extname(filePath)) filePath = path.join(filePath, "index.html");
+      if (!stat && !path.extname(filePath))
+        filePath = path.join(filePath, "index.html");
       const contents = await fs.readFile(filePath);
-      response.writeHead(200, { "Content-Type": mimeTypes[path.extname(filePath)] || "application/octet-stream" });
+      response.writeHead(200, {
+        "Content-Type":
+          mimeTypes[path.extname(filePath)] || "application/octet-stream",
+      });
       response.end(contents);
     } catch {
       response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
@@ -650,7 +853,9 @@ const serve = async () => {
     }
   });
 
-  server.listen(port, "127.0.0.1", () => console.log(`Local: http://localhost:${port}/`));
+  server.listen(port, "127.0.0.1", () =>
+    console.log(`Local: http://localhost:${port}/`)
+  );
 
   let rebuildTimer;
   const scheduleBuild = () => {
@@ -663,9 +868,17 @@ const serve = async () => {
 
 const testMarkdownRenderer = () => {
   const testSection = { slug: "", documents: [] };
-  const testDocuments = [{ filename: "guide.md", relativePath: "guide.md", slug: "guide", section: testSection }];
+  const testDocuments = [
+    {
+      filename: "guide.md",
+      relativePath: "guide.md",
+      slug: "guide",
+      section: testSection,
+    },
+  ];
   testSection.documents = testDocuments;
-  const rendered = renderMarkdown(`# Hello world
+  const rendered = renderMarkdown(
+    `# Hello world
 
 Text with \`inline code\`, **strong text**, and a [guide](guide.md).
 
@@ -682,7 +895,10 @@ Text with \`inline code\`, **strong text**, and a [guide](guide.md).
 
 <img src=x onerror=alert("no")>
 
-[Unsafe](javascript:alert)`, testDocuments, testDocuments[0]);
+[Unsafe](javascript:alert)`,
+    testDocuments,
+    testDocuments[0]
+  );
 
   assert.match(rendered, /<h1 id="hello-world">/);
   assert.match(rendered, /<code>inline code<\/code>/);
@@ -690,43 +906,101 @@ Text with \`inline code\`, **strong text**, and a [guide](guide.md).
   assert.match(rendered, /href="\/guide\/"/);
   assert.match(rendered, /<table>/);
   assert.match(rendered, /<ul><li>First<\/li><li>Second<\/li><\/ul>/);
-  assert.match(rendered, /&lt;script&gt;alert\(&quot;no&quot;\)&lt;\/script&gt;/);
+  assert.match(
+    rendered,
+    /&lt;script&gt;alert\(&quot;no&quot;\)&lt;\/script&gt;/
+  );
   assert.match(rendered, /&lt;img src=x onerror=alert\(&quot;no&quot;\)&gt;/);
   assert.match(rendered, /class="disabled-link"/);
   assert.doesNotMatch(rendered, /<script>|<img src=x/);
 
-  const media = renderMarkdown(`![Remote workspace](/assets/docs/workspace.png "An isolated Remote workspace")
+  const media = renderMarkdown(
+    `![Remote workspace](/assets/docs/workspace.png "An isolated Remote workspace")
 
-[Private source](${privateRepositoryUrl}/blob/main/README.md)`, testDocuments, testDocuments[0]);
+[Private source](${privateRepositoryUrl}/blob/main/README.md)`,
+    testDocuments,
+    testDocuments[0]
+  );
   assert.match(media, /<figure class="doc-figure">/);
   assert.match(media, /src="\/assets\/docs\/workspace\.png"/);
   assert.match(media, /<figcaption>An isolated Remote workspace<\/figcaption>/);
   assert.match(media, /<span class="disabled-link"/);
-  assert.doesNotMatch(media, /href="https:\/\/github\.com\/futrx-com\/remote\.futrx\.com/);
+  assert.doesNotMatch(
+    media,
+    /href="https:\/\/github\.com\/futrx-com\/remote\.futrx\.com/
+  );
 
-  const nestedDocument = { ...testDocuments[0], relativePath: "01-overview/guide.md" };
-  const relativeMedia = renderMarkdown(`![Preview](../assets/screenshots/preview.webp "Live preview")
+  const nestedDocument = {
+    ...testDocuments[0],
+    relativePath: "01-overview/guide.md",
+  };
+  const relativeMedia = renderMarkdown(
+    `![Preview](../assets/screenshots/preview.webp "Live preview")
 
-[Architecture](../../ARCHITECTURE.md)`, testDocuments, nestedDocument);
-  assert.match(relativeMedia, /src="\/assets\/docs\/screenshots\/preview\.webp"/);
-  assert.match(relativeMedia, /<span class="disabled-link"[^>]*>Architecture<\/span>/);
+[Architecture](../../ARCHITECTURE.md)`,
+    testDocuments,
+    nestedDocument
+  );
+  assert.match(
+    relativeMedia,
+    /src="\/assets\/docs\/screenshots\/preview\.webp"/
+  );
+  assert.match(
+    relativeMedia,
+    /<span class="disabled-link"[^>]*>Architecture<\/span>/
+  );
   console.log("Markdown renderer tests passed");
 };
 
 const testDocumentModel = async () => {
   const documents = await readDocuments();
   const homeDocument = documents.find((document) => document.isSiteHome);
-  const sections = [...new Map(documents.map((document) => [document.section.order, document.section])).values()];
+  const sections = [
+    ...new Map(
+      documents.map((document) => [document.section.order, document.section])
+    ).values(),
+  ];
 
   assert.equal(homeDocument?.relativePath, homeDocumentPath);
   assert.equal(pagePath(homeDocument), "/");
-  assert.equal(sections.filter((section) => section.label === "Overview").length, 1);
-  assert.equal(documents.find((document) => document.relativePath === "known-limitations.md") && pagePath(documents.find((document) => document.relativePath === "known-limitations.md")), "/known-limitations/");
-  assert.equal(documents.some((document) => document.relativePath.startsWith("codex-analysis/")), false);
-  assert.equal(documents.some((document) => document.relativePath.startsWith("fable-analysis/")), false);
+  assert.equal(
+    sections.filter((section) => section.label === "Overview").length,
+    1
+  );
+  assert.equal(
+    documents.find(
+      (document) => document.relativePath === "known-limitations.md"
+    ) &&
+      pagePath(
+        documents.find(
+          (document) => document.relativePath === "known-limitations.md"
+        )
+      ),
+    "/known-limitations/"
+  );
+  assert.equal(
+    documents.some((document) =>
+      document.relativePath.startsWith("codex-analysis/")
+    ),
+    false
+  );
+  assert.equal(
+    documents.some((document) =>
+      document.relativePath.startsWith("fable-analysis/")
+    ),
+    false
+  );
 
-  const staticAssets = { stylesheet: "/assets/site.test.css", script: "/assets/site.test.js" };
-  const homeHtml = pageTemplate({ document: homeDocument, documents, content: "", staticAssets });
+  const staticAssets = {
+    stylesheet: "/assets/site.test.css",
+    script: "/assets/site.test.js",
+  };
+  const homeHtml = pageTemplate({
+    document: homeDocument,
+    documents,
+    content: "",
+    staticAssets,
+  });
   const notFoundHtml = notFoundTemplate(staticAssets);
   for (const html of [homeHtml, notFoundHtml]) {
     assert.match(html, /href="https:\/\/remote\.futrx\.com\/"/);

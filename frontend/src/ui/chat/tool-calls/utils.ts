@@ -6,5 +6,8 @@ export function shortPath(path: string | undefined): string {
 
 export function truncate(value: string, max: number): string {
   if (value.length <= max) return value;
-  return value.slice(0, max) + `\n\n... (${value.length - max} more characters truncated)`;
+  return (
+    value.slice(0, max) +
+    `\n\n... (${value.length - max} more characters truncated)`
+  );
 }

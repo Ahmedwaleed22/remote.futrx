@@ -12,8 +12,5 @@ export const projectSecretsApi = {
     }),
 
   deleteSecret: (id: string, key: string) =>
-    requestJson<{ ok: boolean }>(
-      "DELETE",
-      API_ROUTES.projects.secret(id, key)
-    ),
+    requestJson<{ ok: boolean }>("DELETE", API_ROUTES.projects.secret(id, key)),
 };

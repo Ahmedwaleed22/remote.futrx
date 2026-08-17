@@ -8,7 +8,7 @@ export default {
       colors: {
         // Neutral Codex-style dark palette, named so components read clearly.
         ink: {
-          50:  "#f4f4f5",
+          50: "#f4f4f5",
           100: "#e4e4e7",
           200: "#c7c7cc",
           300: "#9b9ba3",
@@ -20,17 +20,17 @@ export default {
           900: "#0f1014",
         },
         accent: {
-          blue:   "#8ab4ff",
-          green:  "#7bd88f",
-          red:    "#ff7b72",
+          blue: "#8ab4ff",
+          green: "#7bd88f",
+          red: "#ff7b72",
           yellow: "#e2b86d",
           orange: "#f0a45d",
           purple: "#b8a8ff",
         },
       },
       fontFamily: {
-        mono: ['ui-monospace', '"SF Mono"', 'Menlo', 'Consolas', 'monospace'],
-        sans: ['-apple-system', 'system-ui', '"Segoe UI"', 'sans-serif'],
+        mono: ["ui-monospace", '"SF Mono"', "Menlo", "Consolas", "monospace"],
+        sans: ["-apple-system", "system-ui", '"Segoe UI"', "sans-serif"],
       },
       animation: {
         "pulse-fast": "pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite",

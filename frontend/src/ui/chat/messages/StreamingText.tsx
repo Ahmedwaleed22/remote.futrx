@@ -17,7 +17,9 @@ interface Props {
 // • When `streaming` flips false, snap to the full text immediately.
 // • For history replay (mounted with streaming=false), render instantly.
 export function StreamingText({ text, streaming, chatId, cwd }: Props) {
-  const [displayed, setDisplayed] = useState<string>(() => (streaming ? "" : text));
+  const [displayed, setDisplayed] = useState<string>(() =>
+    streaming ? "" : text
+  );
   const targetRef = useRef(text);
   targetRef.current = text;
 
@@ -57,7 +59,9 @@ export function StreamingText({ text, streaming, chatId, cwd }: Props) {
       {streaming ? (
         <div class="whitespace-pre-wrap break-words">{displayed}</div>
       ) : (
-        <Markdown chatId={chatId} cwd={cwd}>{displayed}</Markdown>
+        <Markdown chatId={chatId} cwd={cwd}>
+          {displayed}
+        </Markdown>
       )}
       {showCaret && (
         <span

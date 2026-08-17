@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { displayPath, isDeletedFile, isNewFile, parseUnifiedDiff } from "./diffModel.ts";
+import {
+  displayPath,
+  isDeletedFile,
+  isNewFile,
+  parseUnifiedDiff,
+} from "./diffModel.ts";
 
 const sample = [
   "commit abc123",
@@ -14,9 +19,9 @@ const sample = [
   "+++ b/src/app.ts",
   "@@ -1,3 +1,4 @@",
   " const a = 1;",
-  "-console.log(\"hi\");",
-  "+console.log(\"hello\");",
-  "+console.log(\"world\");",
+  '-console.log("hi");',
+  '+console.log("hello");',
+  '+console.log("world");',
   " export {};",
   "diff --git a/assets/logo.png b/assets/logo.png",
   "Binary files a/assets/logo.png and b/assets/logo.png differ",
@@ -56,13 +61,15 @@ test("parseUnifiedDiff tracks line numbers through a hunk", () => {
       ["add", null, 2],
       ["add", null, 3],
       ["context", 3, 4],
-    ],
+    ]
   );
 });
 
 test("parseUnifiedDiff keeps no-newline markers as meta lines", () => {
   const files = parseUnifiedDiff(sample);
-  const markers = files[2].hunks[0].lines.filter((line) => line.kind === "meta");
+  const markers = files[2].hunks[0].lines.filter(
+    (line) => line.kind === "meta"
+  );
   assert.equal(markers.length, 1);
   assert.match(markers[0].text, /No newline/);
 });
@@ -73,12 +80,25 @@ test("parseUnifiedDiff handles empty input", () => {
 
 test("displayPath marks renames and resolves added/deleted files", () => {
   const renamed = parseUnifiedDiff(
-    ["diff --git a/old.ts b/new.ts", "--- a/old.ts", "+++ b/new.ts", "@@ -1 +1 @@", "-a", "+b"].join("\n"),
+    [
+      "diff --git a/old.ts b/new.ts",
+      "--- a/old.ts",
+      "+++ b/new.ts",
+      "@@ -1 +1 @@",
+      "-a",
+      "+b",
+    ].join("\n")
   )[0];
   assert.equal(displayPath(renamed), "old.ts → new.ts");
 
   const added = parseUnifiedDiff(
-    ["diff --git a/x.md b/x.md", "--- /dev/null", "+++ b/x.md", "@@ -0,0 +1 @@", "+hi"].join("\n"),
+    [
+      "diff --git a/x.md b/x.md",
+      "--- /dev/null",
+      "+++ b/x.md",
+      "@@ -0,0 +1 @@",
+      "+hi",
+    ].join("\n")
   )[0];
   assert.equal(displayPath(added), "x.md");
 });

@@ -1,6 +1,12 @@
 import type { ComponentChildren } from "preact";
 import { createContext } from "preact";
-import { useCallback, useContext, useEffect, useMemo, useState } from "preact/hooks";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "preact/hooks";
 import { useAuthContext } from "./AuthContext";
 import {
   type AppearanceTheme,
@@ -21,9 +27,15 @@ interface UserSettingsContextValue {
   setChatSettings: (chat: Partial<ChatSettings>) => Promise<void>;
 }
 
-const UserSettingsContext = createContext<UserSettingsContextValue | null>(null);
+const UserSettingsContext = createContext<UserSettingsContextValue | null>(
+  null
+);
 
-export function UserSettingsProvider({ children }: { children: ComponentChildren }) {
+export function UserSettingsProvider({
+  children,
+}: {
+  children: ComponentChildren;
+}) {
   const { gateOpen } = useAuthContext();
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
   const [loading, setLoading] = useState(false);
@@ -58,45 +70,57 @@ export function UserSettingsProvider({ children }: { children: ComponentChildren
     return appearanceThemeState.observeSystemChanges(settings.appearance.theme);
   }, [settings.appearance.theme]);
 
-  const setTheme = useCallback(async (theme: AppearanceTheme) => {
-    const previous = settings;
-    setSettings({ ...settings, appearance: { ...settings.appearance, theme } });
-    setSaving(true);
-    try {
-      setSettings(await settingsApi.update({ appearance: { theme } }));
-      setError(null);
-    } catch (e) {
-      setSettings(previous);
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }, [settings]);
+  const setTheme = useCallback(
+    async (theme: AppearanceTheme) => {
+      const previous = settings;
+      setSettings({
+        ...settings,
+        appearance: { ...settings.appearance, theme },
+      });
+      setSaving(true);
+      try {
+        setSettings(await settingsApi.update({ appearance: { theme } }));
+        setError(null);
+      } catch (e) {
+        setSettings(previous);
+        setError((e as Error).message);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [settings]
+  );
 
-  const setChatSettings = useCallback(async (chat: Partial<ChatSettings>) => {
-    const previous = settings;
-    setSettings({ ...settings, chat: { ...settings.chat, ...chat } });
-    setSaving(true);
-    try {
-      setSettings(await settingsApi.update({ chat }));
-      setError(null);
-    } catch (e) {
-      setSettings(previous);
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }, [settings]);
+  const setChatSettings = useCallback(
+    async (chat: Partial<ChatSettings>) => {
+      const previous = settings;
+      setSettings({ ...settings, chat: { ...settings.chat, ...chat } });
+      setSaving(true);
+      try {
+        setSettings(await settingsApi.update({ chat }));
+        setError(null);
+      } catch (e) {
+        setSettings(previous);
+        setError((e as Error).message);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [settings]
+  );
 
-  const value = useMemo<UserSettingsContextValue>(() => ({
-    settings,
-    loading,
-    saving,
-    error,
-    refresh,
-    setTheme,
-    setChatSettings,
-  }), [settings, loading, saving, error, refresh, setTheme, setChatSettings]);
+  const value = useMemo<UserSettingsContextValue>(
+    () => ({
+      settings,
+      loading,
+      saving,
+      error,
+      refresh,
+      setTheme,
+      setChatSettings,
+    }),
+    [settings, loading, saving, error, refresh, setTheme, setChatSettings]
+  );
 
   return (
     <UserSettingsContext.Provider value={value}>
@@ -107,6 +131,9 @@ export function UserSettingsProvider({ children }: { children: ComponentChildren
 
 export function useUserSettingsContext(): UserSettingsContextValue {
   const value = useContext(UserSettingsContext);
-  if (!value) throw new Error("useUserSettingsContext must be used inside UserSettingsProvider");
+  if (!value)
+    throw new Error(
+      "useUserSettingsContext must be used inside UserSettingsProvider"
+    );
   return value;
 }

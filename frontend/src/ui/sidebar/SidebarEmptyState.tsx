@@ -1,6 +1,10 @@
 import { Folder, Plus, Search } from "../primitives/icons";
 
-export function SidebarEmptyState({ onNewProject }: { onNewProject: () => void }) {
+export function SidebarEmptyState({
+  onNewProject,
+}: {
+  onNewProject: () => void;
+}) {
   return (
     <div class="mx-2 rounded-lg border border-dashed border-white/[0.12] bg-white/[0.03] text-center text-ink-300 text-sm py-8 px-4">
       <Folder class="w-8 h-8 mx-auto mb-3 opacity-50" />

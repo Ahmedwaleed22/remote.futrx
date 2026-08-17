@@ -26,7 +26,8 @@ export const TERMINAL_THEME: ITheme = {
 export const TERMINAL_OPTIONS: ITerminalOptions = {
   cursorBlink: true,
   convertEol: true,
-  fontFamily: "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace",
+  fontFamily:
+    "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace",
   fontSize: 13,
   lineHeight: 1.18,
   scrollback: 6_000,

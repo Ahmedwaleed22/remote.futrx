@@ -39,8 +39,12 @@ export function FileManagerDrawer({
             <Folder class="w-4 h-4 text-accent-blue" />
           </div>
           <div class="min-w-0 flex-1">
-            <h2 class="truncate text-[15px] md:text-base font-semibold text-ink-50">Files</h2>
-            <div class="truncate text-[12px] text-ink-300 font-mono">{subtitle}</div>
+            <h2 class="truncate text-[15px] md:text-base font-semibold text-ink-50">
+              Files
+            </h2>
+            <div class="truncate text-[12px] text-ink-300 font-mono">
+              {subtitle}
+            </div>
           </div>
           <button
             type="button"
@@ -50,7 +54,11 @@ export function FileManagerDrawer({
             title="Refresh"
             aria-label="Refresh files"
           >
-            {files.rootLoading ? <Loader class="w-4 h-4 animate-spin" /> : <RotateCcw class="w-4 h-4" />}
+            {files.rootLoading ? (
+              <Loader class="w-4 h-4 animate-spin" />
+            ) : (
+              <RotateCcw class="w-4 h-4" />
+            )}
           </button>
           <button
             type="button"
@@ -70,7 +78,9 @@ export function FileManagerDrawer({
             <input
               type="text"
               value={files.query}
-              onInput={(event) => files.setQuery((event.currentTarget as HTMLInputElement).value)}
+              onInput={(event) =>
+                files.setQuery((event.currentTarget as HTMLInputElement).value)
+              }
               placeholder="Search all files..."
               class="h-8 w-full bg-[#0b0d11] border border-white/10 rounded-md pl-8 pr-8 text-[13px] text-ink-100
                      placeholder:text-ink-500 focus:outline-none focus:border-accent-blue/60"
@@ -82,7 +92,11 @@ export function FileManagerDrawer({
                 class="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 grid place-items-center rounded text-ink-400 hover:text-ink-100"
                 aria-label="Clear search"
               >
-                {files.searching ? <Loader class="w-3.5 h-3.5 animate-spin" /> : <X class="w-3.5 h-3.5" />}
+                {files.searching ? (
+                  <Loader class="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <X class="w-3.5 h-3.5" />
+                )}
               </button>
             )}
           </div>
@@ -135,11 +149,14 @@ function BrowseView({
       )}
       {anyTruncated && (
         <div class="mb-3 text-[12px] text-amber-300/90 bg-amber-400/10 border border-amber-400/25 rounded-md px-3 py-2">
-          A folder was large and its listing was truncated. Use search or download the folder as a zip to get everything.
+          A folder was large and its listing was truncated. Use search or
+          download the folder as a zip to get everything.
         </div>
       )}
       {!rootLoading && !rootError && rootEntries.length === 0 ? (
-        <div class="text-[13px] text-ink-400 px-2 py-2">This workspace is empty.</div>
+        <div class="text-[13px] text-ink-400 px-2 py-2">
+          This workspace is empty.
+        </div>
       ) : (
         <FileTreeNodes nodes={rootEntries} depth={0} state={treeState} />
       )}
@@ -179,7 +196,12 @@ function SearchView({
       ) : (
         <ul>
           {results.map((node) => (
-            <SearchResultRow key={node.path} node={node} downloadUrl={downloadUrl} onOpen={onOpen} />
+            <SearchResultRow
+              key={node.path}
+              node={node}
+              downloadUrl={downloadUrl}
+              onOpen={onOpen}
+            />
           ))}
         </ul>
       )}

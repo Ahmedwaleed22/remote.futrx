@@ -1,6 +1,15 @@
 import type { ContainerApp } from "../../../models/project";
 import type { AgentBrowserStatus } from "../../../models/project";
-import { Crosshair, ExternalLink, Key, Loader, Monitor, RotateCcw, Square, X } from "../../primitives/icons";
+import {
+  Crosshair,
+  ExternalLink,
+  Key,
+  Loader,
+  Monitor,
+  RotateCcw,
+  Square,
+  X,
+} from "../../primitives/icons";
 
 const guiStatusLabel: Record<AgentBrowserStatus, string> = {
   idle: "off",
@@ -56,7 +65,9 @@ export function BrowserDrawerHeader({
           </h2>
           <span
             class={`h-2 w-2 rounded-full flex-none ${
-              (guiMode ? guiStatus === "ready" : canLoad) ? "bg-accent-green" : "bg-ink-400"
+              (guiMode ? guiStatus === "ready" : canLoad)
+                ? "bg-accent-green"
+                : "bg-ink-400"
             }`}
           />
         </div>
@@ -75,7 +86,11 @@ export function BrowserDrawerHeader({
             title={url || "Pick a running app"}
           >
             {apps.map((app) => (
-              <option key={app.port} value={app.port} class="bg-[#191a1f] text-ink-100">
+              <option
+                key={app.port}
+                value={app.port}
+                class="bg-[#191a1f] text-ink-100"
+              >
                 {appLabel(app)}
               </option>
             ))}
@@ -96,9 +111,11 @@ export function BrowserDrawerHeader({
           type="button"
           onClick={onToggleGuiMode}
           class={`h-9 w-9 flex-none rounded-md border grid place-items-center
-                  ${guiMode
-                    ? "bg-accent-blue/[0.18] border-accent-blue/35 text-accent-blue"
-                    : "bg-white/5 hover:bg-white/[0.09] border-white/10 text-ink-200"}`}
+                  ${
+                    guiMode
+                      ? "bg-accent-blue/[0.18] border-accent-blue/35 text-accent-blue"
+                      : "bg-white/5 hover:bg-white/[0.09] border-white/10 text-ink-200"
+                  }`}
           title="Agent browser — log into a site and let the agent drive it"
           aria-label="Toggle agent browser"
           aria-pressed={guiMode}
@@ -125,9 +142,11 @@ export function BrowserDrawerHeader({
             onClick={onToggleInspectMode}
             disabled={!canLoad}
             class={`h-9 w-9 flex-none rounded-md border grid place-items-center disabled:opacity-50 disabled:cursor-not-allowed
-                    ${inspectMode
-                      ? "bg-accent-blue/[0.18] border-accent-blue/35 text-accent-blue"
-                      : "bg-white/5 hover:bg-white/[0.09] border-white/10 text-ink-200"}`}
+                    ${
+                      inspectMode
+                        ? "bg-accent-blue/[0.18] border-accent-blue/35 text-accent-blue"
+                        : "bg-white/5 hover:bg-white/[0.09] border-white/10 text-ink-200"
+                    }`}
             title="Inspect element"
             aria-label="Inspect element"
             aria-pressed={inspectMode}
@@ -141,10 +160,22 @@ export function BrowserDrawerHeader({
           onClick={onRefresh}
           disabled={guiMode ? guiStatus !== "ready" : appsLoading}
           class="h-9 w-9 flex-none rounded-md bg-white/5 hover:bg-white/[0.09] border border-white/10 text-ink-200 grid place-items-center disabled:opacity-50 disabled:cursor-wait"
-          title={guiMode ? "Reload the agent browser" : "Refresh apps and reload preview"}
-          aria-label={guiMode ? "Reload the agent browser" : "Refresh apps and reload preview"}
+          title={
+            guiMode
+              ? "Reload the agent browser"
+              : "Refresh apps and reload preview"
+          }
+          aria-label={
+            guiMode
+              ? "Reload the agent browser"
+              : "Refresh apps and reload preview"
+          }
         >
-          {appsLoading && !guiMode ? <Loader class="w-4 h-4 animate-spin" /> : <RotateCcw class="w-4 h-4" />}
+          {appsLoading && !guiMode ? (
+            <Loader class="w-4 h-4 animate-spin" />
+          ) : (
+            <RotateCcw class="w-4 h-4" />
+          )}
         </button>
 
         {!guiMode && (

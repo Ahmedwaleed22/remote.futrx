@@ -12,7 +12,9 @@ export function AccountFooter({
       <div class="w-9 h-9 rounded-md bg-accent-green/15 text-accent-green grid place-items-center font-semibold flex-none">
         {(email[0] || "?").toUpperCase()}
       </div>
-      <span class="flex-1 min-w-0 truncate text-ink-200" title={email}>{email}</span>
+      <span class="flex-1 min-w-0 truncate text-ink-200" title={email}>
+        {email}
+      </span>
       {onOpenSettings && (
         <button
           type="button"

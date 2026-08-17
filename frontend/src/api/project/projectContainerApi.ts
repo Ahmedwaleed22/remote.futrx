@@ -17,10 +17,7 @@ export const projectContainerApi = {
     requestJson<ProjectMeta>("POST", API_ROUTES.projects.restart(id), {}),
 
   fetchContainerInfo: (id: string) =>
-    requestJson<ProjectContainerInfo>(
-      "GET",
-      API_ROUTES.projects.container(id)
-    ),
+    requestJson<ProjectContainerInfo>("GET", API_ROUTES.projects.container(id)),
 
   setContainerLimits: (id: string, limits: ContainerLimits) =>
     requestJson<ProjectContainerInfo>(

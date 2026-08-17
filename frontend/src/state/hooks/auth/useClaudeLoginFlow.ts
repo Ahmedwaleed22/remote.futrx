@@ -16,7 +16,10 @@ export function useClaudeLoginFlow(onDone: () => void) {
 
   useEffect(() => {
     return () => {
-      if (phaseRef.current === "starting" || phaseRef.current === "awaiting-code") {
+      if (
+        phaseRef.current === "starting" ||
+        phaseRef.current === "awaiting-code"
+      ) {
         claudeAuthApi.cancelLogin().catch(() => {});
       }
     };

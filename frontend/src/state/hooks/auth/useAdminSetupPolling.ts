@@ -4,7 +4,7 @@ const adminSetupPollIntervalMs = 3_000;
 
 export function useAdminSetupPolling(
   refresh: () => Promise<void>,
-  enabled: boolean,
+  enabled: boolean
 ) {
   useEffect(() => {
     if (!enabled) return;
@@ -17,7 +17,8 @@ export function useAdminSetupPolling(
       } catch {
         // A transient request failure should not stop setup discovery.
       } finally {
-        if (!cancelled) timer = window.setTimeout(poll, adminSetupPollIntervalMs);
+        if (!cancelled)
+          timer = window.setTimeout(poll, adminSetupPollIntervalMs);
       }
     };
 

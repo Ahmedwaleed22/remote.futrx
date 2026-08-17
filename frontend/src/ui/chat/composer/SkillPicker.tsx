@@ -44,7 +44,9 @@ export function SkillPicker({
     const term = query.trim().toLowerCase();
     if (!term) return skills;
     return skills.filter((skill) =>
-      `${skill.name} ${skill.description || ""} ${skill.source || ""}`.toLowerCase().includes(term)
+      `${skill.name} ${skill.description || ""} ${skill.source || ""}`
+        .toLowerCase()
+        .includes(term)
     );
   }, [query, skills]);
 
@@ -57,7 +59,10 @@ export function SkillPicker({
   const providerLabel = provider === "codex" ? "Codex" : "Claude";
 
   return (
-    <div ref={rootRef} class="codex-skill-control-root relative w-[130px] flex-none sm:w-[148px]">
+    <div
+      ref={rootRef}
+      class="codex-skill-control-root relative w-[130px] flex-none sm:w-[148px]"
+    >
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -73,7 +78,11 @@ export function SkillPicker({
         </span>
         <span class="inline-flex flex-none items-center gap-1">
           <span class="rounded bg-white/10 px-1 py-0.5 text-[10px] leading-none text-ink-300">
-            {selectedCount > 0 ? selectedCount : loading ? "..." : skills.length}
+            {selectedCount > 0
+              ? selectedCount
+              : loading
+                ? "..."
+                : skills.length}
           </span>
           <ChevronDown class="h-3 w-3 flex-none" />
         </span>
@@ -90,7 +99,9 @@ export function SkillPicker({
               <input
                 ref={searchRef}
                 value={query}
-                onInput={(event) => setQuery((event.currentTarget as HTMLInputElement).value)}
+                onInput={(event) =>
+                  setQuery((event.currentTarget as HTMLInputElement).value)
+                }
                 class="min-w-0 flex-1 bg-transparent text-[13px] text-ink-100 placeholder:text-ink-500 focus:outline-none"
                 placeholder={`Search ${providerLabel} skills`}
               />
@@ -101,10 +112,14 @@ export function SkillPicker({
             {error ? (
               <div class="px-3 py-3 text-[12px] text-red-300">{error}</div>
             ) : loading ? (
-              <div class="px-3 py-3 text-[12px] text-ink-400">Loading skills...</div>
+              <div class="px-3 py-3 text-[12px] text-ink-400">
+                Loading skills...
+              </div>
             ) : filteredSkills.length === 0 ? (
               <div class="px-3 py-3 text-[12px] text-ink-400">
-                {skills.length === 0 ? `No ${providerLabel} skills registered` : "No matching skills"}
+                {skills.length === 0
+                  ? `No ${providerLabel} skills registered`
+                  : "No matching skills"}
               </div>
             ) : (
               filteredSkills.map((skill) => (
@@ -116,7 +131,9 @@ export function SkillPicker({
                   role="option"
                 >
                   <div class="flex items-center gap-2 min-w-0">
-                    <span class="truncate text-[13px] font-medium text-ink-100">{skill.name}</span>
+                    <span class="truncate text-[13px] font-medium text-ink-100">
+                      {skill.name}
+                    </span>
                     {skill.source && (
                       <span class="flex-none rounded bg-white/[0.08] px-1.5 py-0.5 text-[10px] uppercase text-ink-400">
                         {skill.source}

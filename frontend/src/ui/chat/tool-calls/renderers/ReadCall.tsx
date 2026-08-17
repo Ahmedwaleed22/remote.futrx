@@ -4,12 +4,22 @@ import { CodeBlock } from "../CodeBlock";
 import { ToolShell } from "../ToolShell";
 import { shortPath, truncate } from "../utils";
 
-export function ReadCall({ input, output, status, isError }: Omit<ToolCallProps, "name">) {
+export function ReadCall({
+  input,
+  output,
+  status,
+  isError,
+}: Omit<ToolCallProps, "name">) {
   const path = (input?.file_path as string) ?? "";
   return (
     <ToolShell
       icon={<File class="w-4 h-4" />}
-      label={<><span class="text-ink-300">Read</span> <span class="font-mono">{shortPath(path)}</span></>}
+      label={
+        <>
+          <span class="text-ink-300">Read</span>{" "}
+          <span class="font-mono">{shortPath(path)}</span>
+        </>
+      }
       status={status}
       isError={isError}
     >

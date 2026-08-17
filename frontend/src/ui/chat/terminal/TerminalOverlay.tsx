@@ -13,7 +13,9 @@ export function TerminalOverlay({
   open: boolean;
   onClose: () => void;
 }) {
-  const [openedChatId, setOpenedChatId] = useState<string | null>(() => open ? chat.id : null);
+  const [openedChatId, setOpenedChatId] = useState<string | null>(() =>
+    open ? chat.id : null
+  );
   const terminal = useTerminalSession({
     chatId: chat.id,
     enabled: openedChatId === chat.id,
@@ -26,7 +28,7 @@ export function TerminalOverlay({
       setOpenedChatId(chat.id);
       return;
     }
-    setOpenedChatId((current) => current === chat.id ? current : null);
+    setOpenedChatId((current) => (current === chat.id ? current : null));
   }, [chat.id, open]);
 
   useEffect(() => {
@@ -46,10 +48,13 @@ export function TerminalOverlay({
 
   const workspacePath = chat.cwd || "/workspace";
   const statusLabel =
-    terminal.status === "connected" ? "Connected" :
-    terminal.status === "connecting" ? "Connecting" :
-    terminal.status === "error" ? "Error" :
-    "Closed";
+    terminal.status === "connected"
+      ? "Connected"
+      : terminal.status === "connecting"
+        ? "Connecting"
+        : terminal.status === "error"
+          ? "Error"
+          : "Closed";
 
   return (
     <div
@@ -83,7 +88,9 @@ export function TerminalOverlay({
               <h2 class="truncate text-[15px] md:text-base font-semibold text-ink-50">
                 Terminal
               </h2>
-              <span class={`h-2 w-2 rounded-full flex-none ${terminal.status === "connected" ? "bg-accent-green" : "bg-ink-400"}`} />
+              <span
+                class={`h-2 w-2 rounded-full flex-none ${terminal.status === "connected" ? "bg-accent-green" : "bg-ink-400"}`}
+              />
             </div>
             <div class="truncate text-[12px] text-ink-300">
               {statusLabel} - {workspacePath}

@@ -43,27 +43,45 @@ export interface SelectedSkill {
 
 type ChatEventBase = { seq?: number; t: number };
 
-export type ChatEvent = ChatEventBase & (
-  | { type: "user"; text: string }
-  | { type: "assistant_text"; text: string; messageId?: string }
-  | { type: "thinking"; text: string }
-  | { type: "tool_use_start"; id: string; name: string; input: Record<string, unknown> }
-  | { type: "tool_use_end"; id: string; output?: string; isError?: boolean }
-  | { type: "permission_request"; id: string; toolName: string; input: Record<string, unknown> }
-  | { type: "system"; subtype: string; data?: Record<string, unknown> }
-  | { type: "session"; provider?: ChatProvider; claudeSessionId?: string; codexSessionId?: string; kimiSessionId?: string; antigravitySessionId?: string }
-  | {
-      type: "complete";
-      usage?: {
-        input_tokens?: number;
-        output_tokens?: number;
-        cache_read_input_tokens?: number;
-        cache_creation_input_tokens?: number;
-      };
-    }
-  | { type: "error"; message: string }
-  | { type: "sync"; running?: boolean }
-);
+export type ChatEvent = ChatEventBase &
+  (
+    | { type: "user"; text: string }
+    | { type: "assistant_text"; text: string; messageId?: string }
+    | { type: "thinking"; text: string }
+    | {
+        type: "tool_use_start";
+        id: string;
+        name: string;
+        input: Record<string, unknown>;
+      }
+    | { type: "tool_use_end"; id: string; output?: string; isError?: boolean }
+    | {
+        type: "permission_request";
+        id: string;
+        toolName: string;
+        input: Record<string, unknown>;
+      }
+    | { type: "system"; subtype: string; data?: Record<string, unknown> }
+    | {
+        type: "session";
+        provider?: ChatProvider;
+        claudeSessionId?: string;
+        codexSessionId?: string;
+        kimiSessionId?: string;
+        antigravitySessionId?: string;
+      }
+    | {
+        type: "complete";
+        usage?: {
+          input_tokens?: number;
+          output_tokens?: number;
+          cache_read_input_tokens?: number;
+          cache_creation_input_tokens?: number;
+        };
+      }
+    | { type: "error"; message: string }
+    | { type: "sync"; running?: boolean }
+  );
 
 export interface ChatEventPage {
   events: ChatEvent[];

@@ -13,7 +13,10 @@ export function ProviderAuthWaiting({ adminEmail }: { adminEmail?: string }) {
             <div class="text-xs text-ink-300 mt-1.5 leading-relaxed">
               An admin
               {adminEmail ? (
-                <> (<span class="font-mono text-ink-100">{adminEmail}</span>)</>
+                <>
+                  {" "}
+                  (<span class="font-mono text-ink-100">{adminEmail}</span>)
+                </>
               ) : null}{" "}
               must connect Claude, Codex, or Kimi before the workspace opens.
               This page will continue automatically once one is ready.

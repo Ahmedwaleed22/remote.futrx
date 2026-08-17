@@ -10,7 +10,8 @@ export function AdminSetupWaiting({ adminEmail }: { adminEmail?: string }) {
         <div>
           <div class="text-lg font-semibold">Administrator setup required</div>
           <div class="text-xs text-ink-300 mt-1.5 leading-relaxed">
-            The administrator{adminEmail ? ` (${adminEmail})` : ""} must create a local password before the workspace opens.
+            The administrator{adminEmail ? ` (${adminEmail})` : ""} must create
+            a local password before the workspace opens.
           </div>
         </div>
         <div class="flex items-center justify-center gap-2 text-sm text-ink-300">

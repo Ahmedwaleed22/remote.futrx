@@ -48,35 +48,64 @@ function FileCard({ file }: { file: DiffFile }) {
         <span class="min-w-0 flex-1 truncate font-mono text-[12.5px] text-ink-100">
           {displayPath(file)}
         </span>
-        {isNewFile(file) && <FileBadge label="new" tone="text-accent-green border-accent-green/40 bg-accent-green/10" />}
-        {isDeletedFile(file) && <FileBadge label="deleted" tone="text-accent-red border-accent-red/40 bg-accent-red/10" />}
-        {file.binary && <FileBadge label="binary" tone="text-ink-300 border-white/15 bg-white/[0.06]" />}
+        {isNewFile(file) && (
+          <FileBadge
+            label="new"
+            tone="text-accent-green border-accent-green/40 bg-accent-green/10"
+          />
+        )}
+        {isDeletedFile(file) && (
+          <FileBadge
+            label="deleted"
+            tone="text-accent-red border-accent-red/40 bg-accent-red/10"
+          />
+        )}
+        {file.binary && (
+          <FileBadge
+            label="binary"
+            tone="text-ink-300 border-white/15 bg-white/[0.06]"
+          />
+        )}
         {file.additions > 0 && (
-          <span class="flex-none text-[11.5px] font-mono text-accent-green">+{file.additions}</span>
+          <span class="flex-none text-[11.5px] font-mono text-accent-green">
+            +{file.additions}
+          </span>
         )}
         {file.deletions > 0 && (
-          <span class="flex-none text-[11.5px] font-mono text-accent-red">−{file.deletions}</span>
+          <span class="flex-none text-[11.5px] font-mono text-accent-red">
+            −{file.deletions}
+          </span>
         )}
       </button>
 
       {!collapsed && (
         <div class="overflow-x-auto touch-scroll">
           {file.binary ? (
-            <div class="px-3 py-2 text-[12px] text-ink-400">Binary file — no text diff.</div>
+            <div class="px-3 py-2 text-[12px] text-ink-400">
+              Binary file — no text diff.
+            </div>
           ) : file.hunks.length === 0 ? (
-            <div class="px-3 py-2 text-[12px] text-ink-400">No content changes (mode or rename only).</div>
+            <div class="px-3 py-2 text-[12px] text-ink-400">
+              No content changes (mode or rename only).
+            </div>
           ) : (
             <table class="w-full border-collapse font-mono text-[12px] leading-5">
               <tbody>
                 {file.hunks.map((hunk, hunkIndex) => (
                   <>
                     <tr key={`h-${hunkIndex}`}>
-                      <td colSpan={3} class="px-3 py-1 bg-accent-blue/[0.08] text-accent-blue/90 text-[11.5px] whitespace-pre border-y border-white/[0.06]">
+                      <td
+                        colSpan={3}
+                        class="px-3 py-1 bg-accent-blue/[0.08] text-accent-blue/90 text-[11.5px] whitespace-pre border-y border-white/[0.06]"
+                      >
                         {hunk.header}
                       </td>
                     </tr>
                     {hunk.lines.map((line, lineIndex) => (
-                      <DiffRow key={`l-${hunkIndex}-${lineIndex}`} line={line} />
+                      <DiffRow
+                        key={`l-${hunkIndex}-${lineIndex}`}
+                        line={line}
+                      />
                     ))}
                   </>
                 ))}
@@ -118,7 +147,9 @@ function DiffRow({ line }: { line: DiffLine }) {
 
 function FileBadge({ label, tone }: { label: string; tone: string }) {
   return (
-    <span class={`flex-none rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${tone}`}>
+    <span
+      class={`flex-none rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${tone}`}
+    >
       {label}
     </span>
   );

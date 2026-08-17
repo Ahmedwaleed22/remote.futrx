@@ -8,14 +8,12 @@ import type { ChatUsageTotals } from "../../models/chatUsage";
 
 type AssistantToolPart = Extract<AssistantMessagePart, { kind: "tool" }>;
 
-type Usage =
-  | {
-      input_tokens?: number;
-      output_tokens?: number;
-      cache_read_input_tokens?: number;
-      cache_creation_input_tokens?: number;
-    }
-  | null;
+type Usage = {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
+} | null;
 
 const EMPTY_USAGE_TOTALS: ChatUsageTotals = {
   inputTokens: 0,
@@ -107,7 +105,9 @@ class ChatEventStateProjector {
       merged.push(event);
       if (event.seq) seenSequences.add(event.seq);
     }
-    return merged.sort((left, right) => this.eventOrder(left) - this.eventOrder(right));
+    return merged.sort(
+      (left, right) => this.eventOrder(left) - this.eventOrder(right)
+    );
   }
 
   private eventOrder(event: ChatEvent): number {
@@ -118,43 +118,62 @@ class ChatEventStateProjector {
     if (event.type !== "complete" || !event.usage) return totals;
 
     try {
-      const usage = (typeof event.usage === "string" ? JSON.parse(event.usage) : event.usage) as Usage;
+      const usage = (
+        typeof event.usage === "string" ? JSON.parse(event.usage) : event.usage
+      ) as Usage;
       if (!usage) return totals;
       return {
         inputTokens: totals.inputTokens + (usage.input_tokens ?? 0),
         outputTokens: totals.outputTokens + (usage.output_tokens ?? 0),
-        cacheReadTokens: totals.cacheReadTokens + (usage.cache_read_input_tokens ?? 0),
-        cacheWriteTokens: totals.cacheWriteTokens + (usage.cache_creation_input_tokens ?? 0),
+        cacheReadTokens:
+          totals.cacheReadTokens + (usage.cache_read_input_tokens ?? 0),
+        cacheWriteTokens:
+          totals.cacheWriteTokens + (usage.cache_creation_input_tokens ?? 0),
       };
     } catch {
       return totals;
     }
   }
 
-  private appendBlock(blocks: ChatMessageBlock[], event: ChatEvent): ChatMessageBlock[] {
+  private appendBlock(
+    blocks: ChatMessageBlock[],
+    event: ChatEvent
+  ): ChatMessageBlock[] {
     switch (event.type) {
       case "user": {
         const next = this.endTrailingAssistant(blocks);
         return [...next, { type: "user", text: event.text, t: event.t }];
       }
       case "assistant_text": {
-        const { blocks: next, assistant } = this.ensureTrailingAssistant(blocks, event.t);
+        const { blocks: next, assistant } = this.ensureTrailingAssistant(
+          blocks,
+          event.t
+        );
         const lastIndex = assistant.parts.length - 1;
         const last = assistant.parts[lastIndex];
         if (last?.kind === "text") {
-          assistant.parts[lastIndex] = { ...last, text: last.text + event.text };
+          assistant.parts[lastIndex] = {
+            ...last,
+            text: last.text + event.text,
+          };
         } else {
           assistant.parts.push({ kind: "text", text: event.text });
         }
         return next;
       }
       case "thinking": {
-        const { blocks: next, assistant } = this.ensureTrailingAssistant(blocks, event.t);
+        const { blocks: next, assistant } = this.ensureTrailingAssistant(
+          blocks,
+          event.t
+        );
         assistant.parts.push({ kind: "thinking", text: event.text });
         return next;
       }
       case "tool_use_start": {
-        const { blocks: next, assistant } = this.ensureTrailingAssistant(blocks, event.t);
+        const { blocks: next, assistant } = this.ensureTrailingAssistant(
+          blocks,
+          event.t
+        );
         assistant.parts.push({
           kind: "tool",
           id: event.id,
@@ -198,7 +217,10 @@ class ChatEventStateProjector {
     const last = blocks[lastIndex];
     if (last?.type === "assistant" && !last.isComplete) {
       const next = blocks.slice();
-      const assistant: AssistantMessageBlock = { ...last, parts: last.parts.slice() };
+      const assistant: AssistantMessageBlock = {
+        ...last,
+        parts: last.parts.slice(),
+      };
       next[lastIndex] = assistant;
       return { blocks: next, assistant };
     }
@@ -221,7 +243,9 @@ class ChatEventStateProjector {
     const last = blocks[lastIndex];
     if (!last || last.type !== "assistant") return blocks;
 
-    const partIndex = last.parts.findIndex((part) => part.kind === "tool" && part.id === id);
+    const partIndex = last.parts.findIndex(
+      (part) => part.kind === "tool" && part.id === id
+    );
     if (partIndex < 0) return blocks;
     const part = last.parts[partIndex];
     if (part.kind !== "tool") return blocks;

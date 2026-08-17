@@ -30,7 +30,8 @@ export function useThreadScroll(resetKey: string, scrollKey: unknown) {
   function onScroll() {
     const element = scrollRef.current;
     if (!element) return;
-    const nearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 96;
+    const nearBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight < 96;
     userScrolledRef.current = !nearBottom;
     setShowJump((current) => (current === !nearBottom ? current : !nearBottom));
   }

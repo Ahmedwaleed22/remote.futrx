@@ -12,7 +12,9 @@ export function useWorkspaceData(enabled: boolean) {
   useEffect(() => {
     if (!enabled) {
       setChats((current) => workspaceDataProjector.replaceChats([], current));
-      setProjects((current) => workspaceDataProjector.replaceProjects([], current));
+      setProjects((current) =>
+        workspaceDataProjector.replaceProjects([], current)
+      );
       return;
     }
 
@@ -22,22 +24,32 @@ export function useWorkspaceData(enabled: boolean) {
   function applyWorkspaceMessage(message: WorkspaceMessage) {
     switch (message.type) {
       case "workspace.snapshot":
-        setChats((current) => workspaceDataProjector.replaceChats(message.chats, current));
+        setChats((current) =>
+          workspaceDataProjector.replaceChats(message.chats, current)
+        );
         setProjects((current) =>
           workspaceDataProjector.replaceProjects(message.projects, current)
         );
         break;
       case "chat.upsert":
-        setChats((current) => workspaceDataProjector.upsertChat(current, message.chat));
+        setChats((current) =>
+          workspaceDataProjector.upsertChat(current, message.chat)
+        );
         break;
       case "chat.delete":
-        setChats((current) => workspaceDataProjector.removeChat(current, message.id));
+        setChats((current) =>
+          workspaceDataProjector.removeChat(current, message.id)
+        );
         break;
       case "project.upsert":
-        setProjects((current) => workspaceDataProjector.upsertProject(current, message.project));
+        setProjects((current) =>
+          workspaceDataProjector.upsertProject(current, message.project)
+        );
         break;
       case "project.delete":
-        setProjects((current) => workspaceDataProjector.removeProject(current, message.id));
+        setProjects((current) =>
+          workspaceDataProjector.removeProject(current, message.id)
+        );
         break;
     }
   }

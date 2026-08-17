@@ -22,8 +22,8 @@ export function useAskUserQuestion({
   const initialAnswered = useMemo(() => readAnswered(toolUseId), [toolUseId]);
   const [answered, setAnswered] = useState<string | null>(initialAnswered);
   const [page, setPage] = useState(0);
-  const [selections, setSelections] = useState<Record<number, Set<number>>>(() =>
-    createSelectionState(total)
+  const [selections, setSelections] = useState<Record<number, Set<number>>>(
+    () => createSelectionState(total)
   );
   const [other, setOther] = useState<Record<number, string>>({});
   const [otherActive, setOtherActive] = useState<Record<number, boolean>>({});

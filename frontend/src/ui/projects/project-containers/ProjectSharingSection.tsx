@@ -27,17 +27,15 @@ export function ProjectSharingSection({
         onRemove={onRemove}
       />
       <p class="text-[11.5px] text-ink-400 leading-relaxed">
-        Members can use this project — terminal, chats, secrets, uploads, browser. To add someone here they must first appear in the global Users panel (Account &rarr; Users).
+        Members can use this project — terminal, chats, secrets, uploads,
+        browser. To add someone here they must first appear in the global Users
+        panel (Account &rarr; Users).
       </p>
     </>
   );
 }
 
-function AddMemberForm({
-  onAdd,
-}: {
-  onAdd: (email: string) => Promise<void>;
-}) {
+function AddMemberForm({ onAdd }: { onAdd: (email: string) => Promise<void> }) {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -66,12 +64,17 @@ function AddMemberForm({
   };
 
   return (
-    <form onSubmit={submit} class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 space-y-2">
+    <form
+      onSubmit={submit}
+      class="rounded-md border border-white/10 bg-white/[0.03] p-2.5 space-y-2"
+    >
       <div class="grid gap-2 sm:grid-cols-[1fr_auto] items-center">
         <input
           type="email"
           value={email}
-          onInput={(event) => setEmail((event.target as HTMLInputElement).value)}
+          onInput={(event) =>
+            setEmail((event.target as HTMLInputElement).value)
+          }
           placeholder="someone@example.com"
           spellcheck={false}
           autoComplete="off"
@@ -104,7 +107,11 @@ function MembersList({
   return (
     <div class="space-y-2">
       {members.map((member) => (
-        <MemberRow key={member} email={member} onRemove={() => onRemove(member)} />
+        <MemberRow
+          key={member}
+          email={member}
+          onRemove={() => onRemove(member)}
+        />
       ))}
     </div>
   );

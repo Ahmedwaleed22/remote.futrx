@@ -16,7 +16,9 @@ export function useKimiAuth(enabled: boolean): KimiAuthState {
   const [loading, setLoading] = useState(false);
   const [checked, setChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
-  const [deviceLogin, setDeviceLogin] = useState<KimiDeviceLogin | undefined>(undefined);
+  const [deviceLogin, setDeviceLogin] = useState<KimiDeviceLogin | undefined>(
+    undefined
+  );
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

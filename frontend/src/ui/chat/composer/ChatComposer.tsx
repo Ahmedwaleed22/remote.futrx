@@ -14,7 +14,10 @@ import { PromptTextarea } from "./PromptTextarea";
 import { QueuedPromptList } from "./QueuedPromptList";
 import { SelectedSkillChips } from "./SelectedSkillChips";
 import { SendControls } from "./SendControls";
-import type { ComposerPreferenceActions, ComposerPreferences } from "./preferences";
+import type {
+  ComposerPreferenceActions,
+  ComposerPreferences,
+} from "./preferences";
 
 export interface ChatComposerProps {
   projectId?: string;
@@ -67,7 +70,9 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
   const disconnected = !canSendPrompt && !streaming;
-  const hasContent = text.trim().length > 0 || attachments.some((attachment) => attachment.serverPath);
+  const hasContent =
+    text.trim().length > 0 ||
+    attachments.some((attachment) => attachment.serverPath);
   const canSend = !uploading && !disconnected && hasContent;
   const settingsSummary = `${providerDisplayLabel(preferences.provider)} · ${modelDisplayLabel(preferences.model, preferences.provider)}`;
 
@@ -82,8 +87,14 @@ export function ChatComposer({
     <div class="codex-composer-shell flex-none z-20 relative bg-[#0b0d11] border-t border-white/10">
       {dragging && <ComposerDropOverlay />}
 
-      <SelectedSkillChips skills={selectedSkills} onRemove={onRemoveSelectedSkill} />
-      <QueuedPromptList queuedPrompts={queuedPrompts} onRemove={onRemoveQueued} />
+      <SelectedSkillChips
+        skills={selectedSkills}
+        onRemove={onRemoveSelectedSkill}
+      />
+      <QueuedPromptList
+        queuedPrompts={queuedPrompts}
+        onRemove={onRemoveQueued}
+      />
       <AttachmentTray attachments={attachments} onRemove={onRemoveAttachment} />
 
       <div class="codex-composer-card mx-3 my-2 overflow-visible rounded-xl border border-white/10 bg-[#15171c] shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
@@ -120,7 +131,9 @@ export function ChatComposer({
             aria-expanded={mobileSettingsOpen}
           >
             <Settings class="h-3.5 w-3.5 flex-none" aria-hidden="true" />
-            <span class="min-w-0 flex-1 truncate text-[12px] font-semibold">{settingsSummary}</span>
+            <span class="min-w-0 flex-1 truncate text-[12px] font-semibold">
+              {settingsSummary}
+            </span>
             <ChevronDown
               class={`h-3 w-3 flex-none transition-transform ${mobileSettingsOpen ? "rotate-180" : ""}`}
               aria-hidden="true"

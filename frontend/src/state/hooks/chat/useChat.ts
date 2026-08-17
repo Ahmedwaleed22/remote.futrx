@@ -51,7 +51,9 @@ export function useChat(chatId: string): UseChatResult {
   // True once this connection has received its sync event. Until then the run
   // state is unknown (the HTTP snapshot may be stale), so sends are held.
   const [synced, setSynced] = useState(false);
-  const [promptOutcome, setPromptOutcome] = useState<PromptOutcome | null>(null);
+  const [promptOutcome, setPromptOutcome] = useState<PromptOutcome | null>(
+    null
+  );
   const [loadingOlder, setLoadingOlder] = useState(false);
   const streamRef = useRef<ChatStream | null>(null);
   const pendingEventsRef = useRef<ChatEvent[]>([]);
@@ -75,8 +77,12 @@ export function useChat(chatId: string): UseChatResult {
       lastSeqRef.current,
       chatEventStateProjector.latestSequence(events)
     );
-    setRenderState((current) => chatEventStateProjector.append(current, events));
-    setStatus((current) => chatEventStateProjector.statusAfter(events[events.length - 1], current));
+    setRenderState((current) =>
+      chatEventStateProjector.append(current, events)
+    );
+    setStatus((current) =>
+      chatEventStateProjector.statusAfter(events[events.length - 1], current)
+    );
   }
 
   function enqueueEvent(event: ChatEvent) {
@@ -125,7 +131,9 @@ export function useChat(chatId: string): UseChatResult {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [chatId]);
 
   // Open WS once the latest page is loaded. Reconnects request only events
@@ -135,46 +143,46 @@ export function useChat(chatId: string): UseChatResult {
     const streamChatId = meta.id;
     setWsReady(false);
 
-    const stream = chatApi.openStream(
-      streamChatId,
-      () => lastSeqRef.current,
-      {
-        onOpen: () => {
-          if (streamRef.current !== stream) return;
-          setError(null);
-          clearPendingEvents();
-          setSynced(false);
-          setWsReady(true);
-        },
-        onEvent: (event) => {
-          if (streamRef.current !== stream) return;
-          if (event.type === "sync") {
-            setSynced(true);
-            setStatus(event.running ? "streaming" : "ready");
-            return;
+    const stream = chatApi.openStream(streamChatId, () => lastSeqRef.current, {
+      onOpen: () => {
+        if (streamRef.current !== stream) return;
+        setError(null);
+        clearPendingEvents();
+        setSynced(false);
+        setWsReady(true);
+      },
+      onEvent: (event) => {
+        if (streamRef.current !== stream) return;
+        if (event.type === "sync") {
+          setSynced(true);
+          setStatus(event.running ? "streaming" : "ready");
+          return;
+        }
+        if (
+          event.type === "system" &&
+          (event.subtype === "prompt_accepted" ||
+            event.subtype === "prompt_rejected")
+        ) {
+          // Transient per-connection ack for a tracked prompt. Routed to the
+          // queue instead of the projector: it is not transcript content and
+          // must not influence the streaming status.
+          const clientId = event.data?.clientId;
+          if (typeof clientId === "string" && clientId) {
+            setPromptOutcome({
+              clientId,
+              accepted: event.subtype === "prompt_accepted",
+            });
           }
-          if (
-            event.type === "system" &&
-            (event.subtype === "prompt_accepted" || event.subtype === "prompt_rejected")
-          ) {
-            // Transient per-connection ack for a tracked prompt. Routed to the
-            // queue instead of the projector: it is not transcript content and
-            // must not influence the streaming status.
-            const clientId = event.data?.clientId;
-            if (typeof clientId === "string" && clientId) {
-              setPromptOutcome({ clientId, accepted: event.subtype === "prompt_accepted" });
-            }
-            return;
-          }
-          enqueueEvent(event);
-        },
-        onClose: () => {
-          if (streamRef.current !== stream) return;
-          setWsReady(false);
-          setSynced(false);
-        },
-      }
-    );
+          return;
+        }
+        enqueueEvent(event);
+      },
+      onClose: () => {
+        if (streamRef.current !== stream) return;
+        setWsReady(false);
+        setSynced(false);
+      },
+    });
     streamRef.current = stream;
 
     return () => {
@@ -186,41 +194,50 @@ export function useChat(chatId: string): UseChatResult {
     };
   }, [meta?.id, chatId]);
 
-  const sendPrompt = useCallback((text: string, clientId?: string) => {
-    const stream = streamRef.current;
-    if (!wsReady || !synced || !stream?.isOpen) return false;
-    if (status !== "ready") return false;
-    setStatus("streaming");
-    stream.sendPrompt(text, clientId);
-    return true;
-  }, [status, wsReady, synced]);
+  const sendPrompt = useCallback(
+    (text: string, clientId?: string) => {
+      const stream = streamRef.current;
+      if (!wsReady || !synced || !stream?.isOpen) return false;
+      if (status !== "ready") return false;
+      setStatus("streaming");
+      stream.sendPrompt(text, clientId);
+      return true;
+    },
+    [status, wsReady, synced]
+  );
 
   const cancel = useCallback(() => {
     const stream = streamRef.current;
     if (stream?.isOpen) stream.cancel();
   }, []);
 
-  const rewind = useCallback(async (beforeT: number) => {
-    const res = await chatApi.rewind(chatId, beforeT);
-    clearPendingEvents();
-    lastSeqRef.current = Math.max(
-      res.lastSeq,
-      chatEventStateProjector.latestSequence(res.events)
-    );
-    setRenderState(chatEventStateProjector.fromEvents(res.events, res));
-    setStatus("ready");
-    return res;
-  }, [chatId]);
+  const rewind = useCallback(
+    async (beforeT: number) => {
+      const res = await chatApi.rewind(chatId, beforeT);
+      clearPendingEvents();
+      lastSeqRef.current = Math.max(
+        res.lastSeq,
+        chatEventStateProjector.latestSequence(res.events)
+      );
+      setRenderState(chatEventStateProjector.fromEvents(res.events, res));
+      setStatus("ready");
+      return res;
+    },
+    [chatId]
+  );
 
   const loadOlder = useCallback(async () => {
-    if (loadingOlder || !renderState.hasOlder || !renderState.nextBefore) return;
+    if (loadingOlder || !renderState.hasOlder || !renderState.nextBefore)
+      return;
     setLoadingOlder(true);
     try {
       const page = await chatApi.fetchEvents(chatId, {
         limit: CHAT_EVENT_PAGE_LIMIT,
         before: renderState.nextBefore,
       });
-      setRenderState((current) => chatEventStateProjector.prepend(current, page));
+      setRenderState((current) =>
+        chatEventStateProjector.prepend(current, page)
+      );
     } finally {
       setLoadingOlder(false);
     }

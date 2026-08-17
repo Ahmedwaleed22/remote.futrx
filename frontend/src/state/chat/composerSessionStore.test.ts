@@ -19,7 +19,9 @@ test("drafts and queues persist across store instances", () => {
   const storage = fakeStorage();
   const first = new ChatComposerSessionStore(storage);
   first.setDraft("chat-1", "half-typed message");
-  first.setQueuedPrompts("chat-1", [{ id: "q1", text: "queued while agent ran tools" }]);
+  first.setQueuedPrompts("chat-1", [
+    { id: "q1", text: "queued while agent ran tools" },
+  ]);
 
   const second = new ChatComposerSessionStore(storage);
   assert.equal(second.getDraft("chat-1"), "half-typed message");
@@ -54,7 +56,9 @@ test("malformed queue entries are dropped on hydrate", () => {
   });
   const store = new ChatComposerSessionStore(storage);
   assert.equal(store.getDraft("chat-1"), "draft");
-  assert.deepEqual(store.getQueuedPrompts("chat-1"), [{ id: "q1", text: "ok" }]);
+  assert.deepEqual(store.getQueuedPrompts("chat-1"), [
+    { id: "q1", text: "ok" },
+  ]);
 });
 
 test("store works without any storage backend", () => {
@@ -62,5 +66,7 @@ test("store works without any storage backend", () => {
   store.setDraft("chat-1", "memory only");
   assert.equal(store.getDraft("chat-1"), "memory only");
   store.setQueuedPrompts("chat-1", [{ id: "q1", text: "queued" }]);
-  assert.deepEqual(store.getQueuedPrompts("chat-1"), [{ id: "q1", text: "queued" }]);
+  assert.deepEqual(store.getQueuedPrompts("chat-1"), [
+    { id: "q1", text: "queued" },
+  ]);
 });

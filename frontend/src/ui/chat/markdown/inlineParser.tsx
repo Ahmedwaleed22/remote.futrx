@@ -5,7 +5,11 @@ import { internalPathOpenUrl } from "../ideLinks";
 
 const urlPattern = /^https?:\/\/[^\s<]+/;
 
-export function renderInline(text: string, keyPrefix: string, context: InlineRenderContext = {}): ComponentChildren[] {
+export function renderInline(
+  text: string,
+  keyPrefix: string,
+  context: InlineRenderContext = {}
+): ComponentChildren[] {
   const nodes: ComponentChildren[] = [];
   let plain = "";
   let index = 0;
@@ -17,7 +21,12 @@ export function renderInline(text: string, keyPrefix: string, context: InlineRen
     }
   };
 
-  const addWrapped = (tag: "strong" | "em" | "del", content: string, markerLength: number, end: number) => {
+  const addWrapped = (
+    tag: "strong" | "em" | "del",
+    content: string,
+    markerLength: number,
+    end: number
+  ) => {
     flush();
     const key = `${keyPrefix}-${nodes.length}`;
     const children = renderInline(content, key, context);
@@ -33,7 +42,10 @@ export function renderInline(text: string, keyPrefix: string, context: InlineRen
       if (end > index + 1) {
         flush();
         nodes.push(
-          <code key={`${keyPrefix}-${nodes.length}`} class="bg-white/[0.08] text-ink-100 px-1 py-0.5 rounded text-[12.5px] font-mono">
+          <code
+            key={`${keyPrefix}-${nodes.length}`}
+            class="bg-white/[0.08] text-ink-100 px-1 py-0.5 rounded text-[12.5px] font-mono"
+          >
             {text.slice(index + 1, end)}
           </code>
         );
@@ -100,7 +112,13 @@ export function renderInline(text: string, keyPrefix: string, context: InlineRen
       const href = trimTrailingUrlPunctuation(url);
       flush();
       nodes.push(
-        <a key={`${keyPrefix}-${nodes.length}`} href={href} target="_blank" rel="noopener noreferrer" class="text-accent-blue hover:underline">
+        <a
+          key={`${keyPrefix}-${nodes.length}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-accent-blue hover:underline"
+        >
           {href}
         </a>
       );
@@ -146,7 +164,14 @@ function trimTrailingUrlPunctuation(url: string): string {
 // clicks (cmd/ctrl/shift/middle) keep the browser's default behavior.
 function maybeOpenMediaViewer(event: MouseEvent, href: string): void {
   if (event.defaultPrevented) return;
-  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  )
+    return;
   if (!href.includes("/media-open?")) return;
   const name = mediaOpenFileName(href);
   const kind = name ? viewableMediaKind(name) : null;

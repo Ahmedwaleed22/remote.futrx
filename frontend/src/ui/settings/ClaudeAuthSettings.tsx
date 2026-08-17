@@ -23,7 +23,8 @@ export function ClaudeAuthSettings() {
   const loading = claudeAuth.loading;
   const busy = login.phase === "starting" || login.phase === "submitting";
   const active = login.phase === "awaiting-code";
-  const errorMessage = login.errorMessage || claudeAuth.error || claudeAuth.login?.error || "";
+  const errorMessage =
+    login.errorMessage || claudeAuth.error || claudeAuth.login?.error || "";
 
   return (
     <section class="rounded-md border border-white/10 bg-white/[0.03] p-3 space-y-3">
@@ -33,7 +34,9 @@ export function ClaudeAuthSettings() {
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <div class="text-[14px] font-semibold text-ink-100">Claude authentication</div>
+            <div class="text-[14px] font-semibold text-ink-100">
+              Claude authentication
+            </div>
             {loading ? (
               <Loader class="w-3.5 h-3.5 text-ink-300 animate-spin" />
             ) : authenticated ? (
@@ -45,9 +48,16 @@ export function ClaudeAuthSettings() {
             )}
           </div>
           <div class="text-[12px] text-ink-300 mt-1 leading-relaxed">
-            Starts <span class="font-mono text-ink-100">claude auth login --claudeai</span> on the host.
-            Sign in once with your Anthropic account; tokens land in{" "}
-            <span class="font-mono text-ink-100">~/.claude/.credentials.json</span> and seed into every container.
+            Starts{" "}
+            <span class="font-mono text-ink-100">
+              claude auth login --claudeai
+            </span>{" "}
+            on the host. Sign in once with your Anthropic account; tokens land
+            in{" "}
+            <span class="font-mono text-ink-100">
+              ~/.claude/.credentials.json
+            </span>{" "}
+            and seed into every container.
           </div>
         </div>
       </div>
@@ -73,7 +83,8 @@ export function ClaudeAuthSettings() {
       {active && (
         <div class="rounded border border-accent-blue/25 bg-accent-blue/[0.08] p-3 space-y-2">
           <div class="text-[12px] text-ink-200">
-            Open the link, sign in, then paste the code Anthropic shows back here:
+            Open the link, sign in, then paste the code Anthropic shows back
+            here:
           </div>
           <a
             href={login.authUrl}
@@ -87,9 +98,15 @@ export function ClaudeAuthSettings() {
           <textarea
             ref={codeRef}
             value={login.code}
-            onInput={(event) => login.setCode((event.currentTarget as HTMLTextAreaElement).value)}
+            onInput={(event) =>
+              login.setCode((event.currentTarget as HTMLTextAreaElement).value)
+            }
             onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+              if (
+                event.key === "Enter" &&
+                !event.shiftKey &&
+                !event.isComposing
+              ) {
                 event.preventDefault();
                 void login.submitCode();
               }

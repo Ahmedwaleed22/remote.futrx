@@ -7,7 +7,9 @@ import type {
 } from "../../projects/projectContainerRecords";
 
 export function useProjectContainerInfo(project: ProjectMeta | null) {
-  const [record, setRecord] = useState<ProjectContainerRecord>({ loading: false });
+  const [record, setRecord] = useState<ProjectContainerRecord>({
+    loading: false,
+  });
 
   const load = useCallback(
     async (signal?: ProjectDataLoadSignal) => {
@@ -38,11 +40,14 @@ export function useProjectContainerInfo(project: ProjectMeta | null) {
     setRecord({ loading: false, data, refreshedAt: Date.now() });
   }, [project]);
 
-  const setLimits = useCallback(async (limits: ContainerLimits) => {
-    if (!project) return;
-    const data = await projectApi.setContainerLimits(project.id, limits);
-    setRecord({ loading: false, data, refreshedAt: Date.now() });
-  }, [project]);
+  const setLimits = useCallback(
+    async (limits: ContainerLimits) => {
+      if (!project) return;
+      const data = await projectApi.setContainerLimits(project.id, limits);
+      setRecord({ loading: false, data, refreshedAt: Date.now() });
+    },
+    [project]
+  );
 
   const start = useCallback(async () => {
     if (!project) return;

@@ -28,7 +28,7 @@ export function useChatBrowserController({
   const [appsLoading, setAppsLoading] = useState(false);
   const [selectedAppPort, setSelectedAppPort] = useState<number | null>(null);
   const browserProject = chat.projectId
-    ? projects.find((project) => project.id === chat.projectId) ?? null
+    ? (projects.find((project) => project.id === chat.projectId) ?? null)
     : null;
   const browserUrl = browserProject
     ? chatBrowserState.latestPublicDevUrl(blocks, browserProject.slug)
@@ -52,7 +52,8 @@ export function useChatBrowserController({
         if (apps.length === 0) return null;
         if (prev != null && apps.some((app) => app.port === prev)) return prev;
         const hinted = projectPreviewPort(browserUrl);
-        if (hinted != null && apps.some((app) => app.port === hinted)) return hinted;
+        if (hinted != null && apps.some((app) => app.port === hinted))
+          return hinted;
         return apps[apps.length - 1].port;
       });
     } catch {

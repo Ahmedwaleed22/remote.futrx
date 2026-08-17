@@ -1,7 +1,8 @@
 export const initializeCodeCopy = () => {
   document.querySelectorAll("[data-copy-code]").forEach((button) => {
     button.addEventListener("click", async () => {
-      const code = button.closest(".code-block")?.querySelector("code")?.textContent || "";
+      const code =
+        button.closest(".code-block")?.querySelector("code")?.textContent || "";
       await navigator.clipboard.writeText(code);
 
       const originalLabel = button.textContent;

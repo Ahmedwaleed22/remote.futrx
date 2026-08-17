@@ -20,11 +20,19 @@ export function Empty({ text, compact }: { text: string; compact?: boolean }) {
   );
 }
 
-export function Panel({ title, children }: { title: string; children: JSX.Element | JSX.Element[] }) {
+export function Panel({
+  title,
+  children,
+}: {
+  title: string;
+  children: JSX.Element | JSX.Element[];
+}) {
   return (
     <section class="rounded-md border border-white/[0.08] bg-white/[0.02] overflow-hidden">
       <header class="px-3 py-2 border-b border-white/[0.06]">
-        <h3 class="text-[11.5px] font-semibold uppercase tracking-wide text-ink-300">{title}</h3>
+        <h3 class="text-[11.5px] font-semibold uppercase tracking-wide text-ink-300">
+          {title}
+        </h3>
       </header>
       <div class="p-2.5">{children}</div>
     </section>

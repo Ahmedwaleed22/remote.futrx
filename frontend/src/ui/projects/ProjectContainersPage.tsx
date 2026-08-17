@@ -14,8 +14,21 @@ import { ProjectSecretsSection } from "./project-containers/ProjectSecretsSectio
 import { ProjectSharingSection } from "./project-containers/ProjectSharingSection";
 import { ProjectResourceLimits } from "./project-containers/ProjectResourceLimits";
 import { formatRelativeTime as fmtRelative } from "./project-containers/projectContainerFormat";
-import type { ContainerLimits, ProjectContainerInfo, ProjectMeta } from "../../models/project";
-import { ChevronLeft, Info, Key, Loader, Menu, RotateCcw, Settings, Users } from "../primitives/icons";
+import type {
+  ContainerLimits,
+  ProjectContainerInfo,
+  ProjectMeta,
+} from "../../models/project";
+import {
+  ChevronLeft,
+  Info,
+  Key,
+  Loader,
+  Menu,
+  RotateCcw,
+  Settings,
+  Users,
+} from "../primitives/icons";
 
 export type ProjectSettingsTab = "info" | "settings" | "secrets" | "sharing";
 
@@ -28,19 +41,22 @@ const tabs: Array<{
   {
     id: "info",
     label: "Info",
-    description: "Inspect the container, operating system, resources, network, and agent tooling.",
+    description:
+      "Inspect the container, operating system, resources, network, and agent tooling.",
     Icon: Info,
   },
   {
     id: "settings",
     label: "Settings",
-    description: "Manage this project's container lifecycle and destructive actions.",
+    description:
+      "Manage this project's container lifecycle and destructive actions.",
     Icon: Settings,
   },
   {
     id: "secrets",
     label: "Secrets",
-    description: "Configure environment secrets passed to agents in this project.",
+    description:
+      "Configure environment secrets passed to agents in this project.",
     Icon: Key,
   },
   {
@@ -136,7 +152,11 @@ export function ProjectContainersPage({
           aria-label="Refresh"
           title="Refresh"
         >
-          {refreshing ? <Loader class="w-4 h-4 animate-spin" /> : <RotateCcw class="w-4 h-4" />}
+          {refreshing ? (
+            <Loader class="w-4 h-4 animate-spin" />
+          ) : (
+            <RotateCcw class="w-4 h-4" />
+          )}
         </button>
       </header>
 
@@ -160,7 +180,9 @@ export function ProjectContainersPage({
         >
           <div class="w-full px-4 py-5 md:px-6 md:py-7">
             <header class="mb-5">
-              <h1 class="text-xl font-semibold text-ink-50">{activeTabDetails.label}</h1>
+              <h1 class="text-xl font-semibold text-ink-50">
+                {activeTabDetails.label}
+              </h1>
               <p class="mt-1 text-[13px] leading-relaxed text-ink-300">
                 {activeTabDetails.description}
               </p>
@@ -189,7 +211,11 @@ export function ProjectContainersPage({
                   <div class="space-y-4">
                     <ProjectResourceLimits
                       effective={infoRecord.data?.limits}
-                      overrides={infoRecord.data ? infoRecord.data.limitOverrides : project.resourceLimits}
+                      overrides={
+                        infoRecord.data
+                          ? infoRecord.data.limitOverrides
+                          : project.resourceLimits
+                      }
                       loading={infoRecord.loading}
                       isAdmin={isAdmin}
                       serverMemoryTotalBytes={serverMemoryTotalBytes}
@@ -283,7 +309,9 @@ function ProjectSettingsNavigation({
                   : "border-transparent text-ink-300 hover:text-ink-100 hover:bg-white/[0.05]"
               }`}
             >
-              <Icon class={`w-4 h-4 flex-none ${active ? "text-accent-blue" : "text-ink-400"}`} />
+              <Icon
+                class={`w-4 h-4 flex-none ${active ? "text-accent-blue" : "text-ink-400"}`}
+              />
               <span>{label}</span>
             </button>
           );
@@ -312,7 +340,9 @@ function ProjectSettingsPanel({
         </div>
         <div class="flex-1 min-w-0">
           <div class="text-[14.5px] font-semibold text-ink-50">{title}</div>
-          <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">{description}</div>
+          <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug">
+            {description}
+          </div>
         </div>
       </header>
       <div class="p-3 space-y-3">{children}</div>
@@ -350,7 +380,9 @@ function ProjectHeader({
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 min-w-0">
-          <span class="text-[14.5px] font-semibold text-ink-50 truncate">{project.name}</span>
+          <span class="text-[14.5px] font-semibold text-ink-50 truncate">
+            {project.name}
+          </span>
           {info && <ContainerStateBadge state={info.state ?? "UNKNOWN"} />}
         </div>
         <div class="text-[12.5px] text-ink-300 mt-0.5 leading-snug font-mono truncate">
@@ -358,7 +390,9 @@ function ProjectHeader({
         </div>
       </div>
       {refreshedAt && (
-        <div class="text-[11px] text-ink-400 mt-1.5">refreshed {fmtRelative(refreshedAt)}</div>
+        <div class="text-[11px] text-ink-400 mt-1.5">
+          refreshed {fmtRelative(refreshedAt)}
+        </div>
       )}
     </section>
   );

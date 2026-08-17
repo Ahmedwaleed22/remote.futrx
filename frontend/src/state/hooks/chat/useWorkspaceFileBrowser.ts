@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "preact/hooks";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+} from "preact/hooks";
 import { chatFilesApi } from "../../../api/chat/chatFilesApi";
 import { API_ROUTES } from "../../../config/routes";
 import type { FileNode } from "../../../models/files";
@@ -16,7 +22,13 @@ export interface WorkspaceFileTreeState {
   downloadUrl: (node: FileNode) => string;
 }
 
-export function useWorkspaceFileBrowser({ chatId, active }: { chatId: string; active: boolean }) {
+export function useWorkspaceFileBrowser({
+  chatId,
+  active,
+}: {
+  chatId: string;
+  active: boolean;
+}) {
   const [state, dispatch] = useReducer(
     workspaceFileBrowserState.reduce,
     workspaceFileBrowserState.createInitial()
@@ -39,7 +51,11 @@ export function useWorkspaceFileBrowser({ chatId, active }: { chatId: string; ac
         });
       } catch (error) {
         if (token !== loadToken.current) return;
-        dispatch({ type: "directory-load-failed", path, error: (error as Error).message });
+        dispatch({
+          type: "directory-load-failed",
+          path,
+          error: (error as Error).message,
+        });
       }
     },
     [chatId]
@@ -62,7 +78,11 @@ export function useWorkspaceFileBrowser({ chatId, active }: { chatId: string; ac
       const current = stateRef.current;
       const opening = !current.expanded.has(path);
       dispatch({ type: "directory-toggled", path });
-      if (opening && !current.childrenByDir.has(path) && !current.loading.has(path)) {
+      if (
+        opening &&
+        !current.childrenByDir.has(path) &&
+        !current.loading.has(path)
+      ) {
         void loadDirectory(path, loadToken.current);
       }
     },
@@ -125,7 +145,11 @@ export function useWorkspaceFileBrowser({ chatId, active }: { chatId: string; ac
           kind: target.kind,
         });
       } else if (target.action === "ide") {
-        window.open(API_ROUTES.chats.ideOpen(chatId, containerPath), "_blank", "noopener");
+        window.open(
+          API_ROUTES.chats.ideOpen(chatId, containerPath),
+          "_blank",
+          "noopener"
+        );
       } else {
         window.location.assign(chatFilesApi.fileDownloadUrl(chatId, node.path));
       }

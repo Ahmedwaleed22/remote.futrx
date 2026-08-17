@@ -35,7 +35,14 @@ export function parseUnifiedDiff(diff: string): DiffFile[] {
   for (const line of diff.split("\n")) {
     if (line.startsWith("diff --git ")) {
       const { oldPath, newPath } = parseGitHeaderPaths(line);
-      file = { oldPath, newPath, binary: false, additions: 0, deletions: 0, hunks: [] };
+      file = {
+        oldPath,
+        newPath,
+        binary: false,
+        additions: 0,
+        deletions: 0,
+        hunks: [],
+      };
       hunk = null;
       files.push(file);
       continue;
@@ -46,7 +53,10 @@ export function parseUnifiedDiff(diff: string): DiffFile[] {
       continue;
     }
 
-    if (line.startsWith("Binary files ") || line.startsWith("GIT binary patch")) {
+    if (
+      line.startsWith("Binary files ") ||
+      line.startsWith("GIT binary patch")
+    ) {
       file.binary = true;
       continue;
     }
@@ -113,7 +123,10 @@ export function isDeletedFile(file: DiffFile): boolean {
   return file.newPath === "/dev/null";
 }
 
-function parseGitHeaderPaths(line: string): { oldPath: string; newPath: string } {
+function parseGitHeaderPaths(line: string): {
+  oldPath: string;
+  newPath: string;
+} {
   // `diff --git a/path b/path`. Paths with spaces are ambiguous in this header;
   // the ---/+++ lines that follow correct them when present.
   const rest = line.slice("diff --git ".length);

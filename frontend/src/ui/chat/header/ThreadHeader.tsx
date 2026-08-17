@@ -39,11 +39,11 @@ export function ThreadHeader({
             />
           </div>
           <div class="text-[11px] leading-4 text-ink-400 truncate">
-            {providerDisplayLabel(chat.provider)} · {streaming ? "Working" : "Ready"}
+            {providerDisplayLabel(chat.provider)} ·{" "}
+            {streaming ? "Working" : "Ready"}
           </div>
         </div>
       </div>
-
     </header>
   );
 }

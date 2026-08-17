@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { terminalApi } from "../../../api/terminalApi";
-import type { TerminalConnection, TerminalStatus } from "../../../types/terminal";
+import type {
+  TerminalConnection,
+  TerminalStatus,
+} from "../../../types/terminal";
 import {
   TERMINAL_CONNECTION_ERROR_MESSAGE,
   TERMINAL_DEFAULT_TITLE,

@@ -14,8 +14,14 @@ test("viewableMediaKind mirrors the backend inline media set", () => {
 });
 
 test("fileOpenAction opens media in the viewer", () => {
-  assert.deepEqual(fileOpenAction("shot.png"), { action: "media", kind: "image" });
-  assert.deepEqual(fileOpenAction("report.pdf"), { action: "media", kind: "pdf" });
+  assert.deepEqual(fileOpenAction("shot.png"), {
+    action: "media",
+    kind: "image",
+  });
+  assert.deepEqual(fileOpenAction("report.pdf"), {
+    action: "media",
+    kind: "pdf",
+  });
 });
 
 test("fileOpenAction opens source and text files in the IDE", () => {

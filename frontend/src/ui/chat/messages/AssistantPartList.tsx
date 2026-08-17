@@ -19,12 +19,26 @@ export function AssistantPartList({
   cwd?: string;
   onAnswerQuestion?: (text: string) => void;
 }) {
-  return <>{renderAssistantParts(parts, { streaming, chatId, cwd, onAnswerQuestion })}</>;
+  return (
+    <>
+      {renderAssistantParts(parts, {
+        streaming,
+        chatId,
+        cwd,
+        onAnswerQuestion,
+      })}
+    </>
+  );
 }
 
 function renderAssistantParts(
   parts: AssistantMessagePart[],
-  context: { streaming: boolean; chatId?: string; cwd?: string; onAnswerQuestion?: (text: string) => void }
+  context: {
+    streaming: boolean;
+    chatId?: string;
+    cwd?: string;
+    onAnswerQuestion?: (text: string) => void;
+  }
 ): ComponentChildren[] {
   const rendered: ComponentChildren[] = [];
   let toolGroup: ToolPart[] = [];
@@ -56,7 +70,12 @@ function renderAssistantParts(
     if (part.kind === "text") {
       rendered.push(
         <div key={index} class="text-[15px] leading-7 text-ink-100">
-          <StreamingText text={part.text} streaming={context.streaming} chatId={context.chatId} cwd={context.cwd} />
+          <StreamingText
+            text={part.text}
+            streaming={context.streaming}
+            chatId={context.chatId}
+            cwd={context.cwd}
+          />
         </div>
       );
       return;
@@ -64,7 +83,10 @@ function renderAssistantParts(
 
     if (part.kind === "thinking") {
       rendered.push(
-        <div key={index} class="text-[13px] italic text-ink-300 border-l-2 border-accent-yellow/[0.45] pl-3 my-2">
+        <div
+          key={index}
+          class="text-[13px] italic text-ink-300 border-l-2 border-accent-yellow/[0.45] pl-3 my-2"
+        >
           {part.text}
         </div>
       );

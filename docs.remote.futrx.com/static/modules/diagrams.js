@@ -1,4 +1,5 @@
-const mermaidUrl = "https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.esm.min.mjs";
+const mermaidUrl =
+  "https://cdn.jsdelivr.net/npm/mermaid@11.16.0/dist/mermaid.esm.min.mjs";
 
 const darkThemeVariables = {
   background: "#121317",
@@ -11,7 +12,8 @@ const darkThemeVariables = {
   clusterBkg: "#191a1f",
   clusterBorder: "rgba(255, 255, 255, 0.12)",
   edgeLabelBackground: "#121317",
-  fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif",
+  fontFamily:
+    "-apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif",
 };
 
 const lightThemeVariables = {
@@ -44,9 +46,10 @@ export const initializeDiagrams = async () => {
       startOnLoad: false,
       securityLevel: "strict",
       theme: "base",
-      themeVariables: document.documentElement.dataset.theme === "light"
-        ? lightThemeVariables
-        : darkThemeVariables,
+      themeVariables:
+        document.documentElement.dataset.theme === "light"
+          ? lightThemeVariables
+          : darkThemeVariables,
     });
     await mermaid.run({ nodes: diagrams });
   } catch {

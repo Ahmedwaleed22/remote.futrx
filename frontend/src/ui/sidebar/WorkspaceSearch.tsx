@@ -14,7 +14,9 @@ export function WorkspaceSearch({
       <Search class="w-4 h-4 text-ink-300 flex-none" />
       <input
         value={query}
-        onInput={(event) => onQueryChange((event.currentTarget as HTMLInputElement).value)}
+        onInput={(event) =>
+          onQueryChange((event.currentTarget as HTMLInputElement).value)
+        }
         placeholder="Search projects and chats"
         class="min-w-0 flex-1 bg-transparent text-[14px] text-ink-100 placeholder:text-ink-300 focus:outline-none"
         autocomplete="off"

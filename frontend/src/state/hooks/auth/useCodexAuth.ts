@@ -18,7 +18,9 @@ export function useCodexAuth(enabled: boolean): CodexAuthState {
   const [checked, setChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [usesApiKey, setUsesApiKey] = useState(false);
-  const [deviceLogin, setDeviceLogin] = useState<CodexDeviceLogin | undefined>(undefined);
+  const [deviceLogin, setDeviceLogin] = useState<CodexDeviceLogin | undefined>(
+    undefined
+  );
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

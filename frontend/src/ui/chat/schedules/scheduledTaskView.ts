@@ -16,7 +16,9 @@ export function scheduleDefinition(task: ScheduledTask): string {
   if (task.kind === "cron") {
     return `${task.cron || "Invalid cron"} · ${task.timezone || "UTC"}`;
   }
-  return task.at ? `Once · ${formatTimestamp(task.at)}` : "Once · not scheduled";
+  return task.at
+    ? `Once · ${formatTimestamp(task.at)}`
+    : "Once · not scheduled";
 }
 
 export function scheduleRunCount(task: ScheduledTask): string {
@@ -32,8 +34,12 @@ export function canResumeScheduledTask(task: ScheduledTask): boolean {
 // An agent-created task that has never fired sits parked until the user arms
 // it — the enforced half of the agent-create handshake.
 export function isAwaitingArm(task: ScheduledTask): boolean {
-  return !!task.createdByAgent && !task.enabled && task.runCount === 0 &&
-    task.status.toLowerCase() === "paused";
+  return (
+    !!task.createdByAgent &&
+    !task.enabled &&
+    task.runCount === 0 &&
+    task.status.toLowerCase() === "paused"
+  );
 }
 
 // The enable/disable button's label: armed tasks pause, parked agent-created

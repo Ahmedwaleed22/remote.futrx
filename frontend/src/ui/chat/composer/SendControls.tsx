@@ -21,7 +21,15 @@ export function SendControls({
                 disabled:bg-ink-500 disabled:cursor-not-allowed
                 active:scale-[0.98] disabled:active:scale-100 grid place-items-center text-white transition`}
         aria-label={streaming ? "Queue prompt" : "Send"}
-        title={canSend ? (streaming ? "Queue prompt" : "Send") : disconnected ? "Connecting" : "Send"}
+        title={
+          canSend
+            ? streaming
+              ? "Queue prompt"
+              : "Send"
+            : disconnected
+              ? "Connecting"
+              : "Send"
+        }
       >
         {streaming ? <Clock class="w-4 h-4" /> : <ArrowUp class="w-4 h-4" />}
       </button>

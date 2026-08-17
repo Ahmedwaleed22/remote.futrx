@@ -15,15 +15,35 @@ export function ProjectActions({
   onRestart: () => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
-  const [busy, setBusy] = useState<"start" | "stop" | "restart" | "delete" | null>(null);
+  const [busy, setBusy] = useState<
+    "start" | "stop" | "restart" | "delete" | null
+  >(null);
   const [err, setErr] = useState<string | null>(null);
-  const canStart = project.status === "stopped" || project.status === "missing" || project.status === "error";
+  const canStart =
+    project.status === "stopped" ||
+    project.status === "missing" ||
+    project.status === "error";
   const canStop = project.status === "running";
   const canRestart = project.status === "running" || project.status === "error";
 
-  async function run(action: "start" | "stop" | "restart" | "delete", operation: () => Promise<void>) {
-    if (action === "delete" && !confirm(`Delete project "${project.name}"? This destroys the container and removes project settings.`)) return;
-    if (action === "restart" && !confirm(`Force-restart "${project.name}"? All processes inside the container are killed immediately — use this to recover a workspace stuck at its resource limits.`)) return;
+  async function run(
+    action: "start" | "stop" | "restart" | "delete",
+    operation: () => Promise<void>
+  ) {
+    if (
+      action === "delete" &&
+      !confirm(
+        `Delete project "${project.name}"? This destroys the container and removes project settings.`
+      )
+    )
+      return;
+    if (
+      action === "restart" &&
+      !confirm(
+        `Force-restart "${project.name}"? All processes inside the container are killed immediately — use this to recover a workspace stuck at its resource limits.`
+      )
+    )
+      return;
     setBusy(action);
     setErr(null);
     try {

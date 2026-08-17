@@ -16,7 +16,9 @@ export function ToolGroup({
   chatId?: string;
   onAnswerQuestion?: (text: string) => void;
 }) {
-  const status = parts.some((part) => part.status === "running") ? "running" : "done";
+  const status = parts.some((part) => part.status === "running")
+    ? "running"
+    : "done";
   const isError = parts.some((part) => part.isError);
   const count = parts.length;
   const label = `${count} ${count === 1 ? "tool" : "tools"} used`;

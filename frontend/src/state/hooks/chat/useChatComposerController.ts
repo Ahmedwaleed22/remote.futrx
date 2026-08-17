@@ -33,16 +33,21 @@ export function useChatComposerController({
   // Initialise from the per-chat session store and mirror every change back to it.
   // ChatContainer remounts on chat switch (it is keyed by chatId), so this is
   // what makes a half-typed message survive leaving and returning to a chat.
-  const [text, setTextState] = useState(() => chatComposerSessionStore.getDraft(chatId));
+  const [text, setTextState] = useState(() =>
+    chatComposerSessionStore.getDraft(chatId)
+  );
   const setText = useCallback(
     (value: string | ((prev: string) => string)) => {
       setTextState((prev) => {
-        const next = typeof value === "function" ? (value as (prev: string) => string)(prev) : value;
+        const next =
+          typeof value === "function"
+            ? (value as (prev: string) => string)(prev)
+            : value;
         chatComposerSessionStore.setDraft(chatId, next);
         return next;
       });
     },
-    [chatId],
+    [chatId]
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { textareaRef, focusInput } = useAutosizeTextarea(text);
@@ -67,7 +72,12 @@ export function useChatComposerController({
       alert("Cancel the current run before rewinding this chat.");
       return;
     }
-    if (!confirm("Rewind to this prompt? Messages from this point forward will be removed.")) return;
+    if (
+      !confirm(
+        "Rewind to this prompt? Messages from this point forward will be removed."
+      )
+    )
+      return;
     try {
       await rewind(t);
       queue.clearQueuedPrompts();
@@ -101,7 +111,11 @@ export function useChatComposerController({
   }
 
   function handleSend() {
-    if (upload.uploading || (!chatComposerSessionStore.allowsQueue(status) && !canSendPrompt)) return;
+    if (
+      upload.uploading ||
+      (!chatComposerSessionStore.allowsQueue(status) && !canSendPrompt)
+    )
+      return;
     const userText = text.trim();
     const paths = upload.attachments
       .filter((attachment) => attachment.serverPath)

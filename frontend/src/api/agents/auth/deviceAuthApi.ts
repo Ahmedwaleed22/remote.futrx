@@ -21,8 +21,6 @@ export class DeviceAuthApi<TStatus, TDeviceLogin> {
   readonly startDeviceLogin = (): Promise<TDeviceLogin> =>
     requestJson<TDeviceLogin>("POST", this.#routes.startDeviceLogin, {});
 
-  readonly subscribe = (
-    onStatus: (status: TStatus) => void
-  ): (() => void) =>
+  readonly subscribe = (onStatus: (status: TStatus) => void): (() => void) =>
     subscribeToJsonMessages(this.#routes.statusUpdates, onStatus);
 }

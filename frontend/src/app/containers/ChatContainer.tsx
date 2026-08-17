@@ -45,9 +45,16 @@ export function ChatContainer({
     loadOlder,
     refreshMeta,
   } = useChat(chat.id);
-  const preferences = useChatPreferences({ chat, loadedMeta: meta, refreshMeta });
+  const preferences = useChatPreferences({
+    chat,
+    loadedMeta: meta,
+    refreshMeta,
+  });
   const { displayMeta, displayMode, selectedSkills } = preferences;
-  const attachmentBasePath = chatAttachmentState.basePath(displayMeta, projects);
+  const attachmentBasePath = chatAttachmentState.basePath(
+    displayMeta,
+    projects
+  );
   const composer = useChatComposerController({
     chatId: chat.id,
     eventCount,
@@ -81,10 +88,16 @@ export function ChatContainer({
   const workspaceActions = {
     cwd: displayMeta.cwd || "~",
     onOpenTerminal: terminal.openTerminal,
-    onToggleBrowser: browser.browserOpen ? browser.closeBrowserDrawer : drawers.openBrowser,
-    onToggleHistory: drawers.historyOpen ? drawers.closeHistory : drawers.openHistory,
+    onToggleBrowser: browser.browserOpen
+      ? browser.closeBrowserDrawer
+      : drawers.openBrowser,
+    onToggleHistory: drawers.historyOpen
+      ? drawers.closeHistory
+      : drawers.openHistory,
     onToggleFiles: drawers.filesOpen ? drawers.closeFiles : drawers.openFiles,
-    onToggleSchedules: drawers.schedulesOpen ? drawers.closeSchedules : drawers.openSchedules,
+    onToggleSchedules: drawers.schedulesOpen
+      ? drawers.closeSchedules
+      : drawers.openSchedules,
     browserOpen: browser.browserOpen,
     historyOpen: drawers.historyOpen,
     filesOpen: drawers.filesOpen,
@@ -124,7 +137,9 @@ export function ChatContainer({
       const triggers = document.querySelectorAll<HTMLElement>(
         `[data-workspace-action="${closedPane}"]`
       );
-      Array.from(triggers).find((trigger) => trigger.offsetParent !== null)?.focus();
+      Array.from(triggers)
+        .find((trigger) => trigger.offsetParent !== null)
+        ?.focus();
     });
   }, [activePane]);
 
@@ -168,7 +183,9 @@ export function ChatContainer({
   return (
     <div class="relative flex-1 h-full min-h-0 overflow-hidden">
       <div class="flex h-full min-h-0 w-full overflow-hidden">
-        <div class={`min-w-0 flex-1 h-full ${activePane ? "hidden md:block" : ""}`}>
+        <div
+          class={`min-w-0 flex-1 h-full ${activePane ? "hidden md:block" : ""}`}
+        >
           <ChatThread
             chat={displayMeta}
             blocks={blocks}
@@ -189,7 +206,10 @@ export function ChatContainer({
             onRewind={composer.handleRewind}
             mobileToolbar={
               <aside class="workspace-action-toolbar relative z-30 flex flex-none justify-end border-b border-white/10 bg-[#101318] px-3 py-2 md:hidden">
-                <WorkspaceActions {...workspaceActions} orientation="horizontal" />
+                <WorkspaceActions
+                  {...workspaceActions}
+                  orientation="horizontal"
+                />
               </aside>
             }
           />

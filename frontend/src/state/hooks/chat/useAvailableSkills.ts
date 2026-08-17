@@ -12,7 +12,8 @@ export function useAvailableSkills(provider: ChatProvider, projectId?: string) {
     let cancelled = false;
     setError("");
     setLoading(true);
-    skillApi.list(provider, projectId)
+    skillApi
+      .list(provider, projectId)
       .then((items) => {
         if (!cancelled) setSkills(items);
       })

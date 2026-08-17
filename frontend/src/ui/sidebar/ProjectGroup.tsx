@@ -1,6 +1,12 @@
 import type { ChatMeta } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
-import { ChevronDown, ChevronRight, Loader, Plus, Settings } from "../primitives/icons";
+import {
+  ChevronDown,
+  ChevronRight,
+  Loader,
+  Plus,
+  Settings,
+} from "../primitives/icons";
 import { ChatRow } from "./ChatRow";
 
 export function ProjectGroup({
@@ -45,7 +51,9 @@ export function ProjectGroup({
   onDragEnd?: (event: DragEvent) => void;
 }) {
   const provisioning = project.status === "provisioning";
-  const hasUnread = chats.some((chat) => (chat.lastMessageAt || 0) > (chat.lastReadAt || 0));
+  const hasUnread = chats.some(
+    (chat) => (chat.lastMessageAt || 0) > (chat.lastReadAt || 0)
+  );
 
   return (
     <div
@@ -64,11 +72,18 @@ export function ProjectGroup({
           aria-label={collapsed ? "Expand" : "Collapse"}
           title={collapsed ? "Expand" : "Collapse"}
         >
-          {collapsed ? <ChevronRight class="w-4 h-4" /> : <ChevronDown class="w-4 h-4" />}
+          {collapsed ? (
+            <ChevronRight class="w-4 h-4" />
+          ) : (
+            <ChevronDown class="w-4 h-4" />
+          )}
         </button>
         <div class="flex-1 min-w-0 py-2 pr-1 flex items-center gap-2">
           {hasUnread && (
-            <span class="flex-none w-2 h-2 rounded-full bg-accent-green animate-pulse shadow-[0_0_0_3px_rgba(43,213,118,0.12)]" title="Unread chats" />
+            <span
+              class="flex-none w-2 h-2 rounded-full bg-accent-green animate-pulse shadow-[0_0_0_3px_rgba(43,213,118,0.12)]"
+              title="Unread chats"
+            />
           )}
           <button
             type="button"
@@ -106,9 +121,17 @@ export function ProjectGroup({
           class="w-9 grid place-items-center text-ink-300 hover:text-ink-50 hover:bg-white/[0.08]
                  rounded disabled:opacity-40 disabled:cursor-not-allowed"
           aria-label="New chat in project"
-          title={provisioning ? "Project is still provisioning" : "New chat in this project"}
+          title={
+            provisioning
+              ? "Project is still provisioning"
+              : "New chat in this project"
+          }
         >
-          {provisioning ? <Loader class="w-3.5 h-3.5 animate-spin" /> : <Plus class="w-4 h-4" />}
+          {provisioning ? (
+            <Loader class="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Plus class="w-4 h-4" />
+          )}
         </button>
       </div>
 

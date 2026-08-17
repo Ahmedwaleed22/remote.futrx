@@ -26,7 +26,8 @@ export function useWorkspaceCommands() {
 
   async function deleteChat(chat: ChatMeta, event: Event) {
     event.stopPropagation();
-    if (!confirm(`Delete chat "${chat.title}"? This removes its history.`)) return;
+    if (!confirm(`Delete chat "${chat.title}"? This removes its history.`))
+      return;
     try {
       await workspace.deleteChat(chat.id);
     } catch (error) {
@@ -64,10 +65,13 @@ export function useWorkspaceCommands() {
 
   async function deleteProject(project: ProjectMeta, event: Event) {
     event.stopPropagation();
-    const chatsInProject = workspace.chats.filter((chat) => chat.projectId === project.id).length;
-    const message = chatsInProject > 0
-      ? `Delete project "${project.name}"? This will destroy the container and remove ${chatsInProject} chat${chatsInProject === 1 ? "" : "s"} inside it.`
-      : `Delete project "${project.name}"? This will destroy its container.`;
+    const chatsInProject = workspace.chats.filter(
+      (chat) => chat.projectId === project.id
+    ).length;
+    const message =
+      chatsInProject > 0
+        ? `Delete project "${project.name}"? This will destroy the container and remove ${chatsInProject} chat${chatsInProject === 1 ? "" : "s"} inside it.`
+        : `Delete project "${project.name}"? This will destroy its container.`;
     if (!confirm(message)) return;
     try {
       await workspace.deleteProject(project.id);

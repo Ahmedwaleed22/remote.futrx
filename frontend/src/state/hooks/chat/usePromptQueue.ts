@@ -1,5 +1,9 @@
 import { useEffect, useState } from "preact/hooks";
-import type { ChatStatus, PromptOutcome, QueuedPrompt } from "../../../models/chat";
+import type {
+  ChatStatus,
+  PromptOutcome,
+  QueuedPrompt,
+} from "../../../models/chat";
 import { queueId } from "../../../shared/ids";
 import { chatComposerSessionStore } from "../../chat/composerSessionStore";
 import { promptQueueState } from "../../chat/promptQueueState";
@@ -24,14 +28,16 @@ export function usePromptQueue({
   // auto-sending when you return to the chat (sending is tied to the active
   // chat's connection, so a backgrounded chat's queue waits until it is open).
   const [queuedPrompts, setQueuedPromptsState] = useState<QueuedPrompt[]>(() =>
-    chatComposerSessionStore.getQueuedPrompts(chatId),
+    chatComposerSessionStore.getQueuedPrompts(chatId)
   );
   // Dispatch latch: the queued prompt currently on the wire awaiting the
   // server's verdict. Deliberately not persisted — the prompt itself stays
   // queued until accepted, so losing the latch can at worst re-send it.
   const [inflightId, setInflightId] = useState<string | null>(null);
 
-  function commitQueuedPrompts(updater: QueuedPrompt[] | ((prev: QueuedPrompt[]) => QueuedPrompt[])) {
+  function commitQueuedPrompts(
+    updater: QueuedPrompt[] | ((prev: QueuedPrompt[]) => QueuedPrompt[])
+  ) {
     setQueuedPromptsState((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       chatComposerSessionStore.setQueuedPrompts(chatId, next);
@@ -43,9 +49,13 @@ export function usePromptQueue({
   // rejection (run lock still held) keeps it queued for the next window.
   useEffect(() => {
     if (!promptOutcome) return;
-    setInflightId((current) => promptQueueState.inflightAfterOutcome(current, promptOutcome));
+    setInflightId((current) =>
+      promptQueueState.inflightAfterOutcome(current, promptOutcome)
+    );
     if (promptOutcome.accepted) {
-      commitQueuedPrompts((prev) => promptQueueState.promptsAfterOutcome(prev, promptOutcome));
+      commitQueuedPrompts((prev) =>
+        promptQueueState.promptsAfterOutcome(prev, promptOutcome)
+      );
       onSent();
     }
   }, [promptOutcome]);
@@ -57,7 +67,12 @@ export function usePromptQueue({
   }, [status, canSendPrompt]);
 
   useEffect(() => {
-    const next = promptQueueState.nextDispatch(queuedPrompts, inflightId, status, canSendPrompt);
+    const next = promptQueueState.nextDispatch(
+      queuedPrompts,
+      inflightId,
+      status,
+      canSendPrompt
+    );
     if (!next) return;
     if (!sendPrompt(next.text, next.id)) return;
     setInflightId(next.id);

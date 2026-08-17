@@ -17,7 +17,12 @@ export function SidebarContainer() {
   );
   const commands = useWorkspaceCommands();
   const model = useMemo(
-    () => workspaceSidebarState.model(workspace.chats, workspace.projects, sidebar.query),
+    () =>
+      workspaceSidebarState.model(
+        workspace.chats,
+        workspace.projects,
+        sidebar.query
+      ),
     [workspace.chats, workspace.projects, sidebar.query]
   );
 

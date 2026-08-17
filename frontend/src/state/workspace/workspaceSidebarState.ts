@@ -25,7 +25,9 @@ interface ChatBuckets {
 
 class WorkspaceSidebarState {
   activeChat(chats: ChatMeta[], activeChatId: string | null): ChatMeta | null {
-    return activeChatId ? chats.find((chat) => chat.id === activeChatId) ?? null : null;
+    return activeChatId
+      ? (chats.find((chat) => chat.id === activeChatId) ?? null)
+      : null;
   }
 
   initialChatId(
@@ -41,26 +43,38 @@ class WorkspaceSidebarState {
     return !!activeChatId && !chats.some((chat) => chat.id === activeChatId);
   }
 
-  model(chats: ChatMeta[], projects: ProjectMeta[], rawQuery: string): WorkspaceSidebarModel {
+  model(
+    chats: ChatMeta[],
+    projects: ProjectMeta[],
+    rawQuery: string
+  ): WorkspaceSidebarModel {
     const query = rawQuery.trim().toLowerCase();
     const buckets = this.bucketChatsByProject(chats);
-    const sortedProjects = [...projects].sort((left, right) => this.compareProjects(left, right));
+    const sortedProjects = [...projects].sort((left, right) =>
+      this.compareProjects(left, right)
+    );
 
     const visibleProjects = sortedProjects
       .map((project) => {
         const projectChats = buckets.byProject.get(project.id) ?? [];
         const projectMatches = this.matchesProject(project, query);
         const filteredChats = query
-          ? projectChats.filter((chat) => projectMatches || this.matchesChat(chat, query))
+          ? projectChats.filter(
+              (chat) => projectMatches || this.matchesChat(chat, query)
+            )
           : projectChats;
         return { project, chats: projectChats, filteredChats };
       })
       .filter(
         (node) =>
-          !query || this.matchesProject(node.project, query) || node.filteredChats.length > 0
+          !query ||
+          this.matchesProject(node.project, query) ||
+          node.filteredChats.length > 0
       );
 
-    const visibleLooseChats = buckets.loose.filter((chat) => this.matchesChat(chat, query));
+    const visibleLooseChats = buckets.loose.filter((chat) =>
+      this.matchesChat(chat, query)
+    );
 
     return {
       visibleProjects,
@@ -72,7 +86,10 @@ class WorkspaceSidebarState {
     };
   }
 
-  collapsedProjects(projects: ProjectMeta[], chats: ChatMeta[]): Record<string, boolean> {
+  collapsedProjects(
+    projects: ProjectMeta[],
+    chats: ChatMeta[]
+  ): Record<string, boolean> {
     const collapsed: Record<string, boolean> = {};
     for (const project of projects) {
       collapsed[project.id] = !this.projectHasUnreadChat(project.id, chats);
@@ -120,7 +137,9 @@ class WorkspaceSidebarState {
     }
 
     for (const projectChats of byProject.values()) {
-      projectChats.sort((left, right) => right.lastMessageAt - left.lastMessageAt);
+      projectChats.sort(
+        (left, right) => right.lastMessageAt - left.lastMessageAt
+      );
     }
     loose.sort((left, right) => right.lastMessageAt - left.lastMessageAt);
 
@@ -130,7 +149,8 @@ class WorkspaceSidebarState {
   private projectHasUnreadChat(projectId: string, chats: ChatMeta[]): boolean {
     return chats.some(
       (chat) =>
-        chat.projectId === projectId && (chat.lastMessageAt || 0) > (chat.lastReadAt || 0)
+        chat.projectId === projectId &&
+        (chat.lastMessageAt || 0) > (chat.lastReadAt || 0)
     );
   }
 

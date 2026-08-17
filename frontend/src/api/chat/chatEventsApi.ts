@@ -20,7 +20,9 @@ export const chatEventsApi = {
   },
 
   rewind: (id: string, beforeT: number) =>
-    requestJson<ChatEventPage>("POST", API_ROUTES.chats.rewind(id), { beforeT }),
+    requestJson<ChatEventPage>("POST", API_ROUTES.chats.rewind(id), {
+      beforeT,
+    }),
 
   openStream: (
     id: string,
