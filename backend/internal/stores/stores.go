@@ -3,12 +3,14 @@ package stores
 import (
 	"fmt"
 
+	serviceapplications "github.com/futrx-com/remote.futrx.com/internal/service/applications"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/fileapplications"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileauth"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileproject"
@@ -32,6 +34,7 @@ type Stores struct {
 	Auth           AuthStore
 	Users          serviceuser.Repository
 	UserSettings   serviceusersettings.Repository
+	Applications   serviceapplications.Store
 }
 
 func New(dataDir string) (Stores, error) {
@@ -70,6 +73,11 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init user settings store: %w", err)
 	}
 
+	applications, err := fileapplications.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init applications store: %w", err)
+	}
+
 	return Stores{
 		Chats:          chats,
 		Projects:       projects,
@@ -79,5 +87,6 @@ func New(dataDir string) (Stores, error) {
 		Auth:           fileauth.New(dataDir),
 		Users:          users,
 		UserSettings:   userSettings,
+		Applications:   applications,
 	}, nil
 }
