@@ -338,6 +338,8 @@ func sendAppError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, serviceapplications.ErrNotFound):
 		httptransport.SendErr(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, serviceapplications.ErrAlreadyInstalled):
+		httptransport.SendErr(w, http.StatusConflict, err.Error())
 	case errors.Is(err, serviceapplications.ErrUnknownImage),
 		errors.Is(err, serviceapplications.ErrScope),
 		errors.Is(err, serviceapplications.ErrProjectneeded),

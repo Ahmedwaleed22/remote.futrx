@@ -12,13 +12,14 @@ import (
 
 // Errors returned by the service. Handlers map these to HTTP status codes.
 var (
-	ErrUnavailable   = errors.New("applications: container runtime unavailable")
-	ErrUnknownImage  = errors.New("applications: unknown image")
-	ErrScope         = errors.New("applications: image does not support this scope")
-	ErrProjectneeded = errors.New("applications: project id required")
-	ErrRequiredEnv   = errors.New("applications: missing required value")
-	ErrNotFound      = errors.New("applications: instance not found")
-	ErrPortRange     = errors.New("applications: external port out of range")
+	ErrUnavailable      = errors.New("applications: container runtime unavailable")
+	ErrUnknownImage     = errors.New("applications: unknown image")
+	ErrScope            = errors.New("applications: image does not support this scope")
+	ErrProjectneeded    = errors.New("applications: project id required")
+	ErrRequiredEnv      = errors.New("applications: missing required value")
+	ErrNotFound         = errors.New("applications: instance not found")
+	ErrPortRange        = errors.New("applications: external port out of range")
+	ErrAlreadyInstalled = errors.New("applications: this image is already installed in this scope")
 )
 
 // Clock returns the current unix time; injectable for tests.
@@ -126,6 +127,13 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 	}
 	if !req.Scope.Valid() || !img.SupportsScope(req.Scope) {
 		return View{}, ErrScope
+	}
+	installed, err := s.imageInstalled(ctx, req.Scope, req.ProjectID, img.ID)
+	if err != nil {
+		return View{}, err
+	}
+	if installed {
+		return View{}, ErrAlreadyInstalled
 	}
 
 	id := newInstanceID()
@@ -329,6 +337,30 @@ func (s *Service) load(ctx context.Context, id string) (Instance, Image, error) 
 		return Instance{}, Image{}, ErrUnknownImage
 	}
 	return inst, img, nil
+}
+
+// imageInstalled reports whether an image is already installed in the given
+// scope (globally, or within the given project) — enforcing one instance per
+// image per scope.
+func (s *Service) imageInstalled(ctx context.Context, scope Scope, projectID, imageID string) (bool, error) {
+	var (
+		list []Instance
+		err  error
+	)
+	if scope == ScopeGlobal {
+		list, err = s.store.ListGlobal(ctx)
+	} else {
+		list, err = s.store.ListProject(ctx, projectID)
+	}
+	if err != nil {
+		return false, err
+	}
+	for _, in := range list {
+		if in.ImageID == imageID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // reservedPorts is the set of host ports already claimed by other instances.

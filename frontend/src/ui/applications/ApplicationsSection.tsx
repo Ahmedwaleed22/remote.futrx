@@ -33,6 +33,12 @@ export function ApplicationsSection({
     [catalog, scope]
   );
 
+  // One instance per image per scope: mark already-installed images.
+  const installedIds = useMemo(
+    () => new Set(instances.map((i) => i.imageId)),
+    [instances]
+  );
+
   return (
     <div class="space-y-5">
       {controller.error && (
@@ -46,7 +52,7 @@ export function ApplicationsSection({
 
       <div class="space-y-2.5">
         <h3 class="text-[13px] font-medium text-ink-100">Available applications</h3>
-        <CatalogGrid images={installable} controller={controller} />
+        <CatalogGrid images={installable} installedIds={installedIds} controller={controller} />
       </div>
 
       <p class="text-[11.5px] text-ink-400 leading-relaxed">
@@ -65,9 +71,11 @@ export function ApplicationsSection({
 
 function CatalogGrid({
   images,
+  installedIds,
   controller,
 }: {
   images: AppImage[];
+  installedIds: Set<string>;
   controller: ApplicationsController;
 }) {
   const [installing, setInstalling] = useState<AppImage | null>(null);
@@ -82,7 +90,12 @@ function CatalogGrid({
     <>
       <div class="grid gap-2.5 sm:grid-cols-2">
         {images.map((img) => (
-          <CatalogCard key={img.id} image={img} onInstall={() => setInstalling(img)} />
+          <CatalogCard
+            key={img.id}
+            image={img}
+            installed={installedIds.has(img.id)}
+            onInstall={() => setInstalling(img)}
+          />
         ))}
       </div>
       {installing && (
@@ -98,9 +111,11 @@ function CatalogGrid({
 
 function CatalogCard({
   image,
+  installed,
   onInstall,
 }: {
   image: AppImage;
+  installed: boolean;
   onInstall: () => void;
 }) {
   return (
@@ -121,14 +136,24 @@ function CatalogCard({
           </p>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onInstall}
-        class="h-8 px-2.5 flex-none rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[12px] font-medium inline-flex items-center gap-1"
-      >
-        <Plus class="w-3.5 h-3.5" />
-        Install
-      </button>
+      {installed ? (
+        <span
+          title="Already installed in this scope"
+          class="h-8 px-2.5 flex-none rounded border border-white/10 text-ink-400 text-[12px] font-medium inline-flex items-center gap-1"
+        >
+          <Check class="w-3.5 h-3.5" />
+          Installed
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={onInstall}
+          class="h-8 px-2.5 flex-none rounded bg-accent-blue/80 hover:bg-accent-blue text-white text-[12px] font-medium inline-flex items-center gap-1"
+        >
+          <Plus class="w-3.5 h-3.5" />
+          Install
+        </button>
+      )}
     </div>
   );
 }
