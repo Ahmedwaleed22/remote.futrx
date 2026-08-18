@@ -1,6 +1,10 @@
 import { requestJson } from "../apiRequest";
 import { API_ROUTES } from "../../config/routes";
-import type { AppInstance, AppInstallRequest } from "../../models/application";
+import type {
+  AppCredentials,
+  AppInstance,
+  AppInstallRequest,
+} from "../../models/application";
 
 // Project-scoped application management. Spread into projectApi.
 export const projectApplicationsApi = {
@@ -33,5 +37,11 @@ export const projectApplicationsApi = {
     requestJson<{ ok: boolean }>(
       "DELETE",
       API_ROUTES.projects.application(id, appId)
+    ),
+
+  applicationCredentials: (id: string, appId: string) =>
+    requestJson<AppCredentials>(
+      "GET",
+      API_ROUTES.projects.applicationAction(id, appId, "credentials")
     ),
 };

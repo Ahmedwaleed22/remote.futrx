@@ -136,3 +136,17 @@ type View struct {
 	// EnvPublic contains only non-secret env values, keyed by var name.
 	EnvPublic map[string]string `json:"envPublic,omitempty"`
 }
+
+// Credentials is the full connection detail for an installed instance,
+// including secret env values (e.g. the generated database password). It is
+// only returned through endpoints that have authorized the caller.
+type Credentials struct {
+	ContainerName string `json:"containerName"`
+	// LXDHost is the bridge DNS name other containers connect to, at
+	// InternalPort: "<containerName>.lxd".
+	LXDHost      string            `json:"lxdHost"`
+	InternalPort int               `json:"internalPort"`
+	ExternalPort int               `json:"externalPort"`
+	BindAddress  string            `json:"bindAddress"`
+	Env          map[string]string `json:"env,omitempty"`
+}

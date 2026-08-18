@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { applicationsApi } from "../../../api/applicationsApi";
 import { projectApi } from "../../../api/projectApi";
 import type {
+  AppCredentials,
   AppImage,
   AppInstallRequest,
   AppInstance,
@@ -23,6 +24,7 @@ export interface ApplicationsController {
   stop: (appId: string) => Promise<void>;
   setPort: (appId: string, port: number) => Promise<void>;
   uninstall: (appId: string) => Promise<void>;
+  credentials: (appId: string) => Promise<AppCredentials>;
 }
 
 // backend bindings differ only by scope; the UI logic below is shared.
@@ -33,6 +35,7 @@ interface Bindings {
   stop: (appId: string) => Promise<AppInstance>;
   setPort: (appId: string, port: number) => Promise<AppInstance>;
   uninstall: (appId: string) => Promise<unknown>;
+  credentials: (appId: string) => Promise<AppCredentials>;
 }
 
 function useApplicationsCore(
@@ -137,6 +140,14 @@ function useApplicationsCore(
     [bindings]
   );
 
+  const credentials = useCallback(
+    (appId: string) => {
+      if (!bindings) return Promise.reject(new Error("applications unavailable"));
+      return bindings.credentials(appId);
+    },
+    [bindings]
+  );
+
   return {
     scope,
     catalog,
@@ -150,6 +161,7 @@ function useApplicationsCore(
     stop,
     setPort,
     uninstall,
+    credentials,
   };
 }
 
@@ -163,6 +175,7 @@ export function useGlobalApplications(enabled: boolean): ApplicationsController 
       stop: applicationsApi.stop,
       setPort: applicationsApi.setPort,
       uninstall: applicationsApi.uninstall,
+      credentials: applicationsApi.credentials,
     }),
     []
   );
@@ -185,6 +198,7 @@ export function useProjectApplications(
             stop: (appId) => projectApi.stopApplication(id, appId),
             setPort: (appId, port) => projectApi.setApplicationPort(id, appId, port),
             uninstall: (appId) => projectApi.uninstallApplication(id, appId),
+            credentials: (appId) => projectApi.applicationCredentials(id, appId),
           }
         : null,
     [id]

@@ -88,6 +88,26 @@ func (s *Service) Get(ctx context.Context, id string) (View, bool, error) {
 	return s.view(inst), true, nil
 }
 
+// Credentials returns full connection details for an instance, including secret
+// env values. The transport layer is responsible for authorizing the caller.
+func (s *Service) Credentials(ctx context.Context, id string) (Credentials, error) {
+	inst, ok, err := s.store.Get(ctx, id)
+	if err != nil {
+		return Credentials{}, err
+	}
+	if !ok {
+		return Credentials{}, ErrNotFound
+	}
+	return Credentials{
+		ContainerName: inst.ContainerName,
+		LXDHost:       inst.ContainerName + ".lxd",
+		InternalPort:  inst.InternalPort,
+		ExternalPort:  inst.ExternalPort,
+		BindAddress:   inst.BindAddress,
+		Env:           inst.Env,
+	}, nil
+}
+
 // Install validates the request, provisions the app in a container, and
 // persists the resulting instance.
 func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error) {

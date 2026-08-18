@@ -61,6 +61,16 @@ export interface AppInstance {
   envPublic?: Record<string, string>;
 }
 
+/** Full connection details for an installed app, including secret env. */
+export interface AppCredentials {
+  containerName: string;
+  lxdHost: string;
+  internalPort: number;
+  externalPort: number;
+  bindAddress: string;
+  env?: Record<string, string>;
+}
+
 /** Payload for installing an app. */
 export interface AppInstallRequest {
   imageId: string;

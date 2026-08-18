@@ -214,6 +214,17 @@ func (h *ApplicationsHandler) instanceAction(w http.ResponseWriter, r *http.Requ
 		default:
 			httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
 		}
+	case "credentials":
+		if r.Method != http.MethodGet {
+			httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
+			return
+		}
+		creds, err := h.apps.Credentials(r.Context(), id)
+		if err != nil {
+			sendAppError(w, err)
+			return
+		}
+		httptransport.SendJSON(w, http.StatusOK, creds)
 	case "start":
 		h.lifecycle(w, r, func() (serviceapplications.View, error) { return h.apps.Start(r.Context(), id) })
 	case "stop":

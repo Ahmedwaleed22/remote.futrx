@@ -1,6 +1,7 @@
 import { requestJson } from "./apiRequest";
 import { API_ROUTES } from "../config/routes";
 import type {
+  AppCredentials,
   AppImage,
   AppInstance,
   AppInstallRequest,
@@ -31,4 +32,7 @@ export const applicationsApi = {
 
   uninstall: (appId: string) =>
     requestJson<{ ok: boolean }>("DELETE", API_ROUTES.applications.item(appId)),
+
+  credentials: (appId: string) =>
+    requestJson<AppCredentials>("GET", API_ROUTES.applications.action(appId, "credentials")),
 };

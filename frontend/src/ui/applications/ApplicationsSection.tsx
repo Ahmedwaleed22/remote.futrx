@@ -1,6 +1,7 @@
 import type { ComponentChildren } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import type {
+  AppCredentials,
   AppImage,
   AppInstance,
   AppInstanceStatus,
@@ -9,6 +10,7 @@ import type { ApplicationsController } from "../../state/hooks/applications/useA
 import {
   AlertCircle,
   Check,
+  Eye,
   Loader,
   Play,
   Plus,
@@ -386,10 +388,112 @@ function InstalledRow({
           ))}
       </div>
 
+      <ConnectionDetails inst={inst} controller={controller} />
+
       {inst.error && inst.status === "error" && (
         <div class="text-[11.5px] text-accent-red break-words">{inst.error}</div>
       )}
       {err && <div class="text-[11.5px] text-accent-red break-words">{err}</div>}
+    </div>
+  );
+}
+
+// ConnectionDetails shows how to reach an installed app and, on demand, its
+// (otherwise redacted) credentials fetched from the authorized endpoint.
+function ConnectionDetails({
+  inst,
+  controller,
+}: {
+  inst: AppInstance;
+  controller: ApplicationsController;
+}) {
+  const [open, setOpen] = useState(false);
+  const [creds, setCreds] = useState<AppCredentials | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [shown, setShown] = useState<Record<string, boolean>>({});
+
+  const toggle = async () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setOpen(true);
+    if (creds) return;
+    setLoading(true);
+    setErr(null);
+    try {
+      setCreds(await controller.credentials(inst.id));
+    } catch (error) {
+      setErr((error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fromContainers = `${inst.containerName}.lxd:${inst.internalPort}`;
+  const fromHost = `${inst.bindAddress}:${inst.externalPort}`;
+
+  return (
+    <div class="space-y-1.5">
+      <button
+        type="button"
+        onClick={toggle}
+        class="text-[11.5px] text-ink-300 hover:text-accent-blue inline-flex items-center gap-1"
+      >
+        <Eye class="w-3.5 h-3.5" />
+        {open ? "Hide connection" : "Connection & credentials"}
+      </button>
+
+      {open && (
+        <div class="rounded-md border border-white/[0.08] bg-black/20 p-2.5 space-y-1.5 text-[12px]">
+          <CopyLine label="From containers" value={fromContainers} />
+          <CopyLine label="From host" value={fromHost} />
+
+          {loading && <div class="text-ink-400">Loading credentials…</div>}
+          {err && <div class="text-accent-red break-words">{err}</div>}
+
+          {creds?.env &&
+            Object.entries(creds.env).map(([k, v]) => (
+              <div key={k} class="flex items-center gap-2">
+                <span class="text-ink-400 font-mono w-40 truncate">{k}</span>
+                <code class="flex-1 font-mono text-ink-100 break-all">
+                  {shown[k] ? v : "•".repeat(Math.min(16, v.length || 8))}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => setShown((s) => ({ ...s, [k]: !s[k] }))}
+                  class="text-[11px] text-ink-300 hover:text-ink-100"
+                >
+                  {shown[k] ? "hide" : "show"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard?.writeText(v)}
+                  class="text-[11px] text-ink-300 hover:text-ink-100"
+                >
+                  copy
+                </button>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CopyLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div class="flex items-center gap-2">
+      <span class="text-ink-400 w-40">{label}</span>
+      <code class="flex-1 font-mono text-ink-100 break-all">{value}</code>
+      <button
+        type="button"
+        onClick={() => void navigator.clipboard?.writeText(value)}
+        class="text-[11px] text-ink-300 hover:text-ink-100"
+      >
+        copy
+      </button>
     </div>
   );
 }
