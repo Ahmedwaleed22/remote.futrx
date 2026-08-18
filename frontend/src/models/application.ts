@@ -68,6 +68,9 @@ export interface AppCredentials {
   internalPort: number;
   externalPort: number;
   bindAddress: string;
+  username?: string;
+  password?: string;
+  database?: string;
   env?: Record<string, string>;
 }
 

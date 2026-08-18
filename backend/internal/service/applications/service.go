@@ -89,14 +89,17 @@ func (s *Service) Get(ctx context.Context, id string) (View, bool, error) {
 }
 
 // Credentials returns full connection details for an instance, including secret
-// env values. The transport layer is responsible for authorizing the caller.
+// env values and the canonical user/password/database resolved from the
+// image's Connection descriptor. The transport layer authorizes the caller.
 func (s *Service) Credentials(ctx context.Context, id string) (Credentials, error) {
-	inst, ok, err := s.store.Get(ctx, id)
+	inst, img, err := s.load(ctx, id)
 	if err != nil {
 		return Credentials{}, err
 	}
-	if !ok {
-		return Credentials{}, ErrNotFound
+	conn := img.Connection
+	username := conn.User
+	if conn.UserEnv != "" {
+		username = inst.Env[conn.UserEnv]
 	}
 	return Credentials{
 		ContainerName: inst.ContainerName,
@@ -104,6 +107,9 @@ func (s *Service) Credentials(ctx context.Context, id string) (Credentials, erro
 		InternalPort:  inst.InternalPort,
 		ExternalPort:  inst.ExternalPort,
 		BindAddress:   inst.BindAddress,
+		Username:      username,
+		Password:      inst.Env[conn.PasswordEnv],
+		Database:      inst.Env[conn.DatabaseEnv],
 		Env:           inst.Env,
 	}, nil
 }

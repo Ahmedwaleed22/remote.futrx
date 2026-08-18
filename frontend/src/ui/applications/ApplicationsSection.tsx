@@ -411,7 +411,6 @@ function ConnectionDetails({
   const [creds, setCreds] = useState<AppCredentials | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [shown, setShown] = useState<Record<string, boolean>>({});
 
   const toggle = async () => {
     if (open) {
@@ -447,35 +446,24 @@ function ConnectionDetails({
 
       {open && (
         <div class="rounded-md border border-white/[0.08] bg-black/20 p-2.5 space-y-1.5 text-[12px]">
-          <CopyLine label="From containers" value={fromContainers} />
-          <CopyLine label="From host" value={fromHost} />
+          <CopyLine label="Host (containers)" value={fromContainers} />
+          <CopyLine label="Host (host)" value={fromHost} />
+          <CopyLine label="Port (internal)" value={String(inst.internalPort)} />
+          <CopyLine label="Port (host)" value={String(inst.externalPort)} />
 
           {loading && <div class="text-ink-400">Loading credentials…</div>}
           {err && <div class="text-accent-red break-words">{err}</div>}
 
-          {creds?.env &&
-            Object.entries(creds.env).map(([k, v]) => (
-              <div key={k} class="flex items-center gap-2">
-                <span class="text-ink-400 font-mono w-40 truncate">{k}</span>
-                <code class="flex-1 font-mono text-ink-100 break-all">
-                  {shown[k] ? v : "•".repeat(Math.min(16, v.length || 8))}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => setShown((s) => ({ ...s, [k]: !s[k] }))}
-                  class="text-[11px] text-ink-300 hover:text-ink-100"
-                >
-                  {shown[k] ? "hide" : "show"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void navigator.clipboard?.writeText(v)}
-                  class="text-[11px] text-ink-300 hover:text-ink-100"
-                >
-                  copy
-                </button>
-              </div>
-            ))}
+          {creds && (
+            <>
+              {creds.username && <CopyLine label="User" value={creds.username} />}
+              {creds.password && <SecretLine label="Password" value={creds.password} />}
+              {creds.database && <CopyLine label="Database" value={creds.database} />}
+              {!creds.username && !creds.password && !creds.database && (
+                <div class="text-ink-400">No credentials required.</div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -487,6 +475,32 @@ function CopyLine({ label, value }: { label: string; value: string }) {
     <div class="flex items-center gap-2">
       <span class="text-ink-400 w-40">{label}</span>
       <code class="flex-1 font-mono text-ink-100 break-all">{value}</code>
+      <button
+        type="button"
+        onClick={() => void navigator.clipboard?.writeText(value)}
+        class="text-[11px] text-ink-300 hover:text-ink-100"
+      >
+        copy
+      </button>
+    </div>
+  );
+}
+
+function SecretLine({ label, value }: { label: string; value: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div class="flex items-center gap-2">
+      <span class="text-ink-400 w-40">{label}</span>
+      <code class="flex-1 font-mono text-ink-100 break-all">
+        {shown ? value : "•".repeat(Math.min(16, value.length || 8))}
+      </code>
+      <button
+        type="button"
+        onClick={() => setShown((v) => !v)}
+        class="text-[11px] text-ink-300 hover:text-ink-100"
+      >
+        {shown ? "hide" : "show"}
+      </button>
       <button
         type="button"
         onClick={() => void navigator.clipboard?.writeText(value)}

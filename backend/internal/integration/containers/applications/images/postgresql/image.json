@@ -34,6 +34,11 @@
     }
   ],
   "service": "postgresql",
+  "connection": {
+    "userEnv": "POSTGRES_USER",
+    "passwordEnv": "POSTGRES_PASSWORD",
+    "databaseEnv": "POSTGRES_DB"
+  },
   "install": "install.sh",
   "healthcheck": {
     "command": "pg_isready -h 127.0.0.1 -p {{internalPort}}"

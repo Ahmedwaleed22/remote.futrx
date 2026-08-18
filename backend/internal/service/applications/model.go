@@ -62,6 +62,21 @@ type Healthcheck struct {
 	Command string `json:"command,omitempty"`
 }
 
+// Connection maps an image's env vars to the canonical fields a client needs
+// (user, password, database), so every server surfaces a uniform connection
+// panel regardless of how it names its variables.
+type Connection struct {
+	// User is a static username when the image has no configurable one
+	// (e.g. MySQL's "root"). UserEnv takes precedence when set.
+	User string `json:"user,omitempty"`
+	// UserEnv is the env var holding the username (e.g. POSTGRES_USER).
+	UserEnv string `json:"userEnv,omitempty"`
+	// PasswordEnv is the env var holding the password.
+	PasswordEnv string `json:"passwordEnv,omitempty"`
+	// DatabaseEnv is the env var holding the default database, if any.
+	DatabaseEnv string `json:"databaseEnv,omitempty"`
+}
+
 // Image is one catalog entry loaded from images/<id>/image.json.
 type Image struct {
 	ID          string   `json:"id"`
@@ -79,6 +94,8 @@ type Image struct {
 	// Install is the install-script filename relative to the image directory.
 	Install     string      `json:"install"`
 	Healthcheck Healthcheck `json:"healthcheck,omitempty"`
+	// Connection maps env vars to canonical user/password/database fields.
+	Connection Connection `json:"connection,omitempty"`
 	// Base is the LXD image alias used when this app runs as a dedicated
 	// (global) container. Empty defaults to the platform default.
 	Base string `json:"base,omitempty"`
@@ -144,9 +161,14 @@ type Credentials struct {
 	ContainerName string `json:"containerName"`
 	// LXDHost is the bridge DNS name other containers connect to, at
 	// InternalPort: "<containerName>.lxd".
-	LXDHost      string            `json:"lxdHost"`
-	InternalPort int               `json:"internalPort"`
-	ExternalPort int               `json:"externalPort"`
-	BindAddress  string            `json:"bindAddress"`
-	Env          map[string]string `json:"env,omitempty"`
+	LXDHost      string `json:"lxdHost"`
+	InternalPort int    `json:"internalPort"`
+	ExternalPort int    `json:"externalPort"`
+	BindAddress  string `json:"bindAddress"`
+	// Canonical fields resolved from the image's Connection descriptor, so the
+	// UI can show a uniform user/password/database for every server.
+	Username string            `json:"username,omitempty"`
+	Password string            `json:"password,omitempty"`
+	Database string            `json:"database,omitempty"`
+	Env      map[string]string `json:"env,omitempty"`
 }

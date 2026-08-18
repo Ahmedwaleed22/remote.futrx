@@ -41,6 +41,7 @@ automatically for both global and project installs.
 | `port.bindAddress` | string | host interface for the proxy (default `127.0.0.1`) |
 | `env[]` | object[] | install-time inputs (see below) |
 | `service` | string | systemd unit name inside the container (start/stop/status) |
+| `connection` | object | maps env vars to canonical connection fields (see below) |
 | `install` | string | install-script filename (default `install.sh`) |
 | `base` | string | LXD image for a **dedicated global** container (default `ubuntu:24.04`) |
 | `healthcheck.command` | string | readiness probe run inside the container |
@@ -55,6 +56,18 @@ automatically for both global and project installs.
 | `secret` | value is redacted in API responses (passwords) |
 | `default` | applied when the user leaves the field blank |
 | `generate` | `password` → a strong value is generated when blank |
+
+### `connection` object
+
+Lets the UI show a uniform user/password/database panel for every server,
+regardless of how the image names its env vars:
+
+| field | notes |
+|---|---|
+| `user` | static username when there is no configurable one (e.g. MySQL `root`) |
+| `userEnv` | env var holding the username (takes precedence over `user`) |
+| `passwordEnv` | env var holding the password |
+| `databaseEnv` | env var holding the default database, if any |
 
 ## Install-script contract
 

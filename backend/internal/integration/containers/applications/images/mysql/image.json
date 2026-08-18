@@ -28,6 +28,11 @@
     }
   ],
   "service": "mysql",
+  "connection": {
+    "user": "root",
+    "passwordEnv": "MYSQL_ROOT_PASSWORD",
+    "databaseEnv": "MYSQL_DATABASE"
+  },
   "install": "install.sh",
   "healthcheck": {
     "command": "mysqladmin ping -h 127.0.0.1 -P {{internalPort}} --silent"
