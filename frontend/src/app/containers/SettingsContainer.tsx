@@ -8,6 +8,7 @@ import { useUserSettingsContext } from "../../state/context/UserSettingsContext"
 import { useUserDirectory } from "../../state/hooks/users/useUserDirectory";
 import { useServerInfo } from "../../state/hooks/server/useServerInfo";
 import { useSelfUpdate } from "../../state/hooks/server/useSelfUpdate";
+import { useGlobalApplications } from "../../state/hooks/applications/useApplications";
 
 export function SettingsContainer({
   onBack,
@@ -22,6 +23,9 @@ export function SettingsContainer({
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
   const serverInfo = useServerInfo(activeTab === "info");
   const selfUpdate = useSelfUpdate(activeTab === "updates" && auth.isAdmin);
+  const applications = useGlobalApplications(
+    activeTab === "applications" && auth.isAdmin
+  );
 
   return (
     <SettingsPage
@@ -64,6 +68,7 @@ export function SettingsContainer({
       kimiStarting={kimiAuth.starting}
       kimiError={kimiAuth.error}
       onStartKimiDeviceLogin={kimiAuth.startDeviceLogin}
+      applications={applications}
     />
   );
 }
