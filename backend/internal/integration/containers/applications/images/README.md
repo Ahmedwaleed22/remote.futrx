@@ -2,8 +2,8 @@
 
 This is the catalog of one-click installable apps ("Applications" tab).
 It is **embedded into the backend binary** (`//go:embed images` in
-`registry.go`), and also surfaced at the repo root as `images/` (a symlink)
-so the layout matches the documented structure.
+`registry.go`), and also surfaced at the repo root as `installable-images/`
+(a symlink) so the catalog is discoverable from the project root.
 
 Each subdirectory is one app:
 
