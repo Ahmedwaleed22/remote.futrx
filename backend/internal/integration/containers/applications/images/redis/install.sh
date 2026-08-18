@@ -28,9 +28,12 @@ CONF="$DROPIN/zz-futrx-app.conf"
 } >"$CONF"
 
 # Debian's unit reads /etc/redis/redis.conf; make sure it includes the drop-in.
-if ! grep -q "futrx-app" /etc/redis/redis.conf 2>/dev/null; then
-  echo "include ${CONF}  # futrx-app" >>/etc/redis/redis.conf
-fi
+# The include must be the last directive so it overrides earlier defaults, and
+# it must be on its own line with no trailing comment: Redis parses every
+# whitespace-separated token as an argument and rejects `include` with extras.
+# Strip any prior (possibly malformed) include line first so re-runs self-heal.
+sed -i '\#^include .*redis\.conf\.d/zz-futrx-app\.conf#d' /etc/redis/redis.conf 2>/dev/null || true
+printf '\ninclude %s\n' "${CONF}" >>/etc/redis/redis.conf
 
 systemctl enable redis-server >/dev/null 2>&1 || true
 systemctl restart redis-server
