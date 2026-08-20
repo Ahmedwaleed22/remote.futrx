@@ -170,7 +170,7 @@ the same Remote installation until IDE membership enforcement is added.
 
 ### Use the installable IDE launcher
 
-Open `https://code.<your-remote-host>` to see the available project IDEs in a dedicated launcher. That launcher includes a web-app manifest and minimal service worker, so a supporting browser can install it as a PWA for faster access to project editors.
+Open `https://code.<your-remote-host>` to see the available project IDEs in a dedicated launcher. Pick a project from the sidebar and its VS Code editor opens **inside the same app** — every workspace is mounted in an in-app tab, so switching between projects never leaves the one window. (You can still pop any workspace out into its own window from the toolbar, and `https://code.<your-remote-host>/<slug>/` continues to open a single project standalone.) The launcher includes a web-app manifest and minimal service worker, so a supporting browser can install the whole thing as a single PWA for faster access to every project editor.
 
 The launcher always loads the live project list and does not provide offline project access. The main Remote chat application is not currently a PWA; only this IDE launcher is installable.
 

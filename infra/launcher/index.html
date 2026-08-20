@@ -8,90 +8,344 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml" />
 <meta name="theme-color" content="#0b0d11" />
 <style>
-  :root { color-scheme: dark; }
+  :root {
+    color-scheme: dark;
+    --bg: #0b0d11;
+    --panel: #0e1117;
+    --line: rgba(255,255,255,.08);
+    --line-strong: rgba(255,255,255,.14);
+    --text: #e6e9ef;
+    --muted: #8b93a3;
+    --faint: #6f7888;
+    --accent: #4d9fff;
+    --ok: #3ec27a;
+    --off: #5b6472;
+    --err: #ff6b6b;
+    --sidebar-w: 248px;
+  }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
-    margin: 0; min-height: 100dvh; background: #0b0d11; color: #e6e9ef;
+    margin: 0; background: var(--bg); color: var(--text);
     font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    -webkit-font-smoothing: antialiased; padding: max(24px, env(safe-area-inset-top)) 20px 40px;
+    -webkit-font-smoothing: antialiased; overflow: hidden;
   }
-  header { max-width: 920px; margin: 0 auto 22px; display: flex; align-items: center; gap: 12px; }
-  header img { width: 34px; height: 34px; }
-  header h1 { font-size: 18px; font-weight: 650; margin: 0; letter-spacing: .2px; }
-  header p { margin: 2px 0 0; color: #8b93a3; font-size: 12.5px; }
-  main { max-width: 920px; margin: 0 auto; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
-  .card {
-    appearance: none; text-align: left; cursor: pointer; color: inherit;
-    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
-    border-radius: 12px; padding: 14px 14px 13px; display: flex; flex-direction: column; gap: 7px;
-    transition: background .12s, border-color .12s, transform .04s;
+  #app {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    height: 100dvh;
   }
-  .card:hover { background: rgba(255,255,255,.08); border-color: rgba(77,159,255,.5); }
-  .card:active { transform: translateY(1px); }
-  .card .name { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .card .slug { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #6f7888; }
-  .card .row { display: flex; align-items: center; gap: 8px; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: #3ec27a; flex: none; }
-  .dot.off { background: #5b6472; }
-  .status { color: #8b93a3; padding: 8px 2px; }
-  .status.err { color: #ff6b6b; }
+  body.collapsed #app { grid-template-columns: 0 1fr; }
+
+  /* Sidebar */
+  aside {
+    grid-column: 1; min-width: 0; overflow: hidden;
+    background: var(--panel); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top);
+  }
+  body.collapsed aside { border-right-color: transparent; }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 14px 12px; border-bottom: 1px solid var(--line);
+  }
+  .brand img { width: 26px; height: 26px; flex: none; }
+  .brand h1 { font-size: 15px; font-weight: 650; margin: 0; letter-spacing: .2px; white-space: nowrap; }
+  .brand p { margin: 1px 0 0; color: var(--faint); font-size: 11.5px; white-space: nowrap; }
+
+  .list { flex: 1 1 auto; overflow-y: auto; padding: 8px; }
+  .proj {
+    appearance: none; width: 100%; text-align: left; cursor: pointer; color: inherit;
+    background: transparent; border: 1px solid transparent; border-radius: 9px;
+    padding: 8px 10px; margin-bottom: 3px; display: flex; align-items: center; gap: 9px;
+    transition: background .12s, border-color .12s;
+  }
+  .proj:hover { background: rgba(255,255,255,.05); }
+  .proj.active { background: rgba(77,159,255,.14); border-color: rgba(77,159,255,.45); }
+  .proj .meta { min-width: 0; flex: 1 1 auto; }
+  .proj .name { font-weight: 560; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .proj .slug { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; box-shadow: 0 0 0 3px rgba(62,194,122,.14); }
+  .dot.off { background: var(--off); box-shadow: none; }
+  .proj .open-mark { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0; }
+  .proj.mounted .open-mark { opacity: .9; }
+
+  .list .status { color: var(--muted); padding: 10px 6px; font-size: 12.5px; }
+  .list .status.err { color: var(--err); }
+
+  .foot { border-top: 1px solid var(--line); padding: 9px 12px; color: var(--faint); font-size: 11px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .foot a { color: var(--muted); text-decoration: none; }
+  .foot a:hover { color: var(--text); }
+
+  /* Main */
+  main { grid-column: 2; min-width: 0; position: relative; display: flex; flex-direction: column; }
+  .topbar {
+    height: 44px; flex: none; display: flex; align-items: center; gap: 8px;
+    padding: 0 10px; border-bottom: 1px solid var(--line); background: var(--panel);
+    padding-top: env(safe-area-inset-top); box-sizing: content-box;
+  }
+  .iconbtn {
+    appearance: none; cursor: pointer; color: var(--muted); background: transparent;
+    border: 1px solid transparent; border-radius: 8px; height: 30px; min-width: 30px;
+    padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 13px; transition: background .12s, color .12s, border-color .12s;
+  }
+  .iconbtn:hover { background: rgba(255,255,255,.06); color: var(--text); border-color: var(--line); }
+  .iconbtn svg { width: 16px; height: 16px; display: block; }
+  .topbar .title { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden; }
+  .topbar .title .t { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar .title .s { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--faint); white-space: nowrap; }
+  .topbar .spacer { flex: 1 1 auto; }
+
+  .frames { position: relative; flex: 1 1 auto; min-height: 0; }
+  .frames iframe {
+    position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg);
+    display: none;
+  }
+  .frames iframe.active { display: block; }
+
+  .welcome {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; padding: 24px; gap: 6px;
+  }
+  .welcome.hidden { display: none; }
+  .welcome img { width: 54px; height: 54px; opacity: .9; margin-bottom: 6px; }
+  .welcome h2 { margin: 0; font-size: 17px; font-weight: 620; }
+  .welcome p { margin: 0; color: var(--muted); font-size: 13px; max-width: 360px; }
+
+  /* Mobile: sidebar becomes an overlay drawer */
+  .scrim { display: none; }
+  @media (max-width: 720px) {
+    #app { grid-template-columns: 1fr; }
+    body.collapsed #app { grid-template-columns: 1fr; }
+    aside {
+      position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: min(84vw, var(--sidebar-w));
+      transform: translateX(0); transition: transform .18s ease;
+    }
+    body.collapsed aside { transform: translateX(-102%); }
+    main { grid-column: 1; }
+    .scrim { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.5); }
+    body.collapsed .scrim { display: none; }
+    body:not(.collapsed) .scrim { display: block; }
+  }
 </style>
 </head>
 <body>
-  <header>
-    <img src="/icon.svg" alt="" />
-    <div>
-      <h1>Futrx IDE</h1>
-      <p>Open a project workspace in its own container IDE</p>
-    </div>
-  </header>
-  <main>
-    <div id="status" class="status">Loading projects…</div>
-    <div id="grid" class="grid"></div>
-  </main>
+  <div id="app">
+    <aside>
+      <div class="brand">
+        <img src="/icon.svg" alt="" />
+        <div>
+          <h1>Futrx IDE</h1>
+          <p>All project workspaces, one app</p>
+        </div>
+      </div>
+      <div id="list" class="list">
+        <div class="status">Loading projects…</div>
+      </div>
+      <div class="foot">
+        <span id="count"></span>
+        <a id="reload-list" href="#" title="Refresh project list">Refresh</a>
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <button class="iconbtn" id="toggle" title="Toggle project list" aria-label="Toggle project list">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="title" id="title"><span class="t">Futrx IDE</span></div>
+        <div class="spacer"></div>
+        <button class="iconbtn" id="reload-frame" title="Reload this workspace" hidden aria-label="Reload workspace">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button class="iconbtn" id="popout" title="Open this workspace in its own window" hidden aria-label="Open in new window">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-8 8"/><path d="M20 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4"/></svg>
+        </button>
+        <button class="iconbtn" id="close-frame" title="Close this workspace" hidden aria-label="Close workspace">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="frames" id="frames">
+        <div class="welcome" id="welcome">
+          <img src="/icon.svg" alt="" />
+          <h2>Pick a workspace</h2>
+          <p>Select a project on the left to open its VS Code editor right here. Everything stays inside this one app.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="scrim" id="scrim"></div>
+
   <script>
-    const ideUrl = (slug) => `/${slug}/?folder=/workspace`;
-    async function load() {
-      const status = document.getElementById("status");
+    "use strict";
+    const ideUrl = (slug) => `/${encodeURIComponent(slug)}/?folder=/workspace`;
+    const isNarrow = () => matchMedia("(max-width: 720px)").matches;
+
+    // Mounted iframes, keyed by slug, kept alive so editor state survives switching.
+    const frames = new Map();
+    let active = null;            // active slug
+    let projects = [];            // last-known project list
+
+    const els = {
+      body: document.body,
+      list: document.getElementById("list"),
+      frames: document.getElementById("frames"),
+      welcome: document.getElementById("welcome"),
+      title: document.getElementById("title"),
+      count: document.getElementById("count"),
+      toggle: document.getElementById("toggle"),
+      scrim: document.getElementById("scrim"),
+      reloadFrame: document.getElementById("reload-frame"),
+      popout: document.getElementById("popout"),
+      closeFrame: document.getElementById("close-frame"),
+    };
+
+    const isRunning = (p) => {
+      // /api/projects returns status as a plain string ("running"), but tolerate
+      // older/nested shapes too.
+      const s = p && p.status;
+      if (typeof s === "string") return s.toLowerCase() === "running";
+      if (s && typeof s === "object") return (s.containerState || s.state) === "RUNNING";
+      return false;
+    };
+    const slugOf = (p) => p.slug || p.containerName || "";
+    const nameOf = (p) => p.name || slugOf(p);
+    const findProject = (slug) => projects.find((p) => slugOf(p) === slug);
+
+    function setSidebar(open) {
+      els.body.classList.toggle("collapsed", !open);
+    }
+    // Start collapsed on narrow screens so the editor gets full width.
+    setSidebar(!isNarrow());
+
+    function mount(slug) {
+      let f = frames.get(slug);
+      if (!f) {
+        f = document.createElement("iframe");
+        f.title = slug;
+        f.src = ideUrl(slug);
+        // Same-origin frame: allow clipboard, fullscreen (VS Code uses them).
+        f.allow = "clipboard-read; clipboard-write; fullscreen";
+        els.frames.appendChild(f);
+        frames.set(slug, f);
+      }
+      return f;
+    }
+
+    function activate(slug) {
+      const p = findProject(slug);
+      if (!p) return;
+      mount(slug);
+      active = slug;
+      for (const [s, f] of frames) f.classList.toggle("active", s === slug);
+      els.welcome.classList.add("hidden");
+
+      // Topbar reflects the active workspace.
+      els.title.innerHTML = "";
+      const t = document.createElement("span"); t.className = "t"; t.textContent = nameOf(p);
+      const s = document.createElement("span"); s.className = "s"; s.textContent = slug;
+      els.title.append(t, s);
+      for (const b of [els.reloadFrame, els.popout, els.closeFrame]) b.hidden = false;
+
+      renderList();
+      if (isNarrow()) setSidebar(false);
+      try { history.replaceState(null, "", "/#" + encodeURIComponent(slug)); } catch (_) {}
+    }
+
+    function closeFrame(slug) {
+      const f = frames.get(slug);
+      if (f) { f.remove(); frames.delete(slug); }
+      if (active === slug) {
+        active = null;
+        const next = frames.keys().next();
+        if (!next.done) { activate(next.value); return; }
+        // Nothing left open — back to welcome.
+        els.welcome.classList.remove("hidden");
+        els.title.innerHTML = '<span class="t">Futrx IDE</span>';
+        for (const b of [els.reloadFrame, els.popout, els.closeFrame]) b.hidden = true;
+        try { history.replaceState(null, "", "/"); } catch (_) {}
+      }
+      renderList();
+    }
+
+    function renderList() {
+      const list = els.list;
+      list.innerHTML = "";
+      const items = projects
+        .filter((p) => slugOf(p))
+        .sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
+
+      if (!items.length) {
+        const s = document.createElement("div");
+        s.className = "status";
+        s.textContent = "No projects yet.";
+        list.appendChild(s);
+      }
+
+      for (const p of items) {
+        const slug = slugOf(p);
+        const btn = document.createElement("button");
+        btn.className = "proj" +
+          (slug === active ? " active" : "") +
+          (frames.has(slug) ? " mounted" : "");
+        btn.title = "Open " + slug;
+        btn.innerHTML =
+          '<span class="dot' + (isRunning(p) ? "" : " off") + '"></span>' +
+          '<span class="meta"><span class="name"></span><span class="slug"></span></span>' +
+          '<span class="open-mark"></span>';
+        btn.querySelector(".name").textContent = nameOf(p);
+        btn.querySelector(".slug").textContent = slug;
+        btn.addEventListener("click", () => activate(slug));
+        list.appendChild(btn);
+      }
+
+      const mounted = frames.size;
+      els.count.textContent = items.length + " project" + (items.length === 1 ? "" : "s") +
+        (mounted ? " · " + mounted + " open" : "");
+    }
+
+    async function load(initial) {
       try {
         const res = await fetch("/api/projects", { credentials: "include" });
         if (!res.ok) throw new Error("HTTP " + res.status);
-        const projects = await res.json();
-        render(Array.isArray(projects) ? projects : []);
-        status.style.display = "none";
+        const data = await res.json();
+        projects = Array.isArray(data) ? data : [];
+        renderList();
+
+        // On first load, honour a #slug deep link (e.g. an installed shortcut).
+        if (initial) {
+          const want = decodeURIComponent((location.hash || "").replace(/^#/, ""));
+          if (want && findProject(want)) activate(want);
+        }
       } catch (e) {
-        status.className = "status err";
-        status.textContent = "Could not load projects: " + e.message;
+        if (initial) {
+          els.list.innerHTML = "";
+          const s = document.createElement("div");
+          s.className = "status err";
+          s.textContent = "Could not load projects: " + e.message;
+          els.list.appendChild(s);
+        }
       }
     }
-    function render(projects) {
-      const grid = document.getElementById("grid");
-      grid.innerHTML = "";
-      projects
-        .filter((p) => p.slug || p.containerName)
-        .sort((a, b) => (a.name || a.slug || "").localeCompare(b.name || b.slug || ""))
-        .forEach((p) => {
-          const slug = p.slug || p.containerName;
-          const running = (p.status && (p.status.containerState || p.status.state)) === "RUNNING";
-          const card = document.createElement("button");
-          card.className = "card";
-          card.title = "Open " + slug + " IDE in a new window";
-          card.innerHTML =
-            '<div class="row"><span class="dot' + (running ? "" : " off") +
-            '"></span><span class="name"></span></div><span class="slug"></span>';
-          card.querySelector(".name").textContent = p.name || slug;
-          card.querySelector(".slug").textContent = slug + ".code";
-          card.addEventListener("click", () => window.open(ideUrl(slug), "_blank", "noopener"));
-          grid.appendChild(card);
-        });
-      if (!grid.children.length) {
-        const s = document.getElementById("status");
-        s.style.display = ""; s.textContent = "No projects yet.";
-      }
-    }
+
+    // Controls
+    els.toggle.addEventListener("click", () => setSidebar(els.body.classList.contains("collapsed")));
+    els.scrim.addEventListener("click", () => setSidebar(false));
+    document.getElementById("reload-list").addEventListener("click", (e) => { e.preventDefault(); load(false); });
+    els.reloadFrame.addEventListener("click", () => {
+      const f = active && frames.get(active);
+      if (f) f.src = f.src; // reassign to reload same-origin frame
+    });
+    els.popout.addEventListener("click", () => {
+      if (active) window.open(ideUrl(active), "_blank", "noopener");
+    });
+    els.closeFrame.addEventListener("click", () => { if (active) closeFrame(active); });
+
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
-    load();
+    load(true);
+    // Keep status dots / new projects fresh without disturbing open editors.
+    setInterval(() => load(false), 15000);
   </script>
 </body>
 </html>
