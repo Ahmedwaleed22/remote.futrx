@@ -177,5 +177,42 @@ done
 export CODE_SERVER_WS_NAME="${CODE_SERVER_WS_NAME:-$(hostname)}"
 node -e 'const fs=require("fs");const p="/root/.local/share/code-server/User/settings.json";const s=JSON.parse(fs.readFileSync(p,"utf8"));s["window.title"]=process.env.CODE_SERVER_WS_NAME;fs.writeFileSync(p,JSON.stringify(s,null,2)+"\n")' 2>/dev/null || true
 
+# --- Brand the IDE to match the code.<host> launcher ------------------------
+# code-server ships its own favicon and PWA icons; replace them with the Futrx
+# launcher mark so a project's browser tab and any per-project installed PWA use
+# the same icon as code.<host> (otherwise an installed per-project IDE shows
+# code-server's default logo). Best-effort: media paths can shift between
+# releases, so a miss must never fail provisioning.
+FUTRX_MEDIA=""
+for d in /usr/lib/code-server/src/browser/media /usr/lib/code-server/out/browser/media; do
+    [ -d "$d" ] && FUTRX_MEDIA="$d" && break
+done
+if [ -n "$FUTRX_MEDIA" ]; then
+    cat > "$FUTRX_MEDIA/favicon.svg" <<'SVG'
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#0f1014"/>
+  <rect x="8" y="8" width="496" height="496" rx="104" fill="none" stroke="#24252b" stroke-width="6"/>
+  <g transform="translate(256 256) scale(0.66) translate(-256 -256)"
+     fill="none" stroke="#8ab4ff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M196 196 L132 256 L196 316"/>
+    <path d="M316 196 L380 256 L316 316"/>
+    <path d="M232 348 L280 164" stroke="#b8a8ff"/>
+  </g>
+</svg>
+SVG
+    cp -f "$FUTRX_MEDIA/favicon.svg" "$FUTRX_MEDIA/favicon-dark-support.svg" 2>/dev/null || true
+    # Raster icon for the manifest/PWA install + dock. One 512 master, copied
+    # over every size code-server references (browsers scale as needed).
+    if base64 -d > /tmp/futrx-icon.png <<'B64' 2>/dev/null
+__FUTRX_ICON_PNG_B64__
+B64
+    then
+        for f in "$FUTRX_MEDIA"/pwa-icon*.png "$FUTRX_MEDIA"/code-server.png "$FUTRX_MEDIA"/favicon.png; do
+            [ -e "$f" ] && cp -f /tmp/futrx-icon.png "$f" 2>/dev/null || true
+        done
+        rm -f /tmp/futrx-icon.png
+    fi
+fi
+
 systemctl daemon-reload 2>/dev/null || true
 systemctl enable code-server.socket >/dev/null 2>&1 || true

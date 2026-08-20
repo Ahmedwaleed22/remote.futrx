@@ -11,6 +11,7 @@ package codeserver
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	_ "embed"
 	"fmt"
 	"time"
@@ -23,14 +24,26 @@ import (
 //go:embed assets/code-server-up.sh
 var codeServerUpScript []byte
 
+// futrxIconPNG is the launcher's IDE icon, baked into the install script so a
+// project's code-server serves the same favicon/PWA icon as the code.<host>
+// launcher (otherwise per-project installs show code-server's default logo).
+//
+//go:embed assets/futrx-icon-512.png
+var futrxIconPNG []byte
+
 // InstallScript returns the code-server installation program used by
 // base-image builds and the on-demand migration path, with the pinned
-// code-server version filled in from versions.env.
+// code-server version and the branding icon filled in.
 func InstallScript() []byte {
-	return bytes.ReplaceAll(
+	script := bytes.ReplaceAll(
 		codeServerUpScript,
 		[]byte("__CODE_SERVER_VERSION__"),
 		[]byte(provisioning.MustCLIVersion("CODE_SERVER_VERSION")),
+	)
+	return bytes.ReplaceAll(
+		script,
+		[]byte("__FUTRX_ICON_PNG_B64__"),
+		[]byte(base64.StdEncoding.EncodeToString(futrxIconPNG)),
 	)
 }
 
