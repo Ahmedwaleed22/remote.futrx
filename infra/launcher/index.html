@@ -217,6 +217,23 @@
     const setSidebar = (open) => els.body.classList.toggle("collapsed", !open);
     setSidebar(!isNarrow());
 
+    // In a standalone PWA window, Cmd/Ctrl+W is a system accelerator that closes
+    // the whole app window. We want it to close the VS Code editor tab instead.
+    // Because the launcher is same-origin with each code-server iframe, we can
+    // install a capturing keydown guard inside the iframe: preventDefault stops
+    // the window from closing, while NOT stopping propagation so code-server's
+    // own Cmd+W binding (workbench.action.closeActiveEditor) still runs.
+    const isCloseCombo = (e) =>
+      (e.key === "w" || e.key === "W" || e.code === "KeyW") &&
+      (e.metaKey || e.ctrlKey) && !e.altKey;
+    function guardClose(win) {
+      try {
+        win.addEventListener("keydown", (e) => { if (isCloseCombo(e)) e.preventDefault(); }, true);
+      } catch (_) { /* cross-origin or detached window — ignore */ }
+    }
+    // Guard the launcher chrome itself (focus outside any iframe).
+    guardClose(window);
+
     function mount(slug) {
       let f = frames.get(slug);
       if (!f) {
@@ -224,6 +241,8 @@
         f.title = slug;
         f.src = ideUrl(slug);
         f.allow = "clipboard-read; clipboard-write; fullscreen";
+        // Re-arm on every load: code-server reconnects reload the document.
+        f.addEventListener("load", () => guardClose(f.contentWindow));
         els.frames.appendChild(f);
         frames.set(slug, f);
       }
