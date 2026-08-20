@@ -1,7 +1,8 @@
 {
+  "id": "/",
   "name": "Futrx IDE",
   "short_name": "Futrx IDE",
-  "description": "Launch each Futrx project's container IDE.",
+  "description": "Every Futrx project's container IDE inside one app.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
