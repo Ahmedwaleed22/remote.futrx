@@ -10,9 +10,9 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/googleoauth"
-	serviceapplications "github.com/futrx-com/remote.futrx.com/internal/service/applications"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/webpush"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
+	serviceapplications "github.com/futrx-com/remote.futrx.com/internal/service/applications"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicepresence "github.com/futrx-com/remote.futrx.com/internal/service/presence"
@@ -240,6 +240,8 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Tmux:         tmuxService,
 		Access:       accessVerifier,
 		Applications: applicationsService,
+		Push:         pushService,
+		Presence:     presenceService,
 	}, nil
 }
 
@@ -260,9 +262,6 @@ func (a projectContainersAdapter) ContainerName(ctx context.Context, projectID s
 func (a projectContainersAdapter) EnsureRunning(ctx context.Context, projectID string) error {
 	_, err := a.projects.Start(ctx, serviceproject.ID(projectID))
 	return err
-		Push:         pushService,
-		Presence:     presenceService,
-	}, nil
 }
 
 // newPush builds the Web Push service. A deployment without a usable VAPID key

@@ -85,6 +85,8 @@ func New(dataDir string) (Stores, error) {
 	applications, err := fileapplications.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init applications store: %w", err)
+	}
+
 	push, err := filepush.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init push subscriptions store: %w", err)
