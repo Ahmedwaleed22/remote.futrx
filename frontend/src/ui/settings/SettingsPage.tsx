@@ -4,6 +4,9 @@ import type { UserDirectory } from "../../state/hooks/users/useUserDirectory";
 import type { ServerInfo } from "../../models/serverInfo";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import type { ComponentType } from "preact";
+import { Bot, ChevronLeft, Download, Info, Menu, Monitor, Server, Users } from "../primitives/icons";
+import { ApplicationsSection } from "../applications/ApplicationsSection";
+import type { ApplicationsController } from "../../state/hooks/applications/useApplications";
 import type { PushNotifications } from "../../state/hooks/push/usePushNotifications";
 import { Bell, Bot, ChevronLeft, Download, Info, Menu, Monitor, Users } from "../primitives/icons";
 import { AppearanceSettings } from "./AppearanceSettings";
@@ -16,7 +19,7 @@ import { ServerInfoSettings } from "./ServerInfoSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
 import { UsersPanel } from "../account/UsersPanel";
 
-export type SettingsTab = "appearance" | "notifications" | "agents" | "users" | "updates" | "info";
+export type SettingsTab = "appearance" | "notifications" | "agents" | "applications" | "users" | "updates" | "info";
 
 const tabs: Array<{
   id: SettingsTab;
@@ -47,6 +50,12 @@ const tabs: Array<{
     label: "Users",
     description: "Control who can access this server.",
     Icon: Users,
+  },
+  {
+    id: "applications",
+    label: "Applications",
+    description: "Install databases and services that run globally on this server.",
+    Icon: Server,
   },
   {
     id: "updates",
@@ -103,6 +112,7 @@ export function SettingsPage({
   onAppearanceThemeChange,
   onStartCodexDeviceLogin,
   onStartKimiDeviceLogin,
+  applications,
 }: {
   activeTab: SettingsTab;
   currentEmail: string;
@@ -144,6 +154,7 @@ export function SettingsPage({
   onAppearanceThemeChange: (theme: AppearanceTheme) => void;
   onStartCodexDeviceLogin: () => Promise<void>;
   onStartKimiDeviceLogin: () => Promise<void>;
+  applications: ApplicationsController;
 }) {
   const activeTabDetails = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
 
@@ -263,6 +274,15 @@ export function SettingsPage({
                 />
               </div>
             )}
+
+            {activeTab === "applications" &&
+              (isAdmin ? (
+                <ApplicationsSection controller={applications} />
+              ) : (
+                <SettingsNotice>
+                  Global applications are managed by server administrators.
+                </SettingsNotice>
+              ))}
 
             {activeTab === "updates" &&
               (isAdmin ? (
