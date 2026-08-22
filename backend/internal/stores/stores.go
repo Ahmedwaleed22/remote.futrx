@@ -7,6 +7,7 @@ import (
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
+	servicepush "github.com/futrx-com/remote.futrx.com/internal/service/push"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	serviceuser "github.com/futrx-com/remote.futrx.com/internal/service/user"
 	serviceusersettings "github.com/futrx-com/remote.futrx.com/internal/service/usersettings"
@@ -16,6 +17,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileproject"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectaccess"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileprojectsecrets"
+	"github.com/futrx-com/remote.futrx.com/internal/stores/filepush"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileschedule"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusers"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/fileusersettings"
@@ -23,6 +25,12 @@ import (
 
 type AuthStore interface {
 	serviceauth.Store
+}
+
+// PushStore adds VAPID key custody to the plain subscription repository.
+type PushStore interface {
+	servicepush.Repository
+	VAPIDKeys(generate func() (private string, public string, err error)) (string, string, error)
 }
 
 type Stores struct {
@@ -35,6 +43,7 @@ type Stores struct {
 	Users          serviceuser.Repository
 	UserSettings   serviceusersettings.Repository
 	Applications   serviceapplications.Store
+	Push           PushStore
 }
 
 func New(dataDir string) (Stores, error) {
@@ -76,6 +85,9 @@ func New(dataDir string) (Stores, error) {
 	applications, err := fileapplications.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init applications store: %w", err)
+	push, err := filepush.New(dataDir)
+	if err != nil {
+		return Stores{}, fmt.Errorf("init push subscriptions store: %w", err)
 	}
 
 	return Stores{
@@ -88,5 +100,6 @@ func New(dataDir string) (Stores, error) {
 		Users:          users,
 		UserSettings:   userSettings,
 		Applications:   applications,
+		Push:           push,
 	}, nil
 }
