@@ -97,6 +97,13 @@ export const API_ROUTES = {
       `/api/applications/${encodeURIComponent(appId)}/${action}`,
   },
   settings: "/api/me/settings",
+  push: {
+    config: "/api/push/config",
+    subscriptions: "/api/push/subscriptions",
+    subscriptionStatus: "/api/push/subscriptions/status",
+    test: "/api/push/test",
+    presence: "/api/push/presence",
+  },
   serverInfo: "/api/server/info",
   selfUpdate: {
     status: "/api/admin/update/status",

@@ -9,6 +9,7 @@ import { useUserDirectory } from "../../state/hooks/users/useUserDirectory";
 import { useServerInfo } from "../../state/hooks/server/useServerInfo";
 import { useSelfUpdate } from "../../state/hooks/server/useSelfUpdate";
 import { useGlobalApplications } from "../../state/hooks/applications/useApplications";
+import { usePushNotifications } from "../../state/hooks/push/usePushNotifications";
 
 export function SettingsContainer({
   onBack,
@@ -26,6 +27,7 @@ export function SettingsContainer({
   const applications = useGlobalApplications(
     activeTab === "applications" && auth.isAdmin
   );
+  const push = usePushNotifications(activeTab === "notifications");
 
   return (
     <SettingsPage
@@ -48,6 +50,7 @@ export function SettingsContainer({
       appearanceLoading={userSettings.loading}
       appearanceSaving={userSettings.saving}
       appearanceError={userSettings.error}
+      push={push}
       codexAuthenticated={codexAuth.authenticated}
       codexUsesApiKey={codexAuth.usesApiKey}
       codexDeviceLogin={codexAuth.deviceLogin}

@@ -4,17 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/googleoauth"
-	serviceapplications "github.com/futrx-com/remote.futrx.com/internal/service/applications"
+	"github.com/futrx-com/remote.futrx.com/internal/integration/webpush"
 	agentauth "github.com/futrx-com/remote.futrx.com/internal/service/agent/auth"
+	serviceapplications "github.com/futrx-com/remote.futrx.com/internal/service/applications"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	servicepresence "github.com/futrx-com/remote.futrx.com/internal/service/presence"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
+	servicepush "github.com/futrx-com/remote.futrx.com/internal/service/push"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
 	serviceschedule "github.com/futrx-com/remote.futrx.com/internal/service/schedule"
 	"github.com/futrx-com/remote.futrx.com/internal/service/schedulecapability"
@@ -33,6 +37,15 @@ type TmuxClient interface {
 	servicetmux.SessionClient
 }
 
+// PushStore persists Web Push registrations and the server's long-lived VAPID
+// key pair. VAPIDKeys mints the pair on first use and returns the stored one
+// thereafter; rotating it would invalidate every browser subscription.
+type PushStore interface {
+	servicepush.Repository
+	removedUserSubscriptions
+	VAPIDKeys(generate func() (private string, public string, err error)) (string, string, error)
+}
+
 type Dependencies struct {
 	Chats             servicechat.Repository
 	Projects          serviceproject.Repository
@@ -42,6 +55,7 @@ type Dependencies struct {
 	Auth              AuthStore
 	Users             serviceuser.Repository
 	UserSettings      serviceusersettings.Repository
+	Push              PushStore
 	AuthBaseURL       string
 	ProjectContainers serviceproject.ContainerDependencies
 	AgentContainers   provisioning.ContainerDependencies
@@ -83,6 +97,8 @@ type Services struct {
 	Tmux         *servicetmux.Service
 	Access       *serviceauth.AccessVerifier
 	Applications *serviceapplications.Service
+	Push         *servicepush.Service
+	Presence     *servicepresence.Service
 }
 
 func New(ctx context.Context, deps Dependencies) (Services, error) {
@@ -95,12 +111,18 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 
 	workspace := workspacehub.New()
 	var runs *runhub.Hub
+	// The notifier needs services that are built further down, so it is
+	// created empty here and populated once they exist — the same late
+	// binding the run hub uses above.
+	presenceService := servicepresence.New()
+	pushNotifier := &chatPushNotifier{chats: deps.Chats, presence: presenceService}
 	chats := notifyingChatRepository{
 		Repository: deps.Chats,
 		workspace:  workspace,
 		running: func(id servicechat.ID) bool {
 			return runs != nil && runs.IsRunning(id)
 		},
+		push: pushNotifier,
 	}
 	projects := notifyingProjectRepository{Repository: deps.Projects, workspace: workspace}
 	definitions := agentDefinitions()
@@ -122,6 +144,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		chatProjectResolver{projects: projectService},
 		tmuxResolver,
 		runs,
+		servicechat.WithCopiedEventAppender(chats),
 	)
 	chatAccessService := servicechat.NewAccessService(chatService, projectService)
 	agents := agent.NewRegistry()
@@ -148,7 +171,14 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			return Services{}, err
 		}
 	}
-	userService := serviceuser.New(deps.Users)
+	pushService := newPush(deps.Push, deps.AuthBaseURL)
+	userService := serviceuser.New(
+		deps.Users,
+		serviceuser.WithRemovalCleanup(userRemovalCleanup{
+			projects:      projectService,
+			subscriptions: deps.Push,
+		}),
+	)
 	authService, err := newAuth(ctx, deps.Auth, userService, deps.AuthBaseURL)
 	if err != nil {
 		return Services{}, err
@@ -197,6 +227,9 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			deps.AppPorts,
 		)
 	}
+	pushNotifier.push = pushService
+	pushNotifier.audience.projects = projectService
+	pushNotifier.audience.users = userService
 
 	return Services{
 		Chats:        chatService,
@@ -215,6 +248,8 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Tmux:         tmuxService,
 		Access:       accessVerifier,
 		Applications: applicationsService,
+		Push:         pushService,
+		Presence:     presenceService,
 	}, nil
 }
 
@@ -235,6 +270,36 @@ func (a projectContainersAdapter) ContainerName(ctx context.Context, projectID s
 func (a projectContainersAdapter) EnsureRunning(ctx context.Context, projectID string) error {
 	_, err := a.projects.Start(ctx, serviceproject.ID(projectID))
 	return err
+}
+
+// newPush builds the Web Push service. A deployment without a usable VAPID key
+// simply has notifications switched off; it is not a reason to refuse to boot.
+func newPush(store PushStore, baseURL string) *servicepush.Service {
+	if store == nil {
+		return servicepush.New(nil, nil)
+	}
+	private, public, err := store.VAPIDKeys(func() (string, string, error) {
+		key, err := webpush.GenerateVAPIDKey()
+		if err != nil {
+			return "", "", err
+		}
+		return key.PrivateKeyBase64(), key.PublicKeyBase64(), nil
+	})
+	if err != nil {
+		log.Printf("push: notifications disabled: %v", err)
+		return servicepush.New(store, nil)
+	}
+	key, err := webpush.ParseVAPIDKey(private, public)
+	if err != nil {
+		log.Printf("push: notifications disabled: %v", err)
+		return servicepush.New(store, nil)
+	}
+	client, err := webpush.NewClient(key, baseURL)
+	if err != nil {
+		log.Printf("push: notifications disabled: %v", err)
+		return servicepush.New(store, nil)
+	}
+	return servicepush.New(store, webPushSender{client: client})
 }
 
 func (s Services) AuthEnabled() bool {
