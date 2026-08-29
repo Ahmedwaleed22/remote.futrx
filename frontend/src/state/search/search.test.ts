@@ -3,6 +3,7 @@ import test from "node:test";
 import type { ChatMeta } from "../../models/chat.ts";
 import type { ProjectMeta } from "../../models/project.ts";
 import { buildSearchIndex } from "./searchDoc.ts";
+import { FACET_DEFINITIONS, optionsForFacet } from "./facetRegistry.ts";
 import { runSearch } from "./searchEngine.ts";
 import { emptyFacetSelections } from "./searchQuery.ts";
 import { UNASSIGNED_PROJECT } from "./searchDoc.ts";
@@ -147,6 +148,34 @@ test("unassigned chats are selectable as their own project option", () => {
   const facets = emptyFacetSelections();
   facets.project = [UNASSIGNED_PROJECT];
   assert.deepEqual(idsFor("", { facets }), ["c4"]);
+});
+
+test("a deleted project does not become a filter option of its own", () => {
+  const orphanDocs = buildSearchIndex(
+    [
+      ...chats,
+      {
+        id: "c5",
+        title: "Left behind",
+        projectId: "p-deleted",
+        createdAt: NOW - DAY,
+        lastMessageAt: NOW - DAY,
+        lastReadAt: NOW,
+      },
+    ],
+    projects
+  );
+  const projectFacet = FACET_DEFINITIONS.find((facet) => facet.id === "project")!;
+  const values = optionsForFacet(projectFacet, orphanDocs).map((option) => option.value);
+  // The raw id would otherwise show up as a project the user never created.
+  assert.equal(values.includes("p-deleted"), false);
+  assert.deepEqual(values, ["p-docs", "p-remote", UNASSIGNED_PROJECT]);
+
+  // And the chat is still reachable, filed with the rest of the unassigned.
+  const facets = emptyFacetSelections();
+  facets.project = [UNASSIGNED_PROJECT];
+  const hits = runSearch(orphanDocs, filters({ facets }), "", "relevance", NOW).hits;
+  assert.deepEqual(hits.map((hit) => hit.doc.chat.id).sort(), ["c4", "c5"]);
 });
 
 test("different facets AND together", () => {

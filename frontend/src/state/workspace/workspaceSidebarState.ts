@@ -67,7 +67,7 @@ class WorkspaceSidebarState {
 
   /** Group chats under their projects, in the sidebar's display order. */
   model(chats: ChatMeta[], projects: ProjectMeta[]): WorkspaceSidebarModel {
-    const buckets = this.bucketChatsByProject(chats);
+    const buckets = this.bucketChatsByProject(chats, new Set(projects.map((p) => p.id)));
     const visibleProjects = [...projects]
       .sort((left, right) => this.compareProjects(left, right))
       .map((project) => ({
@@ -135,12 +135,18 @@ class WorkspaceSidebarState {
     writeJson(STORAGE_KEYS.collapsedProjects, collapsed);
   }
 
-  private bucketChatsByProject(chats: ChatMeta[]): ChatBuckets {
+  /** `knownProjectIds` is what keeps a chat whose project was deleted visible:
+   *  bucketed under a project that is never rendered, it would vanish from the
+   *  sidebar entirely, so a dangling id counts as no project at all. */
+  private bucketChatsByProject(
+    chats: ChatMeta[],
+    knownProjectIds: ReadonlySet<string>
+  ): ChatBuckets {
     const byProject = new Map<string, ChatMeta[]>();
     const loose: ChatMeta[] = [];
 
     for (const chat of chats) {
-      if (!chat.projectId) {
+      if (!chat.projectId || !knownProjectIds.has(chat.projectId)) {
         loose.push(chat);
         continue;
       }

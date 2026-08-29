@@ -60,6 +60,17 @@ test("preserves workspace UI transitions and sidebar ordering", () => {
   assert.deepEqual(model.visibleLooseChats.map((chat) => chat.id), ["loose"]);
 });
 
+test("a chat left pointing at a deleted project stays visible as unassigned", () => {
+  const orphaned: ChatMeta[] = [
+    ...chats,
+    { id: "orphan", title: "Orphan", projectId: "deleted", createdAt: 4, lastMessageAt: 4 },
+  ];
+  const model = workspaceSidebarState.model(orphaned, projects);
+  // Bucketed under a project that is never rendered, it would vanish entirely.
+  assert.deepEqual(model.visibleLooseChats.map((chat) => chat.id), ["orphan", "loose"]);
+  assert.equal(model.visibleProjects.every((node) => node.project.id !== "deleted"), true);
+});
+
 test("a deleted active chat hands over to the next chat, not the empty state", () => {
   const remaining = chats.filter((chat) => chat.id !== "new-chat");
   assert.equal(workspaceSidebarState.isActiveChatMissing(remaining, "new-chat"), true);

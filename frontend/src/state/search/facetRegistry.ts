@@ -65,7 +65,10 @@ const FACET_TABLE = [
     label: "Projects",
     advanced: false,
     emptyHint: "No projects yet",
-    valuesOf: (doc) => [doc.chat.projectId || UNASSIGNED_PROJECT],
+    // Keyed off the *resolved* project, not the raw id: a chat left pointing at
+    // a deleted project would otherwise invent a filter option labelled with a
+    // bare id, for a project nobody created. It groups with the unassigned.
+    valuesOf: (doc) => [doc.project?.id ?? UNASSIGNED_PROJECT],
     labelFor: (value, doc) => {
       if (value === UNASSIGNED_PROJECT) return "Unassigned chats";
       return doc?.project?.name || value;
