@@ -1,4 +1,4 @@
-import { fold } from "../../../state/search/textMatch";
+import { fold } from "./textMatch";
 
 /** A rendered text node and where its text starts in the concatenated string. */
 interface TextChunk {

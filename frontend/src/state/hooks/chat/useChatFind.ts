@@ -1,14 +1,28 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import type { RefObject } from "preact";
-import { findRanges } from "../../../ui/chat/find/findRanges";
-import {
-  clearFindHighlights,
-  paintFindHighlights,
-} from "../../../ui/chat/find/chatFindHighlight";
+import { clearHighlight, paintHighlight } from "../../../shared/textHighlight";
+import { findRanges } from "../../search/domTextSearch";
 import { isFindShortcut } from "../../search/searchShortcuts";
 
 /** Keep the match this far from the scroller's edges when revealing it. */
 const REVEAL_MARGIN = 80;
+
+// Two layers so the current match reads differently from the rest. The current
+// one is painted separately rather than held out of `ALL`, so its rule wins by
+// being registered second. Styled in index.css as `::highlight(...)`.
+const ALL_MATCHES = "chat-find";
+const CURRENT_MATCH = "chat-find-current";
+
+function paintMatches(all: readonly Range[], current: Range | null): void {
+  paintHighlight(ALL_MATCHES, all);
+  if (current) paintHighlight(CURRENT_MATCH, [current]);
+  else clearHighlight(CURRENT_MATCH);
+}
+
+function clearMatches(): void {
+  clearHighlight(ALL_MATCHES);
+  clearHighlight(CURRENT_MATCH);
+}
 
 export interface ChatFind {
   open: boolean;
@@ -76,13 +90,13 @@ export function useChatFind({
   useEffect(() => {
     if (!open || !contentRef.current) {
       setMatchCount(0);
-      clearFindHighlights();
+      clearMatches();
       return;
     }
     const ranges = findRanges(contentRef.current, query);
     setMatchCount(ranges.length);
     if (ranges.length === 0) {
-      clearFindHighlights();
+      clearMatches();
       return;
     }
     // Content can shrink under a held cursor (a message collapsing, older
@@ -91,11 +105,11 @@ export function useChatFind({
       setIndex(0);
       return;
     }
-    paintFindHighlights(ranges, ranges[index]);
+    paintMatches(ranges, ranges[index]);
     reveal(scrollRef.current, ranges[index]);
   }, [open, query, index, revision, contentRef, scrollRef]);
 
-  useEffect(() => clearFindHighlights, []);
+  useEffect(() => clearMatches, []);
 
   const step = useCallback(
     (delta: number) =>
