@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { pushApi } from "../../../api/pushApi";
 import { pushSubscriptionApi } from "../../../api/pushSubscriptionApi";
+import type { PushDeviceState } from "../../../api/pushDeviceRegistration.ts";
 import type { PushBlocker, PushStatus } from "../../../models/push";
 
 export interface PushNotifications {
@@ -39,8 +40,7 @@ export function usePushNotifications(active: boolean, account: string): PushNoti
       // second device, or a subscription the browser dropped — so trust the
       // browser for what *this* device receives. A registration this account
       // asked for is restored here rather than reported as off.
-      const device = await pushSubscriptionApi.ensureRegistered(account, config.publicKey);
-      setStatus(device === "absent" ? "off" : "on");
+      setStatus(statusOf(await pushSubscriptionApi.ensureRegistered(account, config.publicKey)));
     } catch (cause) {
       setStatus("blocked");
       setError(messageOf(cause));
@@ -98,6 +98,15 @@ export function usePushNotifications(active: boolean, account: string): PushNoti
   }, []);
 
   return { status, blocker, busy, testing, error, notice, enable, disable, sendTest };
+}
+
+/**
+ * A device the server could not confirm still holds its subscription, so it
+ * reads as on: reporting off would tell the user to press a button that asks
+ * for a permission they already granted.
+ */
+function statusOf(device: PushDeviceState): PushStatus {
+  return device === "absent" ? "off" : "on";
 }
 
 function messageOf(cause: unknown): string {
