@@ -41,8 +41,14 @@ export interface FilterControl {
   clearFacet: (facetId: FacetId) => void;
   setDateFilter: (date: DateFilter) => void;
   resetFilters: () => void;
-  /** Toggled by the filter menu so counts are only computed while it's open. */
-  setCountsEnabled: (enabled: boolean) => void;
+  /**
+   * Ask for per-option facet counts, and release them with the returned
+   * function. They are only worth their cost while a filter menu is on screen,
+   * and two can be at once -- the sidebar's and the palette's -- so this is a
+   * retain count rather than a flag either one could switch off underneath the
+   * other.
+   */
+  retainCounts: () => () => void;
 }
 
 /** What anything that renders results needs, and nothing more. */

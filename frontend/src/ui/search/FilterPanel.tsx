@@ -66,12 +66,10 @@ export function FilterPanelBody({
   });
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Counts are only worth computing while this menu is on screen.
-  const { setCountsEnabled } = search;
-  useEffect(() => {
-    setCountsEnabled(true);
-    return () => setCountsEnabled(false);
-  }, [setCountsEnabled]);
+  // Counts are only worth computing while this menu is on screen. The retain
+  // releases on unmount, so a second menu's counts outlive this one closing.
+  const { retainCounts } = search;
+  useEffect(() => retainCounts(), [retainCounts]);
 
   // Move focus into the panel so keyboard and screen-reader users land here.
   useEffect(() => {

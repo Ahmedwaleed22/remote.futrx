@@ -33,6 +33,7 @@ export function useWorkspaceSearch(
   const [filters, setFilters] = useState<SearchFilters>(() => readFilters());
   const [sort, setSortState] = useState<SortId>(() => readSort());
   const [countsEnabled, setCountsEnabled] = useState(false);
+  const countsRetained = useRef(0);
   const firstRender = useRef(true);
 
   const docs = useMemo(() => buildSearchIndex(chats, projects), [chats, projects]);
@@ -100,6 +101,20 @@ export function useWorkspaceSearch(
     setFilters((current) => ({ ...current, date }));
   }, []);
 
+  const retainCounts = useCallback(() => {
+    countsRetained.current += 1;
+    setCountsEnabled(true);
+    let released = false;
+    return () => {
+      // Idempotent, so a double release cannot drop the count below the number
+      // of menus still open.
+      if (released) return;
+      released = true;
+      countsRetained.current -= 1;
+      if (countsRetained.current === 0) setCountsEnabled(false);
+    };
+  }, []);
+
   const resetFilters = useCallback(() => setFilters(defaultFilters()), []);
 
   const clearAll = useCallback(() => {
@@ -127,6 +142,6 @@ export function useWorkspaceSearch(
     setDateFilter,
     resetFilters,
     clearAll,
-    setCountsEnabled,
+    retainCounts,
   };
 }
