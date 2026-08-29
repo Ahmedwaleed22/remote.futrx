@@ -282,7 +282,14 @@ html[data-theme="light"] {
   .codex-window-frame {
     border: 1px solid var(--line);
     box-shadow: var(--shadow-card);
+    /* `clip`, not `hidden`: hidden still makes this card a scroll container,
+       so focusing anything inside a popover taller than the card -- the filter
+       menu's option checkboxes, say -- scrolls the card's own header out of
+       sight, with no scrollbar to bring it back. `clip` cannot scroll at all.
+       `hidden` stays as the fallback for browsers without `clip`, where the
+       card must still clip even though it keeps the scroll behaviour. */
     overflow: hidden;
+    overflow: clip;
   }
 
   .sidebar-project-chat-frame {
