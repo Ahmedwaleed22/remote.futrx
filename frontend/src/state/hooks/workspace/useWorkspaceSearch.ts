@@ -59,14 +59,14 @@ export function useWorkspaceSearch(
           advanced: facet.advanced,
           emptyHint: facet.emptyHint,
           // Scoping a facet by the others needs the counts, and those are only
-          // computed while a menu is open. Narrowing without them would empty
+          // tallied while a menu is open. Narrowing without them would empty
           // the list on the frame before the first count arrives.
-          options: countsEnabled ? offerableOptions(options, counts, selected) : options,
+          options: outcome.counted ? offerableOptions(options, counts, selected) : options,
           selected,
           counts,
         };
       }),
-    [docs, filters, outcome, countsEnabled]
+    [docs, filters, outcome]
   );
 
   useEffect(() => {

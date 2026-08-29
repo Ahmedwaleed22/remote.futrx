@@ -225,5 +225,5 @@ export function runSearch(
   const effectiveSort: SortId = sort === "relevance" && !scoring ? "recent" : sort;
   hits.sort((left, right) => compareHits(left, right, effectiveSort));
 
-  return { hits, counts: facets.counts, total: docs.length };
+  return { hits, counts: facets.counts, counted: options.withCounts === true, total: docs.length };
 }

@@ -22,6 +22,13 @@ export type FacetCounts = Record<FacetId, Map<string, number>>;
 export interface SearchOutcome {
   hits: SearchHit[];
   counts: FacetCounts;
+  /**
+   * Whether `counts` were actually tallied. Counting is opt-in, and an empty
+   * count map otherwise reads the same as one where nothing matched -- callers
+   * that narrow by the counts have to tell those apart, and asking the outcome
+   * beats carrying the answer alongside it.
+   */
+  counted: boolean;
   /** Total chats considered before any filtering. */
   total: number;
 }
