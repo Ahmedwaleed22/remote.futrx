@@ -24,12 +24,21 @@ function clearMatches(): void {
   clearHighlight(CURRENT_MATCH);
 }
 
+/**
+ * Where the search stands. A union rather than a loose `(index, matchCount)`
+ * pair, because only these three combinations are real: the bar was showing
+ * one of three things and had to re-derive which from three separate fields,
+ * two of which could disagree.
+ */
+export type FindStatus =
+  | { kind: "idle" }
+  | { kind: "empty" }
+  | { kind: "matched"; position: number; total: number };
+
 export interface ChatFind {
   open: boolean;
   query: string;
-  /** 0-based position of the current match; -1 when there are none. */
-  index: number;
-  matchCount: number;
+  status: FindStatus;
   setQuery: (query: string) => void;
   next: () => void;
   previous: () => void;
@@ -117,11 +126,17 @@ export function useChatFind({
     [matchCount]
   );
 
+  const status: FindStatus =
+    query.trim().length === 0
+      ? { kind: "idle" }
+      : matchCount === 0
+        ? { kind: "empty" }
+        : { kind: "matched", position: index + 1, total: matchCount };
+
   return {
     open,
     query,
-    index: matchCount === 0 ? -1 : index,
-    matchCount,
+    status,
     setQuery,
     next: useCallback(() => step(1), [step]),
     previous: useCallback(() => step(-1), [step]),

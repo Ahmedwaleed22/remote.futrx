@@ -32,7 +32,8 @@ export function ChatFindBar({
 
   if (!find.open) return null;
 
-  const empty = find.query.trim().length > 0 && find.matchCount === 0;
+  const { status } = find;
+  const noMatches = status.kind !== "matched";
 
   return (
     <div
@@ -66,19 +67,21 @@ export function ChatFindBar({
           aria-label="Find in chat"
         />
         <span
-          class={`flex-none tabular-nums text-[11px] ${empty ? "text-accent-red" : "text-ink-400"}`}
+          class={`flex-none tabular-nums text-[11px] ${
+            status.kind === "empty" ? "text-accent-red" : "text-ink-400"
+          }`}
           aria-live="polite"
         >
-          {find.query.trim().length === 0
+          {status.kind === "idle"
             ? ""
-            : find.matchCount === 0
+            : status.kind === "empty"
               ? "No results"
-              : `${find.index + 1} of ${find.matchCount}`}
+              : `${status.position} of ${status.total}`}
         </span>
         <button
           type="button"
           onClick={find.previous}
-          disabled={find.matchCount === 0}
+          disabled={noMatches}
           class={stepButtonClass}
           aria-label="Previous match"
           title="Previous match (Shift+Enter)"
@@ -88,7 +91,7 @@ export function ChatFindBar({
         <button
           type="button"
           onClick={find.next}
-          disabled={find.matchCount === 0}
+          disabled={noMatches}
           class={stepButtonClass}
           aria-label="Next match"
           title="Next match (Enter)"
