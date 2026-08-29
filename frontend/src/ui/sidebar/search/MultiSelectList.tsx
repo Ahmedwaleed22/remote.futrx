@@ -80,7 +80,7 @@ export function MultiSelectList({
         </span>
       </div>
 
-      <div class="max-h-52 overflow-y-auto touch-scroll scrollbar-thin space-y-px">
+      <div class="max-h-52 overflow-y-auto touch-scroll scrollbar-thin space-y-1">
         {visible.length === 0 && (
           <p class="px-2 py-1.5 text-[11.5px] text-ink-400">No matches</p>
         )}
