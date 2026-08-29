@@ -3,7 +3,8 @@ import test from "node:test";
 import type { ChatMeta } from "../../models/chat.ts";
 import type { ProjectMeta } from "../../models/project.ts";
 import { buildSearchIndex } from "./searchDoc.ts";
-import { FACET_DEFINITIONS, offerableOptions, optionsForFacet } from "./facetRegistry.ts";
+import { FACET_DEFINITIONS, optionsForFacet } from "./facetRegistry.ts";
+import { buildFacetViews } from "./facetViews.ts";
 import {
   ephemeralSearchPreferences,
   storedSearchPreferences,
@@ -332,14 +333,11 @@ test("the palette's filters never reach the sidebar's stored selection", () => {
 });
 
 test("picking a provider scopes the model and mode facets to it", () => {
-  const facet = (id: string) => FACET_DEFINITIONS.find((entry) => entry.id === id)!;
-  const offered = (id: string, active: SearchFilters) => {
-    const outcome = runSearch(docs, active, "", "relevance", NOW, { withCounts: true });
-    return offerableOptions(
-      optionsForFacet(facet(id), docs),
-      outcome.counts[facet(id).id],
-      active.facets[facet(id).id] ?? []
-    ).map((option) => option.value);
+  const offered = (id: string, active: SearchFilters, withCounts = true) => {
+    const outcome = runSearch(docs, active, "", "relevance", NOW, { withCounts });
+    return buildFacetViews(docs, active, outcome)
+      .find((view) => view.id === id)!
+      .options.map((option) => option.value);
   };
 
   // Unfiltered, every model and mode any chat has ever used is on offer.
@@ -371,4 +369,14 @@ test("picking a provider scopes the model and mode facets to it", () => {
   impossible.model = ["opus"];
   assert.deepEqual(offered("model", filters({ facets: impossible })).sort(), ["gpt-5.5", "opus"]);
   assert.deepEqual(idsFor("", { facets: impossible }), []);
+
+  // Scoping is derived from the counts, so with no filter menu open -- nothing
+  // asking for counts -- the unscoped list stands in rather than collapsing to
+  // the selection. The chips read it then, and only for values already ticked.
+  assert.deepEqual(offered("model", filters({ facets: codex }), false).sort(), [
+    "",
+    "gpt-5.5",
+    "opus",
+    "sonnet",
+  ]);
 });

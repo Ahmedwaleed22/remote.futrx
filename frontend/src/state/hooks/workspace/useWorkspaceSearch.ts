@@ -3,13 +3,13 @@ import type { ChatMeta } from "../../../models/chat";
 import type { ProjectMeta } from "../../../models/project";
 import { buildSearchIndex } from "../../search/searchDoc";
 import { runSearch } from "../../search/searchEngine";
-import { FACET_DEFINITIONS, offerableOptions, optionsForFacet } from "../../search/facetRegistry";
 import type { FacetId } from "../../search/facetRegistry";
 import { isDateFilterActive } from "../../search/dateRange";
 import type { DateFilter } from "../../search/dateRange";
 import { countActiveFacets, defaultFilters } from "../../search/searchQuery";
 import type { SearchFilters, SortId } from "../../search/searchQuery";
-import type { FacetView, WorkspaceSearch } from "../../search/searchController";
+import { buildFacetViews } from "../../search/facetViews";
+import type { WorkspaceSearch } from "../../search/searchController";
 import { storedSearchPreferences } from "../../search/searchFiltersStorage";
 import type { SearchPreferences } from "../../search/searchFiltersStorage";
 
@@ -47,25 +47,8 @@ export function useWorkspaceSearch(
     [docs, filters, query, sort, countsEnabled]
   );
 
-  const facetViews = useMemo<FacetView[]>(
-    () =>
-      FACET_DEFINITIONS.map((facet) => {
-        const selected = filters.facets[facet.id] ?? [];
-        const counts = outcome.counts[facet.id];
-        const options = optionsForFacet(facet, docs);
-        return {
-          id: facet.id,
-          label: facet.label,
-          advanced: facet.advanced,
-          emptyHint: facet.emptyHint,
-          // Scoping a facet by the others needs the counts, and those are only
-          // tallied while a menu is open. Narrowing without them would empty
-          // the list on the frame before the first count arrives.
-          options: outcome.counted ? offerableOptions(options, counts, selected) : options,
-          selected,
-          counts,
-        };
-      }),
+  const facetViews = useMemo(
+    () => buildFacetViews(docs, filters, outcome),
     [docs, filters, outcome]
   );
 
