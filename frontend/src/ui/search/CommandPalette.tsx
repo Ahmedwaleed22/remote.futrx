@@ -1,37 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { WorkspaceSearch } from "../../state/search/searchController";
-import type { SearchHit } from "../../state/search/searchResults";
-import { modelShortLabel } from "../../config/chat";
-import { timeAgo } from "../../shared/format";
-import { HighlightedText } from "../primitives/HighlightedText";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { FilterPanelBody } from "./FilterPanel";
-import {
-  CornerDownLeft,
-  Folder,
-  Loader,
-  MessageSquare,
-  Search,
-  SlidersHorizontal,
-} from "../primitives/icons";
+import { PaletteResultRow } from "./PaletteResultRow";
+import { Search, SlidersHorizontal } from "../primitives/icons";
 
 // Enough to fill the list without rendering hundreds of rows nobody scrolls to.
 const MAX_VISIBLE_RESULTS = 50;
-
-function whyItMatched(hit: SearchHit): string | null {
-  switch (hit.matchedField) {
-    case "project":
-      return hit.doc.project ? `project · ${hit.doc.project.name}` : "project";
-    case "path":
-      return hit.doc.chat.cwd ? `path · ${hit.doc.chat.cwd}` : "path";
-    case "skill":
-      return "skill";
-    case "model":
-      return `model · ${modelShortLabel(hit.doc.chat.model)}`;
-    default:
-      return null;
-  }
-}
 
 /**
  * Centered spotlight search, opened with Cmd/Ctrl+P or Cmd/Ctrl+K.
@@ -209,61 +184,15 @@ export function CommandPalette({
                 {search.isSearching ? "No chats match." : "Start typing to search."}
               </p>
             ) : (
-              results.map((hit, index) => {
-                const chat = hit.doc.chat;
-                const active = index === activeIndex;
-                const reason = whyItMatched(hit);
-                return (
-                  <button
-                    key={chat.id}
-                    type="button"
-                    data-active={active ? "true" : "false"}
-                    onMouseMove={() => setActiveIndex(index)}
-                    onClick={() => choose(index)}
-                    class={`flex w-full items-start gap-2.5 rounded-card px-3 py-2 text-left transition-colors
-                            ${active ? "bg-accent-blue/[0.14]" : "hover:bg-tint"}`}
-                  >
-                    {chat.running ? (
-                      <Loader class="mt-0.5 h-4 w-4 flex-none animate-spin text-accent-blue" />
-                    ) : (
-                      <MessageSquare
-                        class={`mt-0.5 h-4 w-4 flex-none ${active ? "text-accent-blue" : "text-ink-400"}`}
-                      />
-                    )}
-
-                    <span class="min-w-0 flex-1">
-                      <HighlightedText
-                        text={chat.title || "Untitled"}
-                        spans={hit.titleSpans}
-                        class={`block truncate text-[13.5px] leading-snug ${
-                          active ? "text-ink-50" : "text-ink-100"
-                        }`}
-                      />
-                      <span class="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-400">
-                        {hit.doc.project && (
-                          <>
-                            <Folder class="h-3 w-3 flex-none" />
-                            <span class="truncate">{hit.doc.project.name}</span>
-                          </>
-                        )}
-                        {!hit.doc.project && <span class="truncate">Unassigned</span>}
-                        <span aria-hidden="true">·</span>
-                        <span class="flex-none">{timeAgo(chat.lastMessageAt)}</span>
-                        {reason && (
-                          <>
-                            <span aria-hidden="true">·</span>
-                            <span class="truncate text-ink-500">{reason}</span>
-                          </>
-                        )}
-                      </span>
-                    </span>
-
-                    {active && (
-                      <CornerDownLeft class="mt-1 h-3.5 w-3.5 flex-none text-accent-blue" />
-                    )}
-                  </button>
-                );
-              })
+              results.map((hit, index) => (
+                <PaletteResultRow
+                  key={hit.doc.chat.id}
+                  hit={hit}
+                  active={index === activeIndex}
+                  onActivate={() => setActiveIndex(index)}
+                  onSelect={() => choose(index)}
+                />
+              ))
             )}
           </div>
         )}
