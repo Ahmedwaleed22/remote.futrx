@@ -4,8 +4,8 @@ import type { SearchHit } from "../../state/search/searchResults";
 import { modelShortLabel } from "../../config/chat";
 import { timeAgo } from "../../shared/format";
 import { HighlightedText } from "../primitives/HighlightedText";
-import { ActiveFilterChips } from "../sidebar/search/ActiveFilterChips";
-import { FilterPanelBody } from "../sidebar/search/FilterPanel";
+import { ActiveFilterChips } from "./ActiveFilterChips";
+import { FilterPanelBody } from "./FilterPanel";
 import {
   CornerDownLeft,
   Folder,

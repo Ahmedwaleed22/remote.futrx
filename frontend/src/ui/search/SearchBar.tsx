@@ -1,9 +1,9 @@
 import { useRef, useState } from "preact/hooks";
-import type { FilterControl, QueryControl } from "../../../state/search/searchController";
-import { useDismissOnOutside } from "../../primitives/popover";
+import type { FilterControl, QueryControl } from "../../state/search/searchController";
+import { useDismissOnOutside } from "../primitives/popover";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { FilterPanel } from "./FilterPanel";
-import { Search, SlidersHorizontal, X } from "../../primitives/icons";
+import { Search, SlidersHorizontal, X } from "../primitives/icons";
 
 /**
  * The sidebar search row: a plain keyword input plus the filter menu trigger.

@@ -1,8 +1,8 @@
-import type { SearchHit } from "../../../state/search/searchResults";
-import { modelShortLabel } from "../../../config/chat";
-import { timeAgo } from "../../../shared/format";
-import { HighlightedText } from "../../primitives/HighlightedText";
-import { Clock, Folder, Loader, MessageSquare } from "../../primitives/icons";
+import type { SearchHit } from "../../state/search/searchResults";
+import { modelShortLabel } from "../../config/chat";
+import { timeAgo } from "../../shared/format";
+import { HighlightedText } from "../primitives/HighlightedText";
+import { Clock, Folder, Loader, MessageSquare } from "../primitives/icons";
 
 /**
  * One ranked search result. Unlike `ChatRow` it always names the chat's project

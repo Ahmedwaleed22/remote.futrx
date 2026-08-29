@@ -1,6 +1,6 @@
 import { useMemo, useState } from "preact/hooks";
-import type { FacetOption } from "../../../state/search/facetRegistry";
-import { Check, Search } from "../../primitives/icons";
+import type { FacetOption } from "../../state/search/facetRegistry";
+import { Check, Search } from "../primitives/icons";
 
 const INLINE_FILTER_THRESHOLD = 8;
 

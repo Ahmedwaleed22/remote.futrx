@@ -1,5 +1,5 @@
 import type { ComponentChildren } from "preact";
-import { ChevronDown, ChevronRight } from "../../primitives/icons";
+import { ChevronDown, ChevronRight } from "../primitives/icons";
 
 /** One collapsible group in the filter menu. */
 export function FilterSection({

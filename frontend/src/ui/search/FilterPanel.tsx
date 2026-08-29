@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { FacetView, FilterControl } from "../../../state/search/searchController";
-import { isDateFilterActive } from "../../../state/search/dateRange";
-import { SORT_OPTIONS } from "../../../state/search/searchQuery";
-import type { SortId } from "../../../state/search/searchQuery";
+import type { FacetView, FilterControl } from "../../state/search/searchController";
+import { isDateFilterActive } from "../../state/search/dateRange";
+import { SORT_OPTIONS } from "../../state/search/searchQuery";
+import type { SortId } from "../../state/search/searchQuery";
 import { DateRangeControl } from "./DateRangeControl";
 import { FilterSection } from "./FilterSection";
 import { MultiSelectList } from "./MultiSelectList";
-import { X } from "../../primitives/icons";
+import { X } from "../primitives/icons";
 
 /** One facet rendered as a collapsible checkbox list. */
 function FacetFilterSection({

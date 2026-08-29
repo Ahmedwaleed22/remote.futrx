@@ -4,7 +4,7 @@ import { ChatSkeleton } from "../../ui/chat/ChatSkeleton";
 import { CreateProjectModal } from "../../ui/projects/CreateProjectModal";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { SearchProvider, useSearchContext } from "../../state/context/SearchContext";
-import { CommandPalette } from "../../ui/palette/CommandPalette";
+import { CommandPalette } from "../../ui/search/CommandPalette";
 import { useWorkspaceCommands } from "../../state/hooks/workspace/useWorkspaceCommands";
 import { ChatContainer } from "./ChatContainer";
 import { ProjectContainersContainer } from "./ProjectContainersContainer";

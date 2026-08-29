@@ -1,6 +1,6 @@
-import type { FilterControl } from "../../../state/search/searchController";
-import { describeDateFilter, isDateFilterActive } from "../../../state/search/dateRange";
-import { X } from "../../primitives/icons";
+import type { FilterControl } from "../../state/search/searchController";
+import { describeDateFilter, isDateFilterActive } from "../../state/search/dateRange";
+import { X } from "../primitives/icons";
 
 /**
  * Active filters shown beneath the input, so the current selection is legible

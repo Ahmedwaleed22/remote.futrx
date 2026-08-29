@@ -1,8 +1,8 @@
 import {
   DATE_FIELD_OPTIONS,
   DATE_PRESET_OPTIONS,
-} from "../../../state/search/dateRange";
-import type { DateField, DateFilter, DatePresetId } from "../../../state/search/dateRange";
+} from "../../state/search/dateRange";
+import type { DateField, DateFilter, DatePresetId } from "../../state/search/dateRange";
 
 /**
  * Date presets plus a custom range, and a choice of which timestamp to test.
