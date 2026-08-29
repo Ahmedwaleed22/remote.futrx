@@ -1,3 +1,4 @@
+import { isDefinitiveRejection } from "./apiError.ts";
 import { pushApi } from "./pushApi";
 import { pushServiceWorkerApi } from "./pushServiceWorkerApi";
 import type { PushBlocker, PushSubscriptionPayload } from "../models/push";
@@ -55,7 +56,7 @@ class PushSubscriptionApi {
           // Restoring must never surface a prompt: only "Turn on" may do that.
           permissionGranted: webPushTransport.notificationPermission === "granted",
         },
-        this.#restorePorts(registration, serverKey)
+        this.#restorePorts(registration, serverKey, account)
       );
     } catch {
       // A failed restore must not read as "the user turned this off". Report
@@ -134,7 +135,8 @@ class PushSubscriptionApi {
   /** What restoring one device is allowed to do to this browser and account. */
   #restorePorts(
     registration: ServiceWorkerRegistration,
-    serverKey: string
+    serverKey: string,
+    account: string
   ): PushDevicePorts<PushSubscription> {
     return {
       isSignedWithRetiredKey: (subscription) =>
@@ -148,7 +150,18 @@ class PushSubscriptionApi {
       },
       createRegistration: async () => {
         const created = await webPushTransport.subscribe(registration, serverKey);
-        await pushApi.subscribe(this.#payload(created));
+        try {
+          await pushApi.subscribe(this.#payload(created));
+        } catch (cause) {
+          // The server refused this device outright — the account is at its
+          // device cap, or the browser produced keys the server rejects.
+          // Retrying on every boot would unsubscribe and resubscribe forever,
+          // and on Safari each unsubscribe can cost the notification
+          // permission itself. Forget the opt-in so restore goes quiet;
+          // pressing "Turn on" still surfaces this same error to the user.
+          if (isDefinitiveRejection(cause)) await pushDeviceOptIn.forget(account);
+          throw cause;
+        }
       },
     };
   }

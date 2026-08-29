@@ -53,6 +53,7 @@ The transport also:
 | Worker receives a push with no session | Nothing is displayed; the registration is kept for the next sign-in |
 | Push service retires an endpoint | The worker re-registers the device when the session owns the retired endpoint; otherwise the app restores it on its next start |
 | Server has no record of a device that opted in here | The subscription is re-created silently, without a new permission prompt |
+| Server definitively rejects the re-created device (device cap, invalid keys) | The opt-in is forgotten so restore stops retrying; "Turn on" surfaces the same error to the user |
 
 ## Remaining release-safety work
 
