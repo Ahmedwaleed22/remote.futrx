@@ -98,20 +98,21 @@ async function subscriptionBelongsToCurrentAccount() {
   const subscription = await self.registration.pushManager.getSubscription();
   if (!subscription) return false;
 
-  const ownership = await accountOwnsEndpoint(subscription.endpoint);
-  if (ownership === "yes") return true;
+  const ownership = await endpointOwnership(subscription.endpoint);
+  if (ownership === "owned") return true;
   // A definite "this endpoint is not yours": it belongs to whoever used this
   // browser before, so the current session must not keep it alive. An
   // unanswerable check is not that verdict — a missing session or a backend
   // still coming back up after an update only costs this one notification.
-  if (ownership === "no") await subscription.unsubscribe();
+  if (ownership === "foreign") await subscription.unsubscribe();
   return false;
 }
 
-// Whether the current session's account owns one endpoint. "unknown" keeps
-// both callers honest: nothing is displayed and nothing is discarded until the
-// server actually answers.
-async function accountOwnsEndpoint(endpoint) {
+// Who owns one endpoint, in the same three words the app uses:
+// "owned" | "foreign" | "unverified". Keeping one vocabulary on both sides of
+// the origin matters, because the two act on the same verdicts — and
+// "unverified" means nothing is displayed and nothing is discarded.
+async function endpointOwnership(endpoint) {
   try {
     const response = await fetch("/api/push/subscriptions/status", {
       method: "POST",
@@ -119,13 +120,13 @@ async function accountOwnsEndpoint(endpoint) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ endpoint }),
     });
-    if (!response.ok) return "unknown";
+    if (!response.ok) return "unverified";
     const status = await response.json();
-    return status.owned === true ? "yes" : "no";
+    return status.owned === true ? "owned" : "foreign";
   } catch {
     // A transient server failure may cost one notification, but must never
     // reveal an alert before account ownership can be proven.
-    return "unknown";
+    return "unverified";
   }
 }
 
@@ -188,7 +189,7 @@ async function resubscribe(event) {
   if (!retired || !key) return;
 
   try {
-    if ((await accountOwnsEndpoint(retired.endpoint)) !== "yes") return;
+    if ((await endpointOwnership(retired.endpoint)) !== "owned") return;
 
     const replacement =
       event.newSubscription ||
