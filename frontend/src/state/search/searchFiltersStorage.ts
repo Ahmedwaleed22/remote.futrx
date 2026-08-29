@@ -1,5 +1,11 @@
-// Persists the filter selection across reloads, alongside the existing
-// `remote.futrx.sidebarCollapsed` preference.
+// Where a search surface keeps its filter selection between mounts.
+//
+// Two implementations, because the two surfaces want different things: the
+// sidebar's search is a place you set up and come back to, so it persists
+// across reloads alongside the existing `remote.futrx.sidebarCollapsed`
+// preference; the palette is a scratch surface you open, use and dismiss, and
+// persisting it would both surprise the user and overwrite the sidebar's
+// selection through the same key.
 //
 // Stored values are treated as untrusted: a hand-edited or stale entry (say, a
 // facet that no longer exists) must degrade to "no filter" rather than throw
@@ -14,6 +20,14 @@ import { FACET_IDS } from "./facetRegistry.ts";
 
 const FILTERS_KEY = "remote.futrx.searchFilters";
 const SORT_KEY = "remote.futrx.searchSort";
+
+/** How one search surface loads and saves its selection. */
+export interface SearchPreferences {
+  readFilters(): SearchFilters;
+  writeFilters(filters: SearchFilters): void;
+  readSort(): SortId;
+  writeSort(sort: SortId): void;
+}
 
 function parseDate(raw: unknown): DateFilter {
   if (!raw || typeof raw !== "object") return { ...ANY_DATE };
@@ -75,3 +89,23 @@ export function writeSort(sort: SortId): void {
     localStorage.setItem(SORT_KEY, sort);
   } catch {}
 }
+
+/** Remembered across reloads. What the sidebar's search uses. */
+export const storedSearchPreferences: SearchPreferences = {
+  readFilters,
+  writeFilters,
+  readSort,
+  writeSort,
+};
+
+/**
+ * Starts from the defaults every mount and saves nothing. What the palette
+ * uses, so its filters neither outlive the session nor reach into the
+ * sidebar's stored selection.
+ */
+export const ephemeralSearchPreferences: SearchPreferences = {
+  readFilters: defaultFilters,
+  writeFilters: () => {},
+  readSort: () => DEFAULT_SORT,
+  writeSort: () => {},
+};

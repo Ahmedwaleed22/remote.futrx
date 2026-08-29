@@ -22,7 +22,7 @@ export function WorkspaceContainer() {
 function WorkspaceShell() {
   const workspace = useWorkspaceContext();
   const commands = useWorkspaceCommands();
-  const { search, paletteOpen, closePalette } = useSearchContext();
+  const { paletteSearch, paletteOpen, closePalette } = useSearchContext();
   // Two moments where there is no chat to render but one is still coming: the
   // snapshot has not landed, or it has and the initial-chat effect has not run
   // its pick yet. Both would otherwise flash the "Create your first project"
@@ -69,7 +69,7 @@ function WorkspaceShell() {
         onCreate={workspace.createProject}
       />
       <CommandPalette
-        search={search}
+        search={paletteSearch}
         open={paletteOpen}
         onClose={closePalette}
         onSelectChat={workspace.selectChat}

@@ -4,8 +4,12 @@ import type { ChatMeta } from "../../models/chat.ts";
 import type { ProjectMeta } from "../../models/project.ts";
 import { buildSearchIndex } from "./searchDoc.ts";
 import { FACET_DEFINITIONS, optionsForFacet } from "./facetRegistry.ts";
+import {
+  ephemeralSearchPreferences,
+  storedSearchPreferences,
+} from "./searchFiltersStorage.ts";
 import { runSearch } from "./searchEngine.ts";
-import { emptyFacetSelections } from "./searchQuery.ts";
+import { DEFAULT_SORT, defaultFilters, emptyFacetSelections } from "./searchQuery.ts";
 import { UNASSIGNED_PROJECT } from "./searchDoc.ts";
 import type { SearchFilters } from "./searchQuery.ts";
 import { ANY_DATE, resolveDateRange } from "./dateRange.ts";
@@ -297,4 +301,32 @@ test("the palette opens on Cmd/Ctrl+P and Cmd/Ctrl+K", () => {
   assert.equal(isPaletteShortcut(chord({ metaKey: true, shiftKey: true })), false);
   assert.equal(isPaletteShortcut(chord({ metaKey: true, altKey: true })), false);
   assert.equal(isPaletteShortcut(chord({ key: "j", metaKey: true })), false);
+});
+
+test("the palette's filters never reach the sidebar's stored selection", () => {
+  const store = new Map<string, string>();
+  (globalThis as { localStorage?: unknown }).localStorage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => void store.set(key, value),
+  };
+
+  // The sidebar sets up a project scope and it survives a reload.
+  const scoped = filters();
+  scoped.facets.project = ["p-remote"];
+  storedSearchPreferences.writeFilters(scoped);
+  storedSearchPreferences.writeSort("recent");
+  assert.deepEqual(storedSearchPreferences.readFilters().facets.project, ["p-remote"]);
+
+  // The palette narrows to something else. Sharing one state, this used to
+  // re-scope the sidebar behind the user's back, and outlive the session.
+  const inPalette = filters();
+  inPalette.facets.project = ["p-docs"];
+  ephemeralSearchPreferences.writeFilters(inPalette);
+  ephemeralSearchPreferences.writeSort("oldest");
+
+  assert.deepEqual(storedSearchPreferences.readFilters().facets.project, ["p-remote"]);
+  assert.equal(storedSearchPreferences.readSort(), "recent");
+  // And the palette itself opens clean rather than inheriting either one.
+  assert.deepEqual(ephemeralSearchPreferences.readFilters(), defaultFilters());
+  assert.equal(ephemeralSearchPreferences.readSort(), DEFAULT_SORT);
 });

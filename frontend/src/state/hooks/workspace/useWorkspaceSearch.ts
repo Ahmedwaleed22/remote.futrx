@@ -10,12 +10,8 @@ import type { DateFilter } from "../../search/dateRange";
 import { countActiveFacets, defaultFilters } from "../../search/searchQuery";
 import type { SearchFilters, SortId } from "../../search/searchQuery";
 import type { FacetView, WorkspaceSearch } from "../../search/searchController";
-import {
-  readFilters,
-  readSort,
-  writeFilters,
-  writeSort,
-} from "../../search/searchFiltersStorage";
+import { storedSearchPreferences } from "../../search/searchFiltersStorage";
+import type { SearchPreferences } from "../../search/searchFiltersStorage";
 
 /**
  * Owns workspace search: the keyword, the filter selection, and the derived
@@ -24,14 +20,20 @@ import {
  * The index is rebuilt only when chats or projects change, so keystrokes pay
  * for comparison alone. Facet counts are computed only while the filter menu is
  * open, since nothing else displays them.
+ *
+ * Each call owns a separate selection. Two surfaces searching the same chats
+ * are two calls, not one shared state -- filtering in the palette leaves the
+ * sidebar's scoping alone. `preferences` decides whether that selection
+ * outlives the mount.
  */
 export function useWorkspaceSearch(
   chats: readonly ChatMeta[],
-  projects: readonly ProjectMeta[]
+  projects: readonly ProjectMeta[],
+  preferences: SearchPreferences = storedSearchPreferences
 ): WorkspaceSearch {
   const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<SearchFilters>(() => readFilters());
-  const [sort, setSortState] = useState<SortId>(() => readSort());
+  const [filters, setFilters] = useState<SearchFilters>(() => preferences.readFilters());
+  const [sort, setSortState] = useState<SortId>(() => preferences.readSort());
   const [countsEnabled, setCountsEnabled] = useState(false);
   const countsRetained = useRef(0);
   const firstRender = useRef(true);
@@ -65,13 +67,16 @@ export function useWorkspaceSearch(
       firstRender.current = false;
       return;
     }
-    writeFilters(filters);
-  }, [filters]);
+    preferences.writeFilters(filters);
+  }, [filters, preferences]);
 
-  const setSort = useCallback((next: SortId) => {
-    setSortState(next);
-    writeSort(next);
-  }, []);
+  const setSort = useCallback(
+    (next: SortId) => {
+      setSortState(next);
+      preferences.writeSort(next);
+    },
+    [preferences]
+  );
 
   const toggleFacetValue = useCallback((facetId: FacetId, value: string) => {
     setFilters((current) => {

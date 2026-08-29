@@ -19,7 +19,7 @@ export function SidebarContainer() {
   );
   const commands = useWorkspaceCommands();
   const signOut = useAccountSignOut();
-  const { search, openPalette } = useSearchContext();
+  const { sidebarSearch, openPalette } = useSearchContext();
   const model = useMemo(
     () => workspaceSidebarState.model(workspace.chats, workspace.projects),
     [workspace.chats, workspace.projects]
@@ -29,7 +29,7 @@ export function SidebarContainer() {
     <Sidebar
       open={workspace.ui.sidebarOpen}
       model={model}
-      search={search}
+      search={sidebarSearch}
       loading={!workspace.loaded}
       collapsed={sidebar.collapsed}
       sidebarCollapsed={sidebar.sidebarCollapsed}
