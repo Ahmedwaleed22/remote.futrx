@@ -5,6 +5,7 @@ import { modelShortLabel } from "../../config/chat";
 import { timeAgo } from "../../shared/format";
 import { HighlightedText } from "../primitives/HighlightedText";
 import { ActiveFilterChips } from "../sidebar/search/ActiveFilterChips";
+import { FilterPanelBody } from "../sidebar/search/FilterPanel";
 import {
   CornerDownLeft,
   Folder,
@@ -50,6 +51,7 @@ export function CommandPalette({
   onSelectChat: (chatId: string) => void;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +61,11 @@ export function CommandPalette({
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      // A reopened palette starts on the results, never on a stale filter menu.
+      setFiltersOpen(false);
+      return;
+    }
     const id = window.setTimeout(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
@@ -72,13 +78,18 @@ export function CommandPalette({
 
   // Keep the highlighted row in view during keyboard navigation.
   useEffect(() => {
-    if (!open) return;
+    if (!open || filtersOpen) return;
     const list = listRef.current;
     const active = list?.querySelector<HTMLElement>('[data-active="true"]');
     active?.scrollIntoView({ block: "nearest" });
-  }, [activeIndex, open]);
+  }, [activeIndex, open, filtersOpen]);
 
   if (!open) return null;
+
+  function closeFilters() {
+    setFiltersOpen(false);
+    inputRef.current?.focus();
+  }
 
   function choose(index: number) {
     const hit = results[index];
@@ -88,6 +99,16 @@ export function CommandPalette({
   }
 
   function onKeyDown(event: KeyboardEvent) {
+    // While the filter menu is up it owns the arrows and Enter; Escape steps
+    // back to the results rather than closing the palette outright.
+    if (filtersOpen) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeFilters();
+      return;
+    }
+
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
@@ -123,7 +144,8 @@ export function CommandPalette({
 
   return (
     <div
-      class="fixed inset-0 z-[60] flex items-start justify-center bg-black/55 px-4 pt-[12vh] backdrop-blur-[3px] modal-backdrop-fade"
+      class="fixed inset-0 z-[60] flex items-start justify-center overflow-hidden bg-black/55
+             px-4 pb-[8vh] pt-[8vh] backdrop-blur-[3px] modal-backdrop-fade sm:pt-[12vh]"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -132,8 +154,8 @@ export function CommandPalette({
         role="dialog"
         aria-modal="true"
         aria-label="Search chats"
-        class="theme-menu-surface modal-card-pop flex w-full max-w-[640px] flex-col overflow-hidden
-               rounded-panel border border-line bg-raised shadow-modal"
+        class="theme-menu-surface modal-card-pop flex max-h-full w-full max-w-[640px] flex-col
+               overflow-hidden rounded-panel border border-line bg-raised shadow-modal"
         onKeyDown={onKeyDown}
       >
         <div class="flex flex-none items-center gap-2.5 border-b border-line px-4 py-3">
@@ -148,101 +170,124 @@ export function CommandPalette({
             spellcheck={false}
             aria-label="Search chats and projects"
           />
-          {search.activeFilterCount > 0 && (
-            <span class="flex flex-none items-center gap-1 rounded-full bg-accent-blue/[0.14] px-2 py-0.5 text-[10.5px] font-semibold text-accent-blue">
-              <SlidersHorizontal class="h-3 w-3" />
-              {search.activeFilterCount}
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={() => (filtersOpen ? closeFilters() : setFiltersOpen(true))}
+            class={`flex flex-none items-center gap-1 rounded-full px-2 py-1 text-[10.5px] font-semibold transition-colors
+                    ${filtersOpen || search.hasActiveFilters
+                      ? "bg-accent-blue/[0.14] text-accent-blue"
+                      : "text-ink-300 hover:bg-tint-strong hover:text-ink-50"}`}
+            aria-label="Filters"
+            aria-haspopup="dialog"
+            aria-expanded={filtersOpen}
+            title="Filters"
+          >
+            <SlidersHorizontal class="h-3.5 w-3.5" />
+            {search.activeFilterCount > 0 && search.activeFilterCount}
+          </button>
         </div>
 
-        {search.activeFilterCount > 0 && (
+        {/* The chips restate what the menu already shows, so they step aside for it. */}
+        {!filtersOpen && search.activeFilterCount > 0 && (
           <div class="flex-none border-b border-line px-4 pb-2.5">
             <ActiveFilterChips search={search} />
           </div>
         )}
 
-        <div ref={listRef} class="min-h-0 flex-1 overflow-y-auto touch-scroll scrollbar-thin p-1.5">
-          {results.length === 0 ? (
-            <p class="px-3 py-8 text-center text-[13px] text-ink-400">
-              {search.isSearching ? "No chats match." : "Start typing to search."}
-            </p>
-          ) : (
-            results.map((hit, index) => {
-              const chat = hit.doc.chat;
-              const active = index === activeIndex;
-              const reason = whyItMatched(hit);
-              return (
-                <button
-                  key={chat.id}
-                  type="button"
-                  data-active={active ? "true" : "false"}
-                  onMouseMove={() => setActiveIndex(index)}
-                  onClick={() => choose(index)}
-                  class={`flex w-full items-start gap-2.5 rounded-card px-3 py-2 text-left transition-colors
-                          ${active ? "bg-accent-blue/[0.14]" : "hover:bg-tint"}`}
-                >
-                  {chat.running ? (
-                    <Loader class="mt-0.5 h-4 w-4 flex-none animate-spin text-accent-blue" />
-                  ) : (
-                    <MessageSquare
-                      class={`mt-0.5 h-4 w-4 flex-none ${active ? "text-accent-blue" : "text-ink-400"}`}
-                    />
-                  )}
+        {filtersOpen ? (
+          <div class="flex min-h-0 flex-1 flex-col">
+            <FilterPanelBody
+              search={search}
+              resultCount={search.outcome.total}
+              onClose={closeFilters}
+            />
+          </div>
+        ) : (
+          <div ref={listRef} class="min-h-0 flex-1 overflow-y-auto touch-scroll scrollbar-thin p-1.5">
+            {results.length === 0 ? (
+              <p class="px-3 py-8 text-center text-[13px] text-ink-400">
+                {search.isSearching ? "No chats match." : "Start typing to search."}
+              </p>
+            ) : (
+              results.map((hit, index) => {
+                const chat = hit.doc.chat;
+                const active = index === activeIndex;
+                const reason = whyItMatched(hit);
+                return (
+                  <button
+                    key={chat.id}
+                    type="button"
+                    data-active={active ? "true" : "false"}
+                    onMouseMove={() => setActiveIndex(index)}
+                    onClick={() => choose(index)}
+                    class={`flex w-full items-start gap-2.5 rounded-card px-3 py-2 text-left transition-colors
+                            ${active ? "bg-accent-blue/[0.14]" : "hover:bg-tint"}`}
+                  >
+                    {chat.running ? (
+                      <Loader class="mt-0.5 h-4 w-4 flex-none animate-spin text-accent-blue" />
+                    ) : (
+                      <MessageSquare
+                        class={`mt-0.5 h-4 w-4 flex-none ${active ? "text-accent-blue" : "text-ink-400"}`}
+                      />
+                    )}
 
-                  <span class="min-w-0 flex-1">
-                    <HighlightedText
-                      text={chat.title || "Untitled"}
-                      spans={hit.titleSpans}
-                      class={`block truncate text-[13.5px] leading-snug ${
-                        active ? "text-ink-50" : "text-ink-100"
-                      }`}
-                    />
-                    <span class="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-400">
-                      {hit.doc.project && (
-                        <>
-                          <Folder class="h-3 w-3 flex-none" />
-                          <span class="truncate">{hit.doc.project.name}</span>
-                        </>
-                      )}
-                      {!hit.doc.project && <span class="truncate">Unassigned</span>}
-                      <span aria-hidden="true">·</span>
-                      <span class="flex-none">{timeAgo(chat.lastMessageAt)}</span>
-                      {reason && (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <span class="truncate text-ink-500">{reason}</span>
-                        </>
-                      )}
+                    <span class="min-w-0 flex-1">
+                      <HighlightedText
+                        text={chat.title || "Untitled"}
+                        spans={hit.titleSpans}
+                        class={`block truncate text-[13.5px] leading-snug ${
+                          active ? "text-ink-50" : "text-ink-100"
+                        }`}
+                      />
+                      <span class="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-400">
+                        {hit.doc.project && (
+                          <>
+                            <Folder class="h-3 w-3 flex-none" />
+                            <span class="truncate">{hit.doc.project.name}</span>
+                          </>
+                        )}
+                        {!hit.doc.project && <span class="truncate">Unassigned</span>}
+                        <span aria-hidden="true">·</span>
+                        <span class="flex-none">{timeAgo(chat.lastMessageAt)}</span>
+                        {reason && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span class="truncate text-ink-500">{reason}</span>
+                          </>
+                        )}
+                      </span>
                     </span>
-                  </span>
 
-                  {active && (
-                    <CornerDownLeft class="mt-1 h-3.5 w-3.5 flex-none text-accent-blue" />
-                  )}
-                </button>
-              );
-            })
-          )}
-        </div>
+                    {active && (
+                      <CornerDownLeft class="mt-1 h-3.5 w-3.5 flex-none text-accent-blue" />
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
 
-        <footer class="flex flex-none items-center gap-3 border-t border-line px-4 py-2 text-[10.5px] text-ink-400">
-          <span>
-            <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">↑</kbd>{" "}
-            <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">↓</kbd> navigate
-          </span>
-          <span>
-            <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">↵</kbd> open
-          </span>
-          <span>
-            <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">esc</kbd> close
-          </span>
-          <span class="ml-auto tabular-nums">
-            {search.outcome.hits.length} of {search.outcome.total}
-            {search.outcome.hits.length > MAX_VISIBLE_RESULTS &&
-              ` · showing ${MAX_VISIBLE_RESULTS}`}
-          </span>
-        </footer>
+        {/* The filter menu carries its own count and sort footer. */}
+        {!filtersOpen && (
+          <footer class="flex flex-none items-center gap-3 border-t border-line px-4 py-2 text-[10.5px] text-ink-400">
+            <span>
+              <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">↑</kbd>{" "}
+              <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">↓</kbd> navigate
+            </span>
+            <span>
+              <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">↵</kbd> open
+            </span>
+            <span>
+              <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">esc</kbd> close
+            </span>
+            <span class="ml-auto tabular-nums">
+              {search.outcome.hits.length} of {search.outcome.total}
+              {search.outcome.hits.length > MAX_VISIBLE_RESULTS &&
+                ` · showing ${MAX_VISIBLE_RESULTS}`}
+            </span>
+          </footer>
+        )}
       </div>
     </div>
   );

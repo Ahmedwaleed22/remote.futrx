@@ -42,10 +42,14 @@ function FacetFilterSection({
 }
 
 /**
- * The filter menu. Every section except the date range is generated from the
- * facet registry, so adding a filter there makes it appear here automatically.
+ * The filter menu's contents. Every section except the date range is generated
+ * from the facet registry, so adding a filter there makes it appear here
+ * automatically.
+ *
+ * It takes its height from its parent so the same body serves the sidebar's
+ * floating menu and the palette, which embeds it in place of the result list.
  */
-export function FilterPanel({
+export function FilterPanelBody({
   search,
   resultCount,
   onClose,
@@ -89,8 +93,7 @@ export function FilterPanel({
       tabIndex={-1}
       role="dialog"
       aria-label="Search filters"
-      class="theme-menu-surface flex max-h-[min(70vh,32rem)] flex-col overflow-hidden rounded-card
-             border border-line bg-raised shadow-pop focus:outline-none"
+      class="flex h-full min-h-0 flex-col overflow-hidden focus:outline-none"
     >
       <header class="flex flex-none items-center gap-2 border-b border-line px-3 py-2">
         <span class="text-[12px] font-semibold text-ink-50">Filters</span>
@@ -176,6 +179,22 @@ export function FilterPanel({
           </select>
         </label>
       </footer>
+    </div>
+  );
+}
+
+/** The sidebar's floating filter menu: the body in a popover shell. */
+export function FilterPanel(props: {
+  search: FilterControl;
+  resultCount: number;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      class="theme-menu-surface flex max-h-[min(70vh,32rem)] flex-col overflow-hidden rounded-card
+             border border-line bg-raised shadow-pop"
+    >
+      <FilterPanelBody {...props} />
     </div>
   );
 }
