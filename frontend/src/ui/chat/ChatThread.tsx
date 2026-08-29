@@ -1,13 +1,16 @@
 import type { ComponentChildren, RefObject } from "preact";
 import type { ChatMeta, ChatStatus } from "../../models/chat";
 import type { ChatMessageBlock } from "../../models/chatMessage";
+import type { ChatFind } from "../../state/hooks/chat/useChatFind";
 import { ChatComposer, type ChatComposerProps } from "./composer/ChatComposer";
+import { ChatFindBar } from "./find/ChatFindBar";
 import { JumpToLatestButton } from "./messages/JumpToLatestButton";
 import { MessageList } from "./messages/MessageList";
 import { ThreadHeader } from "./header/ThreadHeader";
 
 export function ChatThread({
   chat,
+  find,
   blocks,
   hasOlder,
   loadingOlder,
@@ -28,6 +31,7 @@ export function ChatThread({
   projectName,
 }: {
   chat: ChatMeta;
+  find: ChatFind;
   blocks: ChatMessageBlock[];
   hasOlder: boolean;
   loadingOlder: boolean;
@@ -80,6 +84,7 @@ export function ChatThread({
             onLoadOlder={onLoadOlder}
             onRewind={onRewind}
           />
+          <ChatFindBar find={find} hasUnloadedMessages={hasOlder} />
           {showJump && <JumpToLatestButton onClick={onJumpToBottom} />}
         </div>
 

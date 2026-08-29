@@ -14,6 +14,7 @@ import { useChat } from "../../state/hooks/chat/useChat";
 import { useChatBrowserController } from "../../state/hooks/chat/useChatBrowserController";
 import { useChatComposerController } from "../../state/hooks/chat/useChatComposerController";
 import { useChatDrawerController } from "../../state/hooks/chat/useChatDrawerController";
+import { useChatFind } from "../../state/hooks/chat/useChatFind";
 import { useChatKeyboardShortcuts } from "../../state/hooks/chat/useChatKeyboardShortcuts";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
@@ -75,6 +76,14 @@ export function ChatContainer({
     hideBrowser: browser.closeBrowserDrawer,
   });
   const terminal = useTerminalOverlayController(drawers.terminalOpen);
+
+  // `eventCount` stands in for "the thread changed": find re-reads the rendered
+  // messages on it, so a match list cannot go stale against a streaming reply.
+  const find = useChatFind({
+    scrollRef: composer.scroll.scrollRef,
+    contentRef: composer.scroll.contentRef,
+    revision: eventCount,
+  });
 
   useChatReadMarker({ chatId: chat.id, eventCount, status });
   useChatKeyboardShortcuts({ status, onCancel: cancel });
@@ -173,6 +182,7 @@ export function ChatContainer({
       <div class="flex h-full min-h-0 w-full overflow-hidden">
         <div class={`min-w-0 flex-1 h-full ${activePane ? "hidden md:block" : ""}`}>
           <ChatThread
+            find={find}
             chat={displayMeta}
             blocks={blocks}
             hasOlder={hasOlder}

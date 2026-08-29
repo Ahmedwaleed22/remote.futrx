@@ -3,7 +3,7 @@ import { createContext } from "preact";
 import { useCallback, useContext, useEffect, useState } from "preact/hooks";
 import { useWorkspaceContext } from "./WorkspaceContext";
 import { useWorkspaceSearch } from "../hooks/workspace/useWorkspaceSearch";
-import { isPaletteShortcut } from "../search/paletteShortcut";
+import { isPaletteShortcut } from "../search/searchShortcuts";
 import { ephemeralSearchPreferences } from "../search/searchFiltersStorage";
 import type { WorkspaceSearch } from "../search/searchController";
 

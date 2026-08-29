@@ -1,3 +1,4 @@
+/** The keyboard chords the search surfaces claim. */
 /** The subset of a keyboard event the palette shortcut decision depends on. */
 export interface ShortcutChord {
   key: string;
@@ -21,4 +22,17 @@ export function isPaletteShortcut(event: ShortcutChord): boolean {
   if (key !== "p" && key !== "k") return false;
   if (key === "p" && event.shiftKey) return false;
   return true;
+}
+
+/**
+ * Cmd/Ctrl+F opens find-in-chat.
+ *
+ * It deliberately takes the browser's own find, because the two would otherwise
+ * compete over the same thread: the native one cannot reach messages the list
+ * has not rendered, and it searches the sidebar and composer alongside them.
+ */
+export function isFindShortcut(event: ShortcutChord): boolean {
+  if (!(event.metaKey || event.ctrlKey)) return false;
+  if (event.altKey || event.shiftKey) return false;
+  return event.key.toLowerCase() === "f";
 }

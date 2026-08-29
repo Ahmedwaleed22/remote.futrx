@@ -292,6 +292,19 @@ html[data-theme="light"] {
     overflow: clip;
   }
 
+  /* Find-in-chat matches. The Custom Highlight API only honours a handful of
+     properties -- colour, background, text-decoration, text-shadow -- so the
+     current match is distinguished by weight of colour, not by a ring. */
+  ::highlight(chat-find) {
+    background-color: rgb(var(--accent-blue) / 0.28);
+    color: rgb(var(--ink-50));
+  }
+
+  ::highlight(chat-find-current) {
+    background-color: rgb(var(--accent-blue));
+    color: rgb(var(--on-accent));
+  }
+
   .sidebar-project-chat-frame {
     --sidebar-chat-row-height: 2rem;
   }

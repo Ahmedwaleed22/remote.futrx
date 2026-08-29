@@ -14,8 +14,8 @@ import { UNASSIGNED_PROJECT } from "./searchDoc.ts";
 import type { SearchFilters } from "./searchQuery.ts";
 import { ANY_DATE, resolveDateRange } from "./dateRange.ts";
 import { fold, matchField, tokenize, withinEditDistance } from "./textMatch.ts";
-import { isPaletteShortcut } from "./paletteShortcut.ts";
-import type { ShortcutChord } from "./paletteShortcut.ts";
+import { isPaletteShortcut } from "./searchShortcuts.ts";
+import type { ShortcutChord } from "./searchShortcuts.ts";
 
 const NOW = new Date(2026, 7, 29, 12, 0, 0).getTime();
 const DAY = 86_400_000;
