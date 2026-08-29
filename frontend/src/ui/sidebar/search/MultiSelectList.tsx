@@ -46,7 +46,7 @@ export function MultiSelectList({
   return (
     <div>
       {options.length > INLINE_FILTER_THRESHOLD && (
-        <label class="mb-1.5 flex items-center gap-1.5 h-8 rounded-md bg-black/20 border border-white/10 px-2 focus-within:border-accent-blue/60 transition-colors">
+        <label class="mb-1.5 flex items-center gap-1.5 h-8 rounded-control bg-inset border border-line px-2 focus-within:border-accent-blue/60 transition-colors">
           <Search class="w-3 h-3 flex-none text-ink-400" />
           <input
             value={filter}
@@ -90,8 +90,8 @@ export function MultiSelectList({
           return (
             <label
               key={option.value}
-              class={`flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors
-                      ${checked ? "bg-accent-blue/[0.12]" : "hover:bg-white/[0.06]"}`}
+              class={`flex items-center gap-2 rounded-control px-2 py-1.5 cursor-pointer transition-colors
+                      ${checked ? "bg-accent-blue/[0.12]" : "hover:bg-tint"}`}
             >
               <input
                 type="checkbox"
@@ -103,8 +103,8 @@ export function MultiSelectList({
                 aria-hidden="true"
                 class={`w-3.5 h-3.5 flex-none grid place-items-center rounded-[4px] border transition-colors
                         ${checked
-                          ? "bg-accent-blue border-accent-blue text-[#0f1014]"
-                          : "border-white/25"}`}
+                          ? "bg-accent-blue border-accent-blue text-on-accent"
+                          : "border-line-strong"}`}
               >
                 {checked && <Check class="w-2.5 h-2.5" />}
               </span>

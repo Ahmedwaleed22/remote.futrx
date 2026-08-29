@@ -30,6 +30,7 @@ export function SidebarContainer() {
       open={workspace.ui.sidebarOpen}
       model={model}
       search={search}
+      loading={!workspace.loaded}
       collapsed={sidebar.collapsed}
       sidebarCollapsed={sidebar.sidebarCollapsed}
       activeChatId={workspace.ui.activeChatId}

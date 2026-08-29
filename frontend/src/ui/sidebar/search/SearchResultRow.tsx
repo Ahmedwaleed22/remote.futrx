@@ -25,10 +25,8 @@ export function SearchResultRow({
     <button
       type="button"
       onClick={onSelect}
-      class={`flex w-full items-start gap-2 rounded px-2.5 py-2 text-left transition-colors
-              ${active
-                ? "bg-accent-blue/[0.14] border border-accent-blue/[0.32]"
-                : "border border-transparent hover:bg-white/[0.04]"}`}
+      class={`flex w-full items-start gap-2 rounded-control px-2 py-1.5 text-left transition-colors
+              ${active ? "bg-tint-active" : "hover:bg-tint"}`}
     >
       {chat.running ? (
         <Loader class="mt-0.5 h-3.5 w-3.5 flex-none animate-spin text-accent-blue" />
@@ -38,7 +36,7 @@ export function SearchResultRow({
         </span>
       ) : (
         <MessageSquare
-          class={`mt-0.5 h-3.5 w-3.5 flex-none ${active ? "text-accent-blue" : "text-ink-400"}`}
+          class={`mt-0.5 h-3.5 w-3.5 flex-none ${active ? "text-ink-100" : "text-ink-400"}`}
         />
       )}
 
@@ -54,7 +52,7 @@ export function SearchResultRow({
           <Folder class="h-3 w-3 flex-none" />
           <span class="truncate">{hit.doc.project?.name ?? "Unassigned"}</span>
           <span
-            class={`flex-none whitespace-nowrap rounded bg-white/[0.06] px-1 py-0.5 text-[10px] leading-none
+            class={`flex-none whitespace-nowrap rounded bg-tint px-1 py-0.5 text-[10px] leading-none
                     ${active ? "text-accent-blue" : ""}`}
           >
             {modelShortLabel(chat.model)}

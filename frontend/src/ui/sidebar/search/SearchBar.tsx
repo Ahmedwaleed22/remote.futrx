@@ -27,10 +27,11 @@ export function SearchBar({
   const showClear = search.query.length > 0;
 
   return (
-    <div ref={rootRef} class="relative mt-3">
+    <div ref={rootRef} class="relative mt-2">
       <div class="flex items-center gap-1.5">
-        <label class="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-white/10 bg-[#0b0d11] px-3 transition-colors focus-within:border-accent-blue/70">
-          <Search class="h-4 w-4 flex-none text-ink-300" />
+        <label class="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-control bg-tint px-2.5 transition-colors
+                      focus-within:bg-inset focus-within:ring-1 focus-within:ring-accent-blue/50">
+          <Search class="h-3.5 w-3.5 flex-none text-ink-400" />
           <input
             ref={inputRef}
             value={search.query}
@@ -44,7 +45,7 @@ export function SearchBar({
               search.setQuery("");
             }}
             placeholder="Search chats and projects"
-            class="min-w-0 flex-1 bg-transparent text-[14px] text-ink-100 placeholder:text-ink-300 focus:outline-none"
+            class="min-w-0 flex-1 bg-transparent text-[13px] text-ink-100 placeholder:text-ink-400 focus:outline-none"
             autocomplete="off"
             spellcheck={false}
             aria-label="Search chats and projects"
@@ -56,10 +57,10 @@ export function SearchBar({
                 search.setQuery("");
                 inputRef.current?.focus();
               }}
-              class="grid h-7 w-7 flex-none place-items-center rounded text-ink-300 hover:bg-white/10 hover:text-ink-100 transition-colors"
+              class="grid h-5 w-5 flex-none place-items-center rounded text-ink-400 hover:bg-tint-strong hover:text-ink-100 transition-colors"
               aria-label="Clear search"
             >
-              <X class="h-3.5 w-3.5" />
+              <X class="h-3 w-3" />
             </button>
           )}
         </label>
@@ -67,18 +68,18 @@ export function SearchBar({
         <button
           type="button"
           onClick={() => setFiltersOpen((open) => !open)}
-          class={`relative grid h-10 w-10 flex-none place-items-center rounded-md transition-colors
+          class={`relative grid h-8 w-8 flex-none place-items-center rounded-control transition-colors
                   ${filtersOpen || search.hasActiveFilters
                     ? "bg-accent-blue/[0.16] text-accent-blue"
-                    : "bg-white/5 text-ink-200 hover:bg-white/[0.09] hover:text-ink-50"}`}
+                    : "text-ink-300 hover:bg-tint-strong hover:text-ink-50"}`}
           aria-label="Filters"
           aria-haspopup="dialog"
           aria-expanded={filtersOpen}
           title="Filters"
         >
-          <SlidersHorizontal class="h-4 w-4" />
+          <SlidersHorizontal class="h-3.5 w-3.5" />
           {search.activeFilterCount > 0 && (
-            <span class="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent-blue px-1 text-[9.5px] font-bold leading-none text-[#0f1014]">
+            <span class="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent-blue px-1 text-[9.5px] font-bold leading-none text-on-accent">
               {search.activeFilterCount}
             </span>
           )}

@@ -56,7 +56,7 @@ export function ActiveFilterChips({ search }: { search: FilterControl }) {
         <button
           type="button"
           onClick={search.resetFilters}
-          class="rounded-full px-2 py-0.5 text-[10.5px] text-ink-400 hover:bg-white/[0.08] hover:text-ink-100 transition-colors"
+          class="rounded-full px-2 py-0.5 text-[10.5px] text-ink-400 hover:bg-tint-strong hover:text-ink-100 transition-colors"
         >
           Clear all
         </button>

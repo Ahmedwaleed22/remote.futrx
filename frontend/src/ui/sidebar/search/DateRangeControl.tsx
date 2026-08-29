@@ -32,10 +32,10 @@ export function DateRangeControl({
               key={option.value}
               type="button"
               onClick={() => choosePreset(option.value)}
-              class={`rounded-md px-2 py-1 text-[11px] font-medium transition-colors
+              class={`rounded-control px-2 py-1 text-[11px] font-medium transition-colors
                       ${active
                         ? "bg-accent-blue/[0.16] text-accent-blue"
-                        : "bg-white/[0.045] text-ink-200 hover:bg-white/[0.08] hover:text-ink-100"}`}
+                        : "bg-tint text-ink-200 hover:bg-tint-strong hover:text-ink-100"}`}
               aria-pressed={active}
             >
               {option.label}
@@ -52,7 +52,7 @@ export function DateRangeControl({
             onInput={(event) =>
               onChange({ ...value, from: (event.currentTarget as HTMLInputElement).value })
             }
-            class="min-w-0 flex-1 h-8 rounded-md bg-black/20 border border-white/10 px-2
+            class="min-w-0 flex-1 h-8 rounded-control bg-inset border border-line px-2
                    text-[11.5px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
             aria-label="From date"
           />
@@ -63,7 +63,7 @@ export function DateRangeControl({
             onInput={(event) =>
               onChange({ ...value, to: (event.currentTarget as HTMLInputElement).value })
             }
-            class="min-w-0 flex-1 h-8 rounded-md bg-black/20 border border-white/10 px-2
+            class="min-w-0 flex-1 h-8 rounded-control bg-inset border border-line px-2
                    text-[11.5px] text-ink-100 focus:outline-none focus:border-accent-blue/60"
             aria-label="To date"
           />
@@ -71,7 +71,7 @@ export function DateRangeControl({
       )}
 
       <div
-        class="flex gap-1 rounded-md bg-white/[0.045] p-0.5"
+        class="flex gap-1 rounded-control bg-tint p-0.5"
         role="radiogroup"
         aria-label="Date field"
       >

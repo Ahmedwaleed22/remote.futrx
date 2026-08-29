@@ -9,7 +9,9 @@ export function useSidebarState(
   projects: ProjectMeta[],
   chats: ChatMeta[]
 ) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() =>
+    workspaceSidebarState.readCollapsedProjects()
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     workspaceSidebarState.readCollapsed()
   );
@@ -24,11 +26,18 @@ export function useSidebarState(
   }, [open, onClose]);
 
   useEffect(() => {
+    // Nothing to seed before projects load, and pruning against an empty list
+    // would drop what the last session remembered.
+    if (projects.length === 0) return;
     setCollapsed((current) => {
-      const next = workspaceSidebarState.collapsedProjects(projects, chats);
+      const next = workspaceSidebarState.collapsedProjects(projects, chats, current);
       return workspaceSidebarState.hasSameCollapsedProjects(current, next) ? current : next;
     });
   }, [projects, chats]);
+
+  useEffect(() => {
+    workspaceSidebarState.writeCollapsedProjects(collapsed);
+  }, [collapsed]);
 
   useEffect(() => {
     workspaceSidebarState.writeCollapsed(sidebarCollapsed);

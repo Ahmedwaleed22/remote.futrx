@@ -1,5 +1,6 @@
 import { AppShell } from "../../ui/layout/AppShell";
 import { NoChatSelected } from "../../ui/layout/NoChatSelected";
+import { ChatSkeleton } from "../../ui/chat/ChatSkeleton";
 import { CreateProjectModal } from "../../ui/projects/CreateProjectModal";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { SearchProvider, useSearchContext } from "../../state/context/SearchContext";
@@ -22,6 +23,12 @@ function WorkspaceShell() {
   const workspace = useWorkspaceContext();
   const commands = useWorkspaceCommands();
   const { search, paletteOpen, closePalette } = useSearchContext();
+  // Two moments where there is no chat to render but one is still coming: the
+  // snapshot has not landed, or it has and the initial-chat effect has not run
+  // its pick yet. Both would otherwise flash the "Create your first project"
+  // pitch at someone who already has projects.
+  const chatPending =
+    !workspace.loaded || (!workspace.activeChat && workspace.chats.length > 0);
 
   return (
     <AppShell sidebar={<SidebarContainer />}>
@@ -45,6 +52,8 @@ function WorkspaceShell() {
           projects={workspace.projects}
           onHamburger={workspace.openSidebar}
         />
+      ) : chatPending ? (
+        <ChatSkeleton onHamburger={workspace.openSidebar} />
       ) : (
         <NoChatSelected
           hasProjects={workspace.projects.length > 0}

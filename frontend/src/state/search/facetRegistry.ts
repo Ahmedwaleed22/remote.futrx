@@ -7,10 +7,12 @@
 // matching edit to a union or a list that could drift out of sync with it.
 //
 // Option lists are derived from the chats that actually exist rather than from
-// the static catalog, so the menu never offers a provider or model the user has
-// never used, and free-form model strings show up without a code change.
+// a catalog, so the menu never offers a provider or model the user has never
+// used, and free-form model strings show up without a code change. Modes and
+// models are per-provider and resolved live from the agent capability catalog,
+// so the labels here fall back to the stored value rather than a static table.
 
-import { CHAT_MODE_OPTIONS, modelDisplayLabel, providerDisplayLabel } from "../../config/chatCatalog.ts";
+import { modelShortLabel, providerDisplayLabel } from "../../config/chat.ts";
 import { UNASSIGNED_PROJECT } from "./searchDoc.ts";
 import type { ChatSearchDoc } from "./searchDoc.ts";
 
@@ -47,15 +49,13 @@ interface FacetSpec {
 
 const NONE = "";
 
-const MODE_LABELS = new Map(CHAT_MODE_OPTIONS.map((option) => [option.value, option.label]));
-
-export const STATUS_UNREAD = "unread";
-export const STATUS_RUNNING = "running";
-
-/** Title-case a raw enum value that has no catalog label of its own. */
+/** Title-case a raw value that has no catalog label of its own. */
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
+
+export const STATUS_UNREAD = "unread";
+export const STATUS_RUNNING = "running";
 
 // `as const` keeps the ids as literal types so `FacetId` can be derived below;
 // `satisfies` still type-checks every entry against the contract.
@@ -78,7 +78,7 @@ const FACET_TABLE = [
     advanced: false,
     emptyHint: "No providers recorded",
     valuesOf: (doc) => [doc.chat.provider || NONE],
-    labelFor: (value) => (value === NONE ? "Default" : providerDisplayLabel(value as never)),
+    labelFor: (value) => (value === NONE ? "Default" : providerDisplayLabel(value)),
   },
   {
     id: "model",
@@ -86,8 +86,7 @@ const FACET_TABLE = [
     advanced: false,
     emptyHint: "No models recorded",
     valuesOf: (doc) => [doc.chat.model || NONE],
-    labelFor: (value, doc) =>
-      value === NONE ? "Auto" : modelDisplayLabel(value, doc?.chat.provider),
+    labelFor: (value) => (value === NONE ? "Auto" : modelShortLabel(value)),
   },
   {
     id: "mode",
@@ -95,7 +94,7 @@ const FACET_TABLE = [
     advanced: false,
     emptyHint: "No modes recorded",
     valuesOf: (doc) => [doc.chat.mode || NONE],
-    labelFor: (value) => (value === NONE ? "Unset" : MODE_LABELS.get(value as never) ?? value),
+    labelFor: (value) => (value === NONE ? "Unset" : capitalize(value)),
   },
   {
     id: "status",

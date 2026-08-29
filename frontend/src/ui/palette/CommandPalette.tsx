@@ -123,7 +123,7 @@ export function CommandPalette({
 
   return (
     <div
-      class="fixed inset-0 z-[60] flex items-start justify-center bg-black/60 px-4 pt-[12vh] backdrop-blur-[2px]"
+      class="fixed inset-0 z-[60] flex items-start justify-center bg-black/55 px-4 pt-[12vh] backdrop-blur-[3px] modal-backdrop-fade"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -132,11 +132,11 @@ export function CommandPalette({
         role="dialog"
         aria-modal="true"
         aria-label="Search chats"
-        class="theme-menu-surface codex-window-frame flex w-full max-w-[640px] flex-col overflow-hidden
-               rounded-xl border border-white/10 bg-[#14161d] shadow-2xl"
+        class="theme-menu-surface modal-card-pop flex w-full max-w-[640px] flex-col overflow-hidden
+               rounded-panel border border-line bg-raised shadow-modal"
         onKeyDown={onKeyDown}
       >
-        <div class="flex flex-none items-center gap-2.5 border-b border-white/10 px-4 py-3">
+        <div class="flex flex-none items-center gap-2.5 border-b border-line px-4 py-3">
           <Search class="h-4 w-4 flex-none text-ink-300" />
           <input
             ref={inputRef}
@@ -157,7 +157,7 @@ export function CommandPalette({
         </div>
 
         {search.activeFilterCount > 0 && (
-          <div class="flex-none border-b border-white/[0.06] px-4 pb-2.5">
+          <div class="flex-none border-b border-line px-4 pb-2.5">
             <ActiveFilterChips search={search} />
           </div>
         )}
@@ -179,8 +179,8 @@ export function CommandPalette({
                   data-active={active ? "true" : "false"}
                   onMouseMove={() => setActiveIndex(index)}
                   onClick={() => choose(index)}
-                  class={`flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left transition-colors
-                          ${active ? "bg-accent-blue/[0.14]" : "hover:bg-white/[0.05]"}`}
+                  class={`flex w-full items-start gap-2.5 rounded-card px-3 py-2 text-left transition-colors
+                          ${active ? "bg-accent-blue/[0.14]" : "hover:bg-tint"}`}
                 >
                   {chat.running ? (
                     <Loader class="mt-0.5 h-4 w-4 flex-none animate-spin text-accent-blue" />
@@ -226,16 +226,16 @@ export function CommandPalette({
           )}
         </div>
 
-        <footer class="flex flex-none items-center gap-3 border-t border-white/10 px-4 py-2 text-[10.5px] text-ink-400">
+        <footer class="flex flex-none items-center gap-3 border-t border-line px-4 py-2 text-[10.5px] text-ink-400">
           <span>
-            <kbd class="rounded bg-white/[0.08] px-1 py-0.5 font-mono">↑</kbd>{" "}
-            <kbd class="rounded bg-white/[0.08] px-1 py-0.5 font-mono">↓</kbd> navigate
+            <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">↑</kbd>{" "}
+            <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">↓</kbd> navigate
           </span>
           <span>
-            <kbd class="rounded bg-white/[0.08] px-1 py-0.5 font-mono">↵</kbd> open
+            <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">↵</kbd> open
           </span>
           <span>
-            <kbd class="rounded bg-white/[0.08] px-1 py-0.5 font-mono">esc</kbd> close
+            <kbd class="rounded bg-tint-strong px-1 py-0.5 font-mono">esc</kbd> close
           </span>
           <span class="ml-auto tabular-nums">
             {search.outcome.hits.length} of {search.outcome.total}
