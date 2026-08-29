@@ -6,46 +6,54 @@
 // locally is what lets the app restore the subscription silently instead of
 // asking the user to allow notifications all over again.
 //
-// It is keyed by account because a browser subscription belongs to the whole
-// origin: on a shared browser, one user's opt-in must never quietly turn
+// It is recorded per account because a browser subscription belongs to the
+// whole origin: on a shared browser, one user's opt-in must never quietly turn
 // notifications on for the next person who signs in.
+//
+// Leaf module: it owns one list in the browser's store and knows nothing about
+// subscriptions, the server, or who is signed in.
 
 import { STORAGE_KEYS } from "../config/storageKeys.ts";
 import { readJson, removeString, writeJson } from "./browserStore.ts";
 
-function normalize(account: string): string {
-  return account.trim().toLowerCase();
-}
-
-function accounts(): string[] {
-  const stored = readJson(STORAGE_KEYS.pushOptIn);
-  if (!Array.isArray(stored)) return [];
-  return stored.filter((entry): entry is string => typeof entry === "string");
-}
-
-/** Whether this account turned notifications on in this browser before. */
-export function hasOptedIn(account: string): boolean {
-  const wanted = normalize(account);
-  if (!wanted) return false;
-  return accounts().includes(wanted);
-}
-
-/** Records that this account wants notifications on this device. */
-export function rememberOptIn(account: string): void {
-  const wanted = normalize(account);
-  if (!wanted) return;
-  const known = accounts();
-  if (known.includes(wanted)) return;
-  writeJson(STORAGE_KEYS.pushOptIn, [...known, wanted]);
-}
-
-/** Drops the opt-in, so nothing restores a device the user turned off. */
-export function forgetOptIn(account: string): void {
-  const wanted = normalize(account);
-  const kept = accounts().filter((entry) => entry !== wanted);
-  if (kept.length === 0) {
-    removeString(STORAGE_KEYS.pushOptIn);
-    return;
+class PushDeviceOptIn {
+  /** Whether this account turned notifications on in this browser before. */
+  has(account: string): boolean {
+    const wanted = this.#identify(account);
+    return wanted !== "" && this.#accounts().includes(wanted);
   }
-  writeJson(STORAGE_KEYS.pushOptIn, kept);
+
+  /** Records that this account wants notifications on this device. */
+  remember(account: string): void {
+    const wanted = this.#identify(account);
+    if (wanted === "") return;
+    const known = this.#accounts();
+    if (known.includes(wanted)) return;
+    writeJson(STORAGE_KEYS.pushOptIn, [...known, wanted]);
+  }
+
+  /** Drops the opt-in, so nothing restores a device the user turned off. */
+  forget(account: string): void {
+    const wanted = this.#identify(account);
+    const kept = this.#accounts().filter((entry) => entry !== wanted);
+    if (kept.length === 0) {
+      removeString(STORAGE_KEYS.pushOptIn);
+      return;
+    }
+    writeJson(STORAGE_KEYS.pushOptIn, kept);
+  }
+
+  /** One spelling per account, so a re-typed address still matches. */
+  #identify(account: string): string {
+    return account.trim().toLowerCase();
+  }
+
+  /** The stored list, tolerating anything an older build may have left. */
+  #accounts(): string[] {
+    const stored = readJson(STORAGE_KEYS.pushOptIn);
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((entry): entry is string => typeof entry === "string");
+  }
 }
+
+export const pushDeviceOptIn = new PushDeviceOptIn();

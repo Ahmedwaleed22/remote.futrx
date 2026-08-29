@@ -7,7 +7,7 @@ import {
   type PushDeviceRegistration,
 } from "./pushDeviceRegistration.ts";
 import { revokeSubscriptionForLogout } from "./pushSubscriptionOwnership.ts";
-import { forgetOptIn, hasOptedIn, rememberOptIn } from "../shared/pushDeviceOptIn.ts";
+import { pushDeviceOptIn } from "../shared/pushDeviceOptIn.ts";
 
 class PushSubscriptionApi {
   /** Why this browser cannot subscribe, or null when it can. */
@@ -38,7 +38,7 @@ class PushSubscriptionApi {
     if (!registration) return "absent";
 
     const existing = await webPushTransport.currentSubscription(registration);
-    const optedIn = hasOptedIn(account);
+    const optedIn = pushDeviceOptIn.has(account);
     // A device with nothing registered that was never asked to receive
     // anything needs no server round trip at all.
     if (!existing && !optedIn) return "absent";
@@ -105,14 +105,14 @@ class PushSubscriptionApi {
     await pushApi.subscribe(this.#payload(subscription));
     // Remembered last: only a registration that reached the server should be
     // restored without asking.
-    rememberOptIn(account);
+    pushDeviceOptIn.remember(account);
   }
 
   /** Removes this device, both locally and on the server. */
   async disable(account: string): Promise<void> {
     // Forget the opt-in first, so a restore racing this cannot resurrect the
     // subscription the user just asked to be rid of.
-    forgetOptIn(account);
+    pushDeviceOptIn.forget(account);
     const subscription = await this.#currentSubscription();
     if (!subscription) return;
     // Tell the server first: if unsubscribing locally succeeded but the server
@@ -123,7 +123,7 @@ class PushSubscriptionApi {
 
   /** Revokes this browser on both sides before its session cookie is cleared. */
   async prepareForLogout(account: string): Promise<void> {
-    forgetOptIn(account);
+    pushDeviceOptIn.forget(account);
     const subscription = await this.#currentSubscription();
     if (!subscription) return;
 
