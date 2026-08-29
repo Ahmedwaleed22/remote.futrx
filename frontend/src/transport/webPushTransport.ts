@@ -46,7 +46,7 @@ class WebPushTransport {
    * unsubscribing is exactly what drops the notification permission on Safari
    * and puts the "Allow notifications?" prompt back in front of the user.
    */
-  isStaleForApplicationServerKey(
+  isSignedWithRetiredKey(
     subscription: PushSubscription,
     applicationServerKey: string
   ): boolean {

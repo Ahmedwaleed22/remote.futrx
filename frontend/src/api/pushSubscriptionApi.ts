@@ -4,7 +4,8 @@ import type { PushBlocker, PushSubscriptionPayload } from "../models/push";
 import { webPushTransport } from "../transport/webPushTransport";
 import {
   restoreDeviceRegistration,
-  type PushDeviceRegistration,
+  type PushDevicePorts,
+  type PushDeviceState,
 } from "./pushDeviceRegistration.ts";
 import { revokeSubscriptionForLogout } from "./pushSubscriptionOwnership.ts";
 import { pushDeviceOptIn } from "../shared/pushDeviceOptIn.ts";
@@ -32,7 +33,7 @@ class PushSubscriptionApi {
    * silently; one belonging to another account is dropped; one the server
    * cannot confirm right now is left alone.
    */
-  async ensureRegistered(account: string, publicKey?: string): Promise<PushDeviceRegistration> {
+  async ensureRegistered(account: string, publicKey?: string): Promise<PushDeviceState> {
     if (!account || !this.#browserCanSubscribe()) return "absent";
     const registration = await this.#registration();
     if (!registration) return "absent";
@@ -43,23 +44,19 @@ class PushSubscriptionApi {
     // anything needs no server round trip at all.
     if (!existing && !optedIn) return "absent";
 
-    const serverKey = publicKey ?? (await this.#serverKey());
+    const serverKey = publicKey ?? (await this.#fetchServerKey());
     if (!serverKey) return "absent";
 
     try {
-      return await restoreDeviceRegistration<PushSubscription>({
-        existing,
-        matchesServerKey: (subscription) =>
-          !webPushTransport.isStaleForApplicationServerKey(subscription, serverKey),
-        ownsEndpoint: async (endpoint) => (await pushApi.subscriptionStatus(endpoint)).owned,
-        optedIn,
-        // Restoring must never surface a prompt: only "Turn on" may do that.
-        permissionGranted: webPushTransport.notificationPermission === "granted",
-        unsubscribeLocal: (subscription) => webPushTransport.unsubscribe(subscription),
-        forgetOnServer: (endpoint) => pushApi.unsubscribe(endpoint).catch(() => undefined),
-        subscribeLocal: () => webPushTransport.subscribe(registration, serverKey),
-        registerOnServer: (subscription) => pushApi.subscribe(this.#payload(subscription)),
-      });
+      return await restoreDeviceRegistration(
+        {
+          subscription: existing,
+          optedIn,
+          // Restoring must never surface a prompt: only "Turn on" may do that.
+          permissionGranted: webPushTransport.notificationPermission === "granted",
+        },
+        this.#restorePorts(registration, serverKey)
+      );
     } catch {
       // A failed restore must not read as "the user turned this off". Report
       // what the device still holds and try again on the next boot or focus.
@@ -94,7 +91,7 @@ class PushSubscriptionApi {
     const existing = await webPushTransport.currentSubscription(registration);
     // A stored subscription signed with a previous server key can never be
     // delivered to, so replace it rather than reporting success.
-    if (existing && webPushTransport.isStaleForApplicationServerKey(existing, publicKey)) {
+    if (existing && webPushTransport.isSignedWithRetiredKey(existing, publicKey)) {
       await webPushTransport.unsubscribe(existing);
     }
 
@@ -134,6 +131,28 @@ class PushSubscriptionApi {
     );
   }
 
+  /** What restoring one device is allowed to do to this browser and account. */
+  #restorePorts(
+    registration: ServiceWorkerRegistration,
+    serverKey: string
+  ): PushDevicePorts<PushSubscription> {
+    return {
+      isSignedWithRetiredKey: (subscription) =>
+        webPushTransport.isSignedWithRetiredKey(subscription, serverKey),
+      ownsEndpoint: async (endpoint) => (await pushApi.subscriptionStatus(endpoint)).owned,
+      invalidateLocally: (subscription) => webPushTransport.unsubscribe(subscription),
+      discardRegistration: async (subscription) => {
+        // The server first: an endpoint it kept would keep being pushed to.
+        await pushApi.unsubscribe(subscription.endpoint).catch(() => undefined);
+        await webPushTransport.unsubscribe(subscription);
+      },
+      createRegistration: async () => {
+        const created = await webPushTransport.subscribe(registration, serverKey);
+        await pushApi.subscribe(this.#payload(created));
+      },
+    };
+  }
+
   /** Whether this browser exposes the APIs a subscription needs at all. */
   #browserCanSubscribe(): boolean {
     return (
@@ -143,7 +162,7 @@ class PushSubscriptionApi {
     );
   }
 
-  async #serverKey(): Promise<string> {
+  async #fetchServerKey(): Promise<string> {
     try {
       const config = await pushApi.config();
       return config.enabled ? config.publicKey : "";

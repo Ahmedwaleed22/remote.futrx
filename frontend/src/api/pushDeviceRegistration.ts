@@ -4,7 +4,7 @@ import {
 } from "./pushSubscriptionOwnership.ts";
 
 /** Where a device ended up after Remote tried to restore its registration. */
-export type PushDeviceRegistration =
+export type PushDeviceState =
   /** This device holds a subscription the signed-in account owns. */
   | "registered"
   /** A subscription is present but the server could not confirm it yet. */
@@ -12,26 +12,32 @@ export type PushDeviceRegistration =
   /** This device receives nothing, and nothing may be created without asking. */
   | "absent";
 
-/**
- * Everything the restore policy is allowed to touch. Passing the browser and
- * the server in as functions keeps the policy — which is the part that decides
- * whether a user gets asked for permission again — testable on its own.
- */
-export interface PushDeviceEnvironment<T extends EndpointSubscription> {
+/** What this browser currently holds, and what it is allowed to hold. */
+export interface PushDevice<T extends EndpointSubscription> {
   /** The subscription this browser currently holds, if any. */
-  existing: T | null;
-  /** Whether the endpoint was signed with the key the server signs with today. */
-  matchesServerKey: (subscription: T) => boolean;
-  /** Server answer for one endpoint; rejects when the server cannot answer. */
-  ownsEndpoint: (endpoint: string) => Promise<boolean>;
+  subscription: T | null;
   /** Whether this account already turned notifications on in this browser. */
   optedIn: boolean;
   /** True only when permission is already granted, so restoring never prompts. */
   permissionGranted: boolean;
-  unsubscribeLocal: (subscription: T) => Promise<unknown>;
-  forgetOnServer: (endpoint: string) => Promise<unknown>;
-  subscribeLocal: () => Promise<T>;
-  registerOnServer: (subscription: T) => Promise<unknown>;
+}
+
+/**
+ * The only things the restore policy may do. Each one is a whole action rather
+ * than a step of one, so the policy decides *whether* a device is registered
+ * and never how a subscription reaches the server.
+ */
+export interface PushDevicePorts<T extends EndpointSubscription> {
+  /** Whether the endpoint was signed with a key the server has since replaced. */
+  isSignedWithRetiredKey: (subscription: T) => boolean;
+  /** Server answer for one endpoint; rejects when the server cannot answer. */
+  ownsEndpoint: (endpoint: string) => Promise<boolean>;
+  /** Drops the browser's endpoint alone, leaving another account's record be. */
+  invalidateLocally: (subscription: T) => Promise<unknown>;
+  /** Removes this device's registration from the server and the browser. */
+  discardRegistration: (subscription: T) => Promise<unknown>;
+  /** Subscribes this browser and registers the result under the account. */
+  createRegistration: () => Promise<unknown>;
 }
 
 /**
@@ -45,33 +51,33 @@ export interface PushDeviceEnvironment<T extends EndpointSubscription> {
  * ever comes from the user pressing "Turn on".
  */
 export async function restoreDeviceRegistration<T extends EndpointSubscription>(
-  environment: PushDeviceEnvironment<T>
-): Promise<PushDeviceRegistration> {
-  const existing = environment.existing;
-  if (existing) {
-    if (environment.matchesServerKey(existing)) {
+  device: PushDevice<T>,
+  ports: PushDevicePorts<T>
+): Promise<PushDeviceState> {
+  const subscription = device.subscription;
+  if (subscription) {
+    if (ports.isSignedWithRetiredKey(subscription)) {
+      // The push service can never deliver to it, so replace it rather than
+      // leaving the device believing it is on.
+      await ports.discardRegistration(subscription);
+    } else {
       const ownership = await reconcileSubscriptionOwnership(
-        existing,
-        environment.ownsEndpoint,
-        environment.unsubscribeLocal
+        subscription,
+        ports.ownsEndpoint,
+        ports.invalidateLocally
       );
       if (ownership === "owned") return "registered";
       // Keep an unconfirmed registration exactly as it is: the server being
       // unreachable — mid-update, or offline — is not the user turning
       // notifications off, and discarding it here would cost the subscription.
       if (ownership === "unverified") return "unverified";
-      // "foreign": already unsubscribed locally. Fall through and mint one for
+      // "foreign": already invalidated locally. Fall through and mint one for
       // the account that is actually signed in.
-    } else {
-      // Signed with a retired key, so the push service can never deliver to it.
-      await environment.forgetOnServer(existing.endpoint);
-      await environment.unsubscribeLocal(existing);
     }
   }
 
-  if (!environment.optedIn || !environment.permissionGranted) return "absent";
+  if (!device.optedIn || !device.permissionGranted) return "absent";
 
-  const created = await environment.subscribeLocal();
-  await environment.registerOnServer(created);
+  await ports.createRegistration();
   return "registered";
 }

@@ -1,102 +1,124 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { restoreDeviceRegistration } from "./pushDeviceRegistration.ts";
+import {
+  restoreDeviceRegistration,
+  type PushDevice,
+  type PushDevicePorts,
+} from "./pushDeviceRegistration.ts";
 
-interface Recorder {
-  unsubscribed: string[];
-  forgotten: string[];
-  registered: string[];
-  created: number;
+interface Subscription {
+  endpoint: string;
 }
 
-function environment(overrides: Record<string, unknown> = {}) {
-  const recorder: Recorder = {
-    unsubscribed: [],
-    forgotten: [],
-    registered: [],
-    created: 0,
+const HELD = "https://push.example.com/device";
+
+interface ServerAnswer {
+  /** What the ownership check returns, or the failure it raises. */
+  owns?: boolean | Error;
+  retiredKey?: boolean;
+}
+
+class RecordingPorts implements PushDevicePorts<Subscription> {
+  readonly invalidated: string[] = [];
+  readonly discarded: string[] = [];
+  created = 0;
+  #answer: ServerAnswer;
+
+  constructor(answer: ServerAnswer = {}) {
+    this.#answer = answer;
+  }
+
+  isSignedWithRetiredKey = (): boolean => this.#answer.retiredKey === true;
+
+  ownsEndpoint = async (): Promise<boolean> => {
+    if (this.#answer.owns instanceof Error) throw this.#answer.owns;
+    return this.#answer.owns ?? true;
   };
-  const base = {
-    existing: { endpoint: "https://push.example.com/device" },
-    matchesServerKey: () => true,
-    ownsEndpoint: async () => true,
+
+  invalidateLocally = async (subscription: Subscription): Promise<void> => {
+    this.invalidated.push(subscription.endpoint);
+  };
+
+  discardRegistration = async (subscription: Subscription): Promise<void> => {
+    this.discarded.push(subscription.endpoint);
+  };
+
+  createRegistration = async (): Promise<void> => {
+    this.created++;
+  };
+}
+
+function device(overrides: Partial<PushDevice<Subscription>> = {}): PushDevice<Subscription> {
+  return {
+    subscription: { endpoint: HELD },
     optedIn: true,
     permissionGranted: true,
-    unsubscribeLocal: async (subscription: { endpoint: string }) => {
-      recorder.unsubscribed.push(subscription.endpoint);
-    },
-    forgetOnServer: async (endpoint: string) => {
-      recorder.forgotten.push(endpoint);
-    },
-    subscribeLocal: async () => {
-      recorder.created++;
-      return { endpoint: `https://push.example.com/fresh-${recorder.created}` };
-    },
-    registerOnServer: async (subscription: { endpoint: string }) => {
-      recorder.registered.push(subscription.endpoint);
-    },
+    ...overrides,
   };
-  return { environment: { ...base, ...overrides }, recorder };
 }
 
 test("a confirmed device is left exactly as it is", async () => {
-  const { environment: env, recorder } = environment();
+  const ports = new RecordingPorts();
 
-  assert.equal(await restoreDeviceRegistration(env), "registered");
-  assert.deepEqual(recorder.unsubscribed, []);
-  assert.equal(recorder.created, 0);
+  assert.equal(await restoreDeviceRegistration(device(), ports), "registered");
+  assert.deepEqual(ports.invalidated, []);
+  assert.equal(ports.created, 0);
 });
 
 test("a device the server cannot confirm keeps its subscription", async () => {
-  const { environment: env, recorder } = environment({
-    ownsEndpoint: async () => {
-      throw new Error("502 while the backend restarts");
-    },
-  });
+  const ports = new RecordingPorts({ owns: new Error("502 while the backend restarts") });
 
-  assert.equal(await restoreDeviceRegistration(env), "unverified");
-  assert.deepEqual(recorder.unsubscribed, []);
-  assert.equal(recorder.created, 0);
+  assert.equal(await restoreDeviceRegistration(device(), ports), "unverified");
+  assert.deepEqual(ports.invalidated, []);
+  assert.equal(ports.created, 0);
 });
 
 test("a subscription the server lost is recreated without asking again", async () => {
-  const { environment: env, recorder } = environment({ ownsEndpoint: async () => false });
+  const ports = new RecordingPorts({ owns: false });
 
-  assert.equal(await restoreDeviceRegistration(env), "registered");
-  assert.deepEqual(recorder.unsubscribed, ["https://push.example.com/device"]);
-  assert.deepEqual(recorder.registered, ["https://push.example.com/fresh-1"]);
+  assert.equal(await restoreDeviceRegistration(device(), ports), "registered");
+  assert.deepEqual(ports.invalidated, [HELD]);
+  assert.equal(ports.created, 1);
 });
 
 test("a subscription signed with a retired key is replaced on both sides", async () => {
-  const { environment: env, recorder } = environment({ matchesServerKey: () => false });
+  const ports = new RecordingPorts({ retiredKey: true });
 
-  assert.equal(await restoreDeviceRegistration(env), "registered");
-  assert.deepEqual(recorder.forgotten, ["https://push.example.com/device"]);
-  assert.deepEqual(recorder.unsubscribed, ["https://push.example.com/device"]);
-  assert.deepEqual(recorder.registered, ["https://push.example.com/fresh-1"]);
+  assert.equal(await restoreDeviceRegistration(device(), ports), "registered");
+  assert.deepEqual(ports.discarded, [HELD]);
+  assert.equal(ports.created, 1);
 });
 
 test("a device with nothing registered is restored from a remembered opt-in", async () => {
-  const { environment: env, recorder } = environment({ existing: null });
+  const ports = new RecordingPorts();
 
-  assert.equal(await restoreDeviceRegistration(env), "registered");
-  assert.deepEqual(recorder.registered, ["https://push.example.com/fresh-1"]);
+  assert.equal(
+    await restoreDeviceRegistration(device({ subscription: null }), ports),
+    "registered"
+  );
+  assert.equal(ports.created, 1);
 });
 
 test("an account that never opted in on this device is left alone", async () => {
-  const { environment: env, recorder } = environment({ existing: null, optedIn: false });
+  const ports = new RecordingPorts();
 
-  assert.equal(await restoreDeviceRegistration(env), "absent");
-  assert.equal(recorder.created, 0);
+  assert.equal(
+    await restoreDeviceRegistration(device({ subscription: null, optedIn: false }), ports),
+    "absent"
+  );
+  assert.equal(ports.created, 0);
 });
 
 test("restoring never subscribes before permission is granted", async () => {
-  const { environment: env, recorder } = environment({
-    existing: null,
-    permissionGranted: false,
-  });
+  const ports = new RecordingPorts();
 
-  assert.equal(await restoreDeviceRegistration(env), "absent");
-  assert.equal(recorder.created, 0);
+  assert.equal(
+    await restoreDeviceRegistration(
+      device({ subscription: null, permissionGranted: false }),
+      ports
+    ),
+    "absent"
+  );
+  assert.equal(ports.created, 0);
 });
