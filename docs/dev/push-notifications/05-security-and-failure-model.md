@@ -34,6 +34,9 @@ The transport also:
 - `webpush-go` encrypts the payload and signs the request.
 - The push provider routes ciphertext to the browser.
 - Logs include only the endpoint hostname, never its full capability URL.
+- The browser-side opt-in record stores SHA-256 fingerprints of accounts, so
+  `localStorage` on a shared machine does not enumerate this server's users —
+  matching the hashed filenames of the server's subscription store.
 
 ## Failure behavior
 

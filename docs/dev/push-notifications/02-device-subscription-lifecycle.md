@@ -64,8 +64,10 @@ Two rules make this safe:
   granted permission. The permission dialog belongs to **Turn on** alone.
 - **A restore is per account.** Each browser remembers which accounts turned
   notifications on in it (`localStorage`, key `remote.futrx.pushOptIn`), so a
-  shared browser never subscribes someone who never asked. Turning
-  notifications off, or signing out, forgets the account immediately.
+  shared browser never subscribes someone who never asked. The record holds
+  SHA-256 fingerprints, never addresses, so it cannot enumerate who has signed
+  in on a shared machine. Turning notifications off, or signing out, forgets
+  the account immediately.
 
 The service worker covers the case the app cannot see, because the app is not
 running: when a push service retires an endpoint it fires

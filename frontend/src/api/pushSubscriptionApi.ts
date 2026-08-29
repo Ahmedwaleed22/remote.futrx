@@ -39,7 +39,7 @@ class PushSubscriptionApi {
     if (!registration) return "absent";
 
     const existing = await webPushTransport.currentSubscription(registration);
-    const optedIn = pushDeviceOptIn.has(account);
+    const optedIn = await pushDeviceOptIn.has(account);
     // A device with nothing registered that was never asked to receive
     // anything needs no server round trip at all.
     if (!existing && !optedIn) return "absent";
@@ -102,14 +102,14 @@ class PushSubscriptionApi {
     await pushApi.subscribe(this.#payload(subscription));
     // Remembered last: only a registration that reached the server should be
     // restored without asking.
-    pushDeviceOptIn.remember(account);
+    await pushDeviceOptIn.remember(account);
   }
 
   /** Removes this device, both locally and on the server. */
   async disable(account: string): Promise<void> {
     // Forget the opt-in first, so a restore racing this cannot resurrect the
     // subscription the user just asked to be rid of.
-    pushDeviceOptIn.forget(account);
+    await pushDeviceOptIn.forget(account);
     const subscription = await this.#currentSubscription();
     if (!subscription) return;
     // Tell the server first: if unsubscribing locally succeeded but the server
@@ -120,7 +120,7 @@ class PushSubscriptionApi {
 
   /** Revokes this browser on both sides before its session cookie is cleared. */
   async prepareForLogout(account: string): Promise<void> {
-    pushDeviceOptIn.forget(account);
+    await pushDeviceOptIn.forget(account);
     const subscription = await this.#currentSubscription();
     if (!subscription) return;
 

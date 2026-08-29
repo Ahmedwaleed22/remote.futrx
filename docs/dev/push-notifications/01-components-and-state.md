@@ -32,7 +32,7 @@ flowchart LR
 | Presence claims | Backend memory | Claims live for 55 seconds; revisions are bounded per user |
 | Parked-question state | Backend memory | Until a user, completion, or error event |
 | Browser permission and subscription | Browser profile | Controlled by the browser and user |
-| Per-account opt-in for this browser | `localStorage`, `remote.futrx.pushOptIn` | Until the account turns notifications off or signs out |
+| Per-account opt-in for this browser | `localStorage`, `remote.futrx.pushOptIn` (SHA-256 fingerprints, not addresses) | Until the account turns notifications off or signs out |
 
 At startup, Remote loads or creates the VAPID key, verifies the key pair, and
 constructs the Web Push client. If that fails, notifications are disabled but
