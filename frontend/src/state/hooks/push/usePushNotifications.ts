@@ -15,7 +15,7 @@ export interface PushNotifications {
   sendTest: () => Promise<void>;
 }
 
-export function usePushNotifications(active: boolean): PushNotifications {
+export function usePushNotifications(active: boolean, account: string): PushNotifications {
   const [status, setStatus] = useState<PushStatus>("loading");
   const [blocker, setBlocker] = useState<PushBlocker | null>(null);
   const [publicKey, setPublicKey] = useState("");
@@ -37,13 +37,15 @@ export function usePushNotifications(active: boolean): PushNotifications {
       }
       // The server's record and this device's registration can disagree — a
       // second device, or a subscription the browser dropped — so trust the
-      // browser for what *this* device receives.
-      setStatus((await pushSubscriptionApi.reconcileCurrentAccount()) ? "on" : "off");
+      // browser for what *this* device receives. A registration this account
+      // asked for is restored here rather than reported as off.
+      const device = await pushSubscriptionApi.ensureRegistered(account, config.publicKey);
+      setStatus(device === "absent" ? "off" : "on");
     } catch (cause) {
       setStatus("blocked");
       setError(messageOf(cause));
     }
-  }, []);
+  }, [account]);
 
   useEffect(() => {
     if (!active) return;
@@ -55,7 +57,7 @@ export function usePushNotifications(active: boolean): PushNotifications {
     setError(null);
     setNotice(null);
     try {
-      await pushSubscriptionApi.enable(publicKey);
+      await pushSubscriptionApi.enable(account, publicKey);
       setStatus("on");
       setNotice("This device will now receive notifications.");
     } catch (cause) {
@@ -65,21 +67,21 @@ export function usePushNotifications(active: boolean): PushNotifications {
     } finally {
       setBusy(false);
     }
-  }, [publicKey, refresh]);
+  }, [account, publicKey, refresh]);
 
   const disable = useCallback(async () => {
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      await pushSubscriptionApi.disable();
+      await pushSubscriptionApi.disable(account);
       setStatus("off");
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [account]);
 
   const sendTest = useCallback(async () => {
     setTesting(true);

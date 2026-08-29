@@ -46,12 +46,22 @@ The transport also:
 | `404` or `410` | Subscription is removed |
 | Timeout, `429`, `5xx`, TLS, or protocol error | Failure is logged without retry |
 | Presence state is lost | A redundant notification may be displayed |
+| Ownership cannot be verified (backend restarting, offline) | Nothing is displayed; the device registration is kept and re-checked |
+| Worker receives a push with no session | Nothing is displayed; the registration is kept for the next sign-in |
+| Push service retires an endpoint | The worker re-registers the device when the session owns the retired endpoint; otherwise the app restores it on its next start |
+| Server has no record of a device that opted in here | The subscription is re-created silently, without a new permission prompt |
 
 ## Remaining release-safety work
 
 1. Notification previews include chat titles and truncated backend errors that
    may appear on a lock screen.
 2. Delivery has no bounded worker queue or transient retry policy.
+
+Displaying a notification is gated on a live ownership check, so keeping an
+unverified registration cannot reveal another account's alert. Discarding one
+can cost the browser's notification permission outright — Safari drops the
+permission with the site's last subscription — so uncertainty suppresses
+display, never registration.
 
 Web Push encryption protects data in transit. It does not replace correct
 audience selection, account lifecycle cleanup, or lock-screen privacy policy.
