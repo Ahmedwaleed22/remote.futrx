@@ -1,24 +1,25 @@
 import type { ChatMeta } from "../../models/chat";
 import type { WorkspaceSidebarModel } from "../../state/workspace/workspaceSidebarState";
+import type { WorkspaceSearch } from "../../state/search/searchController";
 import { ChatRow } from "./ChatRow";
 import { ProjectGroup } from "./ProjectGroup";
 import { SidebarEmptyState, SidebarNoMatches } from "./SidebarEmptyState";
-import { WorkspaceSearch } from "./WorkspaceSearch";
+import { SearchBar } from "./search/SearchBar";
+import { SearchResultRow } from "./search/SearchResultRow";
 import { AccountFooter } from "./AccountFooter";
-import { ChevronLeft, ChevronRight, Plus, Settings, X } from "../primitives/icons";
+import { ChevronLeft, ChevronRight, Plus, Search, Settings, X } from "../primitives/icons";
 import { useState } from "preact/hooks";
 
 export function Sidebar({
   open,
   model,
-  query,
+  search,
   collapsed,
   sidebarCollapsed,
   activeChatId,
   account,
   onClose,
-  onQueryChange,
-  onClearQuery,
+  onOpenPalette,
   onToggleSidebar,
   onNewProject,
   onNewChatInProject,
@@ -34,14 +35,13 @@ export function Sidebar({
 }: {
   open: boolean;
   model: WorkspaceSidebarModel;
-  query: string;
+  search: WorkspaceSearch;
   collapsed: Record<string, boolean>;
   sidebarCollapsed: boolean;
   activeChatId: string | null;
   account?: { email: string; authenticated: boolean };
   onClose: () => void;
-  onQueryChange: (query: string) => void;
-  onClearQuery: () => void;
+  onOpenPalette: () => void;
   onToggleSidebar: () => void;
   onNewProject: () => void;
   onNewChatInProject: (projectId?: string) => void;
@@ -59,7 +59,10 @@ export function Sidebar({
   const expandedOnly = sidebarCollapsed ? "md:hidden" : "";
   const [dragProjectId, setDragProjectId] = useState<string | null>(null);
   const [dragOverProjectId, setDragOverProjectId] = useState<string | null>(null);
-  const canReorderProjects = !model.query && model.visibleProjects.length > 1;
+  const searching = search.isSearching;
+  const results = search.outcome.hits;
+  // Reordering edits the project order, which only has meaning in the tree.
+  const canReorderProjects = !searching && model.visibleProjects.length > 1;
 
   function reorderProjectList(sourceId: string, targetId: string) {
     if (sourceId === targetId) return;
@@ -124,7 +127,7 @@ export function Sidebar({
           </div>
 
           <div class={expandedOnly}>
-            <WorkspaceSearch query={query} onQueryChange={onQueryChange} onClear={onClearQuery} />
+            <SearchBar search={search} resultCount={results.length} />
           </div>
         </header>
 
@@ -138,6 +141,15 @@ export function Sidebar({
               title="New project"
             >
               <Plus class="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={onOpenPalette}
+              class="h-10 w-10 rounded-md bg-white/5 text-ink-300 grid place-items-center hover:bg-white/[0.09] hover:text-ink-50 transition"
+              aria-label="Search"
+              title="Search (Ctrl/Cmd + P)"
+            >
+              <Search class="w-4 h-4" />
             </button>
             {onOpenSettings && account?.authenticated && (
               <button
@@ -155,10 +167,29 @@ export function Sidebar({
 
         <div class={`px-3 py-2 flex items-center justify-between gap-2 text-[12px] text-ink-300 ${expandedOnly}`}>
           <span>
-            {model.totalProjects} project{model.totalProjects === 1 ? "" : "s"}
-            {" - "}
-            {model.totalChats} chat{model.totalChats === 1 ? "" : "s"}
+            {searching ? (
+              <>
+                {results.length} result{results.length === 1 ? "" : "s"}
+                {" of "}
+                {model.totalChats} chat{model.totalChats === 1 ? "" : "s"}
+              </>
+            ) : (
+              <>
+                {model.totalProjects} project{model.totalProjects === 1 ? "" : "s"}
+                {" - "}
+                {model.totalChats} chat{model.totalChats === 1 ? "" : "s"}
+              </>
+            )}
           </span>
+          {searching && (
+            <button
+              type="button"
+              onClick={search.clearAll}
+              class="flex-none rounded px-1.5 py-0.5 text-[11px] text-ink-400 hover:bg-white/[0.08] hover:text-ink-100 transition-colors"
+            >
+              Clear
+            </button>
+          )}
         </div>
 
         <div class={`flex-1 min-h-0 overflow-y-auto touch-scroll px-2 pb-3 space-y-2 ${expandedOnly}`}>
@@ -166,16 +197,28 @@ export function Sidebar({
             <SidebarEmptyState onNewProject={onNewProject} />
           )}
 
-          {model.query && !model.hasMatches && <SidebarNoMatches />}
+          {searching && results.length === 0 && <SidebarNoMatches />}
 
-          {model.visibleProjects.map((node) => (
+          {searching && results.length > 0 && (
+            <div class="space-y-0.5">
+              {results.map((hit) => (
+                <SearchResultRow
+                  key={hit.doc.chat.id}
+                  hit={hit}
+                  active={hit.doc.chat.id === activeChatId}
+                  onSelect={() => onSelectChat(hit.doc.chat.id)}
+                />
+              ))}
+            </div>
+          )}
+
+          {!searching && model.visibleProjects.map((node) => (
             <ProjectGroup
               key={node.project.id}
               project={node.project}
               chats={node.chats}
-              visibleChats={node.filteredChats}
               activeChatId={activeChatId}
-              collapsed={!model.query && collapsed[node.project.id] === true}
+              collapsed={collapsed[node.project.id] === true}
               onToggle={() => onToggleProject(node.project.id)}
               onNewChat={() => onNewChatInProject(node.project.id)}
               onOpenContainer={() => onOpenProjectContainers(node.project.id)}
@@ -212,7 +255,7 @@ export function Sidebar({
             />
           ))}
 
-          {model.visibleLooseChats.length > 0 && (
+          {!searching && model.visibleLooseChats.length > 0 && (
             <div class="pt-2">
               <div class="px-3 pt-2 pb-1 text-[10.5px] uppercase tracking-wider text-ink-400 font-semibold">
                 Unassigned

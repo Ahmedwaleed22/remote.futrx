@@ -53,7 +53,7 @@ test("preserves workspace UI transitions and sidebar ordering", () => {
     false
   );
 
-  const model = workspaceSidebarState.model(chats, projects, "");
+  const model = workspaceSidebarState.model(chats, projects);
   assert.deepEqual(model.visibleProjects.map((node) => node.project.id), ["newer", "older"]);
   assert.deepEqual(model.visibleProjects[0].chats.map((chat) => chat.id), ["new-chat", "old-chat"]);
   assert.deepEqual(model.visibleLooseChats.map((chat) => chat.id), ["loose"]);

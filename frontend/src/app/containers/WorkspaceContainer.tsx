@@ -2,6 +2,8 @@ import { AppShell } from "../../ui/layout/AppShell";
 import { NoChatSelected } from "../../ui/layout/NoChatSelected";
 import { CreateProjectModal } from "../../ui/projects/CreateProjectModal";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
+import { SearchProvider, useSearchContext } from "../../state/context/SearchContext";
+import { CommandPalette } from "../../ui/palette/CommandPalette";
 import { useWorkspaceCommands } from "../../state/hooks/workspace/useWorkspaceCommands";
 import { ChatContainer } from "./ChatContainer";
 import { ProjectContainersContainer } from "./ProjectContainersContainer";
@@ -9,8 +11,17 @@ import { SettingsContainer } from "./SettingsContainer";
 import { SidebarContainer } from "./SidebarContainer";
 
 export function WorkspaceContainer() {
+  return (
+    <SearchProvider>
+      <WorkspaceShell />
+    </SearchProvider>
+  );
+}
+
+function WorkspaceShell() {
   const workspace = useWorkspaceContext();
   const commands = useWorkspaceCommands();
+  const { search, paletteOpen, closePalette } = useSearchContext();
 
   return (
     <AppShell sidebar={<SidebarContainer />}>
@@ -47,6 +58,12 @@ export function WorkspaceContainer() {
         projects={workspace.projects}
         onClose={workspace.closeCreateProject}
         onCreate={workspace.createProject}
+      />
+      <CommandPalette
+        search={search}
+        open={paletteOpen}
+        onClose={closePalette}
+        onSelectChat={workspace.selectChat}
       />
     </AppShell>
   );

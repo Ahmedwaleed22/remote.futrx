@@ -3,6 +3,7 @@ import { Sidebar } from "../../ui/sidebar/Sidebar";
 import { useAuthContext } from "../../state/context/AuthContext";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useSidebarState } from "../../state/hooks/workspace/useSidebarState";
+import { useSearchContext } from "../../state/context/SearchContext";
 import { useWorkspaceCommands } from "../../state/hooks/workspace/useWorkspaceCommands";
 import { workspaceSidebarState } from "../../state/workspace/workspaceSidebarState";
 import { useAccountSignOut } from "../../state/hooks/auth/useAccountSignOut";
@@ -18,16 +19,17 @@ export function SidebarContainer() {
   );
   const commands = useWorkspaceCommands();
   const signOut = useAccountSignOut();
+  const { search, openPalette } = useSearchContext();
   const model = useMemo(
-    () => workspaceSidebarState.model(workspace.chats, workspace.projects, sidebar.query),
-    [workspace.chats, workspace.projects, sidebar.query]
+    () => workspaceSidebarState.model(workspace.chats, workspace.projects),
+    [workspace.chats, workspace.projects]
   );
 
   return (
     <Sidebar
       open={workspace.ui.sidebarOpen}
       model={model}
-      query={sidebar.query}
+      search={search}
       collapsed={sidebar.collapsed}
       sidebarCollapsed={sidebar.sidebarCollapsed}
       activeChatId={workspace.ui.activeChatId}
@@ -36,8 +38,7 @@ export function SidebarContainer() {
         authenticated: auth.authenticated,
       }}
       onClose={workspace.closeSidebar}
-      onQueryChange={sidebar.setQuery}
-      onClearQuery={() => sidebar.setQuery("")}
+      onOpenPalette={openPalette}
       onToggleSidebar={sidebar.toggleSidebarCollapsed}
       onNewProject={commands.newProject}
       onNewChatInProject={commands.newChatInProject}

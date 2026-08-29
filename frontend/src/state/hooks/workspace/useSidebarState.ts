@@ -9,7 +9,6 @@ export function useSidebarState(
   projects: ProjectMeta[],
   chats: ChatMeta[]
 ) {
-  const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     workspaceSidebarState.readCollapsed()
@@ -44,8 +43,6 @@ export function useSidebarState(
   }
 
   return {
-    query,
-    setQuery,
     collapsed,
     toggleCollapsed,
     sidebarCollapsed,

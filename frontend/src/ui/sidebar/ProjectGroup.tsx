@@ -6,7 +6,6 @@ import { ChatRow } from "./ChatRow";
 export function ProjectGroup({
   project,
   chats,
-  visibleChats,
   activeChatId,
   collapsed,
   onToggle,
@@ -26,7 +25,6 @@ export function ProjectGroup({
 }: {
   project: ProjectMeta;
   chats: ChatMeta[];
-  visibleChats: ChatMeta[];
   activeChatId: string | null;
   collapsed: boolean;
   onToggle: () => void;
@@ -120,7 +118,7 @@ export function ProjectGroup({
 
       {!collapsed && (
         <div class="sidebar-project-chat-list ml-5 pl-2 pr-1 mt-1 space-y-0.5 border-l border-white/[0.08] overflow-y-auto touch-scroll scrollbar-thin">
-          {visibleChats.length === 0 ? (
+          {chats.length === 0 ? (
             <button
               type="button"
               onClick={onNewChat}
@@ -132,7 +130,7 @@ export function ProjectGroup({
               <Plus class="w-3.5 h-3.5" /> New chat
             </button>
           ) : (
-            visibleChats.map((chat) => (
+            chats.map((chat) => (
               <ChatRow
                 key={chat.id}
                 chat={chat}

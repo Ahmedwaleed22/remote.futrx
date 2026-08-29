@@ -6,16 +6,14 @@ const SIDEBAR_COLLAPSED_KEY = "remote.futrx.sidebarCollapsed";
 export interface ProjectSidebarNode {
   project: ProjectMeta;
   chats: ChatMeta[];
-  filteredChats: ChatMeta[];
 }
 
+/** The project tree. Ranked search results are owned by the search state. */
 export interface WorkspaceSidebarModel {
   visibleProjects: ProjectSidebarNode[];
   visibleLooseChats: ChatMeta[];
   totalChats: number;
   totalProjects: number;
-  hasMatches: boolean;
-  query: string;
 }
 
 interface ChatBuckets {
@@ -41,34 +39,21 @@ class WorkspaceSidebarState {
     return !!activeChatId && !chats.some((chat) => chat.id === activeChatId);
   }
 
-  model(chats: ChatMeta[], projects: ProjectMeta[], rawQuery: string): WorkspaceSidebarModel {
-    const query = rawQuery.trim().toLowerCase();
+  /** Group chats under their projects, in the sidebar's display order. */
+  model(chats: ChatMeta[], projects: ProjectMeta[]): WorkspaceSidebarModel {
     const buckets = this.bucketChatsByProject(chats);
-    const sortedProjects = [...projects].sort((left, right) => this.compareProjects(left, right));
-
-    const visibleProjects = sortedProjects
-      .map((project) => {
-        const projectChats = buckets.byProject.get(project.id) ?? [];
-        const projectMatches = this.matchesProject(project, query);
-        const filteredChats = query
-          ? projectChats.filter((chat) => projectMatches || this.matchesChat(chat, query))
-          : projectChats;
-        return { project, chats: projectChats, filteredChats };
-      })
-      .filter(
-        (node) =>
-          !query || this.matchesProject(node.project, query) || node.filteredChats.length > 0
-      );
-
-    const visibleLooseChats = buckets.loose.filter((chat) => this.matchesChat(chat, query));
+    const visibleProjects = [...projects]
+      .sort((left, right) => this.compareProjects(left, right))
+      .map((project) => ({
+        project,
+        chats: buckets.byProject.get(project.id) ?? [],
+      }));
 
     return {
       visibleProjects,
-      visibleLooseChats,
+      visibleLooseChats: buckets.loose,
       totalChats: chats.length,
       totalProjects: projects.length,
-      hasMatches: visibleProjects.length > 0 || visibleLooseChats.length > 0,
-      query,
     };
   }
 
@@ -132,18 +117,6 @@ class WorkspaceSidebarState {
       (chat) =>
         chat.projectId === projectId && (chat.lastMessageAt || 0) > (chat.lastReadAt || 0)
     );
-  }
-
-  private matchesChat(chat: ChatMeta, query: string): boolean {
-    if (!query) return true;
-    return `${chat.title} ${chat.cwd ?? ""} ${chat.model ?? ""}`
-      .toLowerCase()
-      .includes(query);
-  }
-
-  private matchesProject(project: ProjectMeta, query: string): boolean {
-    if (!query) return true;
-    return `${project.name} ${project.slug}`.toLowerCase().includes(query);
   }
 
   private compareProjects(left: ProjectMeta, right: ProjectMeta): number {
