@@ -180,3 +180,28 @@ export function optionsForFacet(
   });
   return options;
 }
+
+/**
+ * The options worth offering: those some chat would still match given every
+ * *other* active filter, plus whatever is already selected so a selection can
+ * always be seen and cleared.
+ *
+ * Scoping one facet by the others is what makes the per-provider facets behave.
+ * Models and modes belong to a provider, so with Codex ticked the Model list
+ * should be Codex's models -- an option that would match nothing is not a
+ * choice, it is noise, and offering every model ever used invites a pair of
+ * filters that can never agree.
+ *
+ * `counts` already carries exactly that set: the engine tallies a value only
+ * from docs that pass every facet but this one.
+ */
+export function offerableOptions(
+  options: readonly FacetOption[],
+  counts: ReadonlyMap<string, number>,
+  selected: readonly string[]
+): FacetOption[] {
+  const keepAnyway = new Set(selected);
+  return options.filter(
+    (option) => keepAnyway.has(option.value) || (counts.get(option.value) ?? 0) > 0
+  );
+}

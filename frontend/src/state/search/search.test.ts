@@ -3,7 +3,7 @@ import test from "node:test";
 import type { ChatMeta } from "../../models/chat.ts";
 import type { ProjectMeta } from "../../models/project.ts";
 import { buildSearchIndex } from "./searchDoc.ts";
-import { FACET_DEFINITIONS, optionsForFacet } from "./facetRegistry.ts";
+import { FACET_DEFINITIONS, offerableOptions, optionsForFacet } from "./facetRegistry.ts";
 import {
   ephemeralSearchPreferences,
   storedSearchPreferences,
@@ -329,4 +329,46 @@ test("the palette's filters never reach the sidebar's stored selection", () => {
   // And the palette itself opens clean rather than inheriting either one.
   assert.deepEqual(ephemeralSearchPreferences.readFilters(), defaultFilters());
   assert.equal(ephemeralSearchPreferences.readSort(), DEFAULT_SORT);
+});
+
+test("picking a provider scopes the model and mode facets to it", () => {
+  const facet = (id: string) => FACET_DEFINITIONS.find((entry) => entry.id === id)!;
+  const offered = (id: string, active: SearchFilters) => {
+    const outcome = runSearch(docs, active, "", "relevance", NOW, { withCounts: true });
+    return offerableOptions(
+      optionsForFacet(facet(id), docs),
+      outcome.counts[facet(id).id],
+      active.facets[facet(id).id] ?? []
+    ).map((option) => option.value);
+  };
+
+  // Unfiltered, every model and mode any chat has ever used is on offer.
+  assert.deepEqual(offered("model", filters()).sort(), ["", "gpt-5.5", "opus", "sonnet"]);
+  assert.deepEqual(offered("mode", filters()).sort(), ["", "code", "plan"]);
+
+  // Models and modes belong to a provider, so choosing one scopes both: Codex's
+  // model rather than Claude's, and no Claude-only modes left to tick.
+  const codex = emptyFacetSelections();
+  codex.provider = ["codex"];
+  assert.deepEqual(offered("model", filters({ facets: codex })), ["gpt-5.5"]);
+  assert.deepEqual(offered("mode", filters({ facets: codex })), [""]);
+
+  const claude = emptyFacetSelections();
+  claude.provider = ["claude"];
+  assert.deepEqual(offered("model", filters({ facets: claude })).sort(), ["opus", "sonnet"]);
+  assert.deepEqual(offered("mode", filters({ facets: claude })).sort(), ["code", "plan"]);
+
+  // The provider facet itself stays whole -- scoping a facet by the others
+  // never scopes it by itself, or you could not change your mind.
+  assert.deepEqual(offered("provider", filters({ facets: codex })).sort(), ["", "claude", "codex"]);
+
+  // A selection that can no longer match anything stays listed, so it can be
+  // seen and unticked rather than silently hiding every result. Codex's own
+  // model is listed beside it, because a facet is never scoped by itself: the
+  // pair reads "this is why you have nothing, and here is what would work".
+  const impossible = emptyFacetSelections();
+  impossible.provider = ["codex"];
+  impossible.model = ["opus"];
+  assert.deepEqual(offered("model", filters({ facets: impossible })).sort(), ["gpt-5.5", "opus"]);
+  assert.deepEqual(idsFor("", { facets: impossible }), []);
 });

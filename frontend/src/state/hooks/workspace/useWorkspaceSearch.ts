@@ -3,7 +3,7 @@ import type { ChatMeta } from "../../../models/chat";
 import type { ProjectMeta } from "../../../models/project";
 import { buildSearchIndex } from "../../search/searchDoc";
 import { runSearch } from "../../search/searchEngine";
-import { FACET_DEFINITIONS, optionsForFacet } from "../../search/facetRegistry";
+import { FACET_DEFINITIONS, offerableOptions, optionsForFacet } from "../../search/facetRegistry";
 import type { FacetId } from "../../search/facetRegistry";
 import { isDateFilterActive } from "../../search/dateRange";
 import type { DateFilter } from "../../search/dateRange";
@@ -49,16 +49,24 @@ export function useWorkspaceSearch(
 
   const facetViews = useMemo<FacetView[]>(
     () =>
-      FACET_DEFINITIONS.map((facet) => ({
-        id: facet.id,
-        label: facet.label,
-        advanced: facet.advanced,
-        emptyHint: facet.emptyHint,
-        options: optionsForFacet(facet, docs),
-        selected: filters.facets[facet.id] ?? [],
-        counts: outcome.counts[facet.id],
-      })),
-    [docs, filters, outcome]
+      FACET_DEFINITIONS.map((facet) => {
+        const selected = filters.facets[facet.id] ?? [];
+        const counts = outcome.counts[facet.id];
+        const options = optionsForFacet(facet, docs);
+        return {
+          id: facet.id,
+          label: facet.label,
+          advanced: facet.advanced,
+          emptyHint: facet.emptyHint,
+          // Scoping a facet by the others needs the counts, and those are only
+          // computed while a menu is open. Narrowing without them would empty
+          // the list on the frame before the first count arrives.
+          options: countsEnabled ? offerableOptions(options, counts, selected) : options,
+          selected,
+          counts,
+        };
+      }),
+    [docs, filters, outcome, countsEnabled]
   );
 
   useEffect(() => {

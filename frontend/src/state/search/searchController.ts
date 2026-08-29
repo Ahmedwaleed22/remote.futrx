@@ -17,6 +17,12 @@ export interface FacetView {
   label: string;
   advanced: boolean;
   emptyHint: string;
+  /**
+   * What this facet offers, already scoped by the other active filters -- tick
+   * Codex and the Model facet offers Codex's models. Narrowing needs the
+   * counts, so with every filter menu closed this is the unscoped list; nothing
+   * reads it then but the chips, which only look up selected values.
+   */
   options: FacetOption[];
   selected: string[];
   counts: Map<string, number>;
