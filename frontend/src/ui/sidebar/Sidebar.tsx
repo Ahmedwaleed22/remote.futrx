@@ -1,5 +1,5 @@
 import type { ChatMeta } from "../../models/chat";
-import type { WorkspaceSidebarModel } from "../../state/workspace/workspaceSidebarState";
+import type { WorkspaceSidebarModel } from "../../models/workspace.ts";
 import type { WorkspaceSearch } from "../../state/search/searchController";
 import { useProjectDragReorder } from "../../state/hooks/workspace/useProjectDragReorder";
 import { ChatRow } from "./ChatRow";

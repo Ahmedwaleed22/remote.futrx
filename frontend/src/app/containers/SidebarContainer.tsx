@@ -5,7 +5,7 @@ import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useSidebarState } from "../../state/hooks/workspace/useSidebarState";
 import { useSearchContext } from "../../state/context/SearchContext";
 import { useWorkspaceCommands } from "../../state/hooks/workspace/useWorkspaceCommands";
-import { workspaceSidebarState } from "../../state/workspace/workspaceSidebarState";
+import { workspaceSidebarService } from "../../services/workspace/workspaceSidebarService.ts";
 import { useAccountSignOut } from "../../state/hooks/auth/useAccountSignOut";
 
 export function SidebarContainer() {
@@ -21,7 +21,7 @@ export function SidebarContainer() {
   const signOut = useAccountSignOut();
   const { sidebarSearch, openPalette } = useSearchContext();
   const model = useMemo(
-    () => workspaceSidebarState.model(workspace.chats, workspace.projects),
+    () => workspaceSidebarService.model(workspace.chats, workspace.projects),
     [workspace.chats, workspace.projects]
   );
 

@@ -1,6 +1,6 @@
 import type { SearchHit } from "../../state/search/searchResults";
 import { modelShortLabel } from "../../config/chat";
-import { timeAgo } from "../../shared/format";
+import { relativeTimeService } from "../../services/platform/relativeTimeService.ts";
 import { HighlightedText } from "../primitives/HighlightedText";
 import { Clock, Folder, Loader, MessageSquare } from "../primitives/icons";
 
@@ -58,7 +58,7 @@ export function SearchResultRow({
             {modelShortLabel(chat.model)}
           </span>
           <Clock class="h-3 w-3 flex-none" />
-          <span class="flex-none">{timeAgo(chat.lastMessageAt)}</span>
+          <span class="flex-none">{relativeTimeService.ago(chat.lastMessageAt)}</span>
         </span>
       </span>
     </button>

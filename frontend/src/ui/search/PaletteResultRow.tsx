@@ -1,6 +1,6 @@
 import type { SearchHit } from "../../state/search/searchResults";
 import { modelShortLabel } from "../../config/chat";
-import { timeAgo } from "../../shared/format";
+import { relativeTimeService } from "../../services/platform/relativeTimeService.ts";
 import { HighlightedText } from "../primitives/HighlightedText";
 import { CornerDownLeft, Folder, Loader, MessageSquare } from "../primitives/icons";
 
@@ -83,7 +83,7 @@ export function PaletteResultRow({
             <span class="truncate">Unassigned</span>
           )}
           <span aria-hidden="true">·</span>
-          <span class="flex-none">{timeAgo(chat.lastMessageAt)}</span>
+          <span class="flex-none">{relativeTimeService.ago(chat.lastMessageAt)}</span>
           {reason && (
             <>
               <span aria-hidden="true">·</span>

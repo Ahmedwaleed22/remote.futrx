@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import type { RefObject } from "preact";
-import { clearHighlight, paintHighlight } from "../../../shared/textHighlight";
+import { clearHighlight, paintHighlight } from "../../../services/platform/textHighlight.ts";
 import { findRanges } from "../../search/domTextSearch";
 import { isFindShortcut } from "../../search/searchShortcuts";
 
