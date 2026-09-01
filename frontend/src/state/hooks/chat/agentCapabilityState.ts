@@ -1,3 +1,4 @@
+import { capitalize } from "../../../config/text.ts";
 import type {
   AgentCapabilitiesCatalog,
   CapabilityPreferenceCorrection,
@@ -114,7 +115,7 @@ class AgentCapabilityState {
   }
 
   private providerLabel(provider: string): string {
-    return provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : "Agent";
+    return provider ? capitalize(provider) : "Agent";
   }
 }
 

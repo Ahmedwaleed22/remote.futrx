@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { capitalize } from "../../../config/text.ts";
 import type { ChatProvider } from "../../../models/chat";
 import type {
   ComposerModelOption,
@@ -439,5 +440,5 @@ function ModelOption({
 }
 
 function displayProvider(provider: string): string {
-  return provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : "Agent";
+  return provider ? capitalize(provider) : "Agent";
 }

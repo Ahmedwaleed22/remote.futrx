@@ -12,6 +12,7 @@
 // which for fields is also the ranking tie-break rule.
 
 import { modelShortLabel, providerDisplayLabel } from "../../config/chat.ts";
+import { capitalize } from "../../config/text.ts";
 import {
   HIGHLIGHTED_FIELD_INDEX,
   RECENCY_WEIGHT,
@@ -80,11 +81,6 @@ interface KeywordScore {
 }
 
 const NONE = "";
-
-/** Title-case a raw value that has no catalog label of its own. */
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
 
 // Field and facet options are derived from the chats that actually exist rather
 // than from a catalog, so the menu never offers a provider or model the user
