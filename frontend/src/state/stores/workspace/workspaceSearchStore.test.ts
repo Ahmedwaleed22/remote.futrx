@@ -55,10 +55,17 @@ test("clearAll drops the keyword and every filter", () => {
   store.getState().toggleFacetValue("provider", "codex");
   store.getState().setDateFilter({ preset: "7d", field: "lastMessageAt" });
 
+  let notifications = 0;
+  const unsubscribe = store.subscribe(() => {
+    notifications += 1;
+  });
+
   store.getState().clearAll();
 
   assert.equal(store.getState().query, "");
   assert.deepEqual(store.getState().filters, searchFilterService.defaults());
+  assert.equal(notifications, 1, "one change, so subscribers see no half-cleared selection");
+  unsubscribe();
 });
 
 test("counts stay on until the last menu releases them", () => {

@@ -24,17 +24,27 @@ import {
  * differ in exactly one thing: whether the selection outlives the session. It
  * is also what keeps this module free of a fixed storage key, which is what
  * lets a test drive it with a hand-held boundary.
- *
- * Every write goes through `preferences`, so nothing is saved that the user did
- * not do. The previous version mirrored the filters from an effect and needed a
- * ref to suppress the write that hydrating from storage triggered on mount.
  */
 export function createWorkspaceSearchStore(preferences: SearchPreferences) {
   return createStore<WorkspaceSearchStoreState & WorkspaceSearchStoreActions>()(
     (set, get) => {
-      function commitFilters(filters: SearchFilters): void {
-        set({ filters });
+      /**
+       * The one way the selection changes: publish once, then save.
+       *
+       * Publishing once is what keeps a subscriber from seeing a half-applied
+       * selection -- clearing the search is a single change, not a cleared
+       * keyword followed by cleared filters. Saving here rather than from an
+       * effect is what keeps hydration from writing straight back: the initial
+       * selection comes from the initializer below, which never reaches this.
+       */
+      function commitSelection(filters: SearchFilters, query = get().query): void {
+        set({ query, filters });
         preferences.writeFilters(filters);
+      }
+
+      /** What every filter action does; the rule itself belongs to the service. */
+      function changeFilters(change: (filters: SearchFilters) => SearchFilters): void {
+        commitSelection(change(get().filters));
       }
 
       return {
@@ -50,35 +60,32 @@ export function createWorkspaceSearchStore(preferences: SearchPreferences) {
           preferences.writeSort(sort);
         },
 
-        toggleFacetValue: (facetId, value) => {
-          commitFilters(searchFilterService.toggleFacetValue(get().filters, facetId, value));
-        },
+        toggleFacetValue: (facetId, value) => changeFilters(
+          (filters) => searchFilterService.toggleFacetValue(filters, facetId, value),
+        ),
 
-        setFacetValues: (facetId, values) => {
-          commitFilters(searchFilterService.withFacetValues(get().filters, facetId, values));
-        },
+        setFacetValues: (facetId, values) => changeFilters(
+          (filters) => searchFilterService.withFacetValues(filters, facetId, values),
+        ),
 
-        clearFacet: (facetId) => {
-          commitFilters(searchFilterService.clearFacet(get().filters, facetId));
-        },
+        clearFacet: (facetId) => changeFilters(
+          (filters) => searchFilterService.clearFacet(filters, facetId),
+        ),
 
-        setDateFilter: (date) => {
-          commitFilters(searchFilterService.withDate(get().filters, date));
-        },
+        setDateFilter: (date) => changeFilters(
+          (filters) => searchFilterService.withDate(filters, date),
+        ),
 
-        clearDate: () => {
-          const { filters } = get();
-          commitFilters(
-            searchFilterService.withDate(filters, searchFilterService.clearedDate(filters.date)),
-          );
-        },
+        clearDate: () => changeFilters(
+          (filters) => searchFilterService.withDate(
+            filters,
+            searchFilterService.clearedDate(filters.date),
+          ),
+        ),
 
-        resetFilters: () => commitFilters(searchFilterService.defaults()),
+        resetFilters: () => commitSelection(searchFilterService.defaults()),
 
-        clearAll: () => {
-          set({ query: "" });
-          commitFilters(searchFilterService.defaults());
-        },
+        clearAll: () => commitSelection(searchFilterService.defaults(), ""),
 
         retainCounts: () => {
           set((state) => ({ countsRetained: state.countsRetained + 1 }));
