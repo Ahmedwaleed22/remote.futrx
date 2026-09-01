@@ -116,9 +116,10 @@ export function useWorkspaceSearch(
   const sort = useStore(store, (state) => state.sort);
   const countsEnabled = useStore(store, (state) => state.countsRetained > 0);
 
-  // Actions are selected one at a time rather than as an object: zustand
-  // compares the selected value by identity, and a fresh object every call
-  // would re-render on every store notification.
+  // The commands, read the same way the state above is. Each is an identity
+  // the store creates once, so a selector per command costs nothing and none
+  // of them can trigger a render -- which an object of them all would, on
+  // every notification, being a new object each time it was selected.
   const setQuery = useStore(store, (state) => state.setQuery);
   const setSort = useStore(store, (state) => state.setSort);
   const toggleFacetValue = useStore(store, (state) => state.toggleFacetValue);
