@@ -1,8 +1,4 @@
-/** A half-open range of the text to emphasize. */
-export interface TextSpan {
-  start: number;
-  end: number;
-}
+import type { MatchSpan } from "../../models/search";
 
 /**
  * Render text with the matched ranges emphasized. Spans are offsets into the
@@ -15,7 +11,7 @@ export function HighlightedText({
   class: className,
 }: {
   text: string;
-  spans: readonly TextSpan[];
+  spans: readonly MatchSpan[];
   class?: string;
 }) {
   if (spans.length === 0) return <span class={className}>{text}</span>;
