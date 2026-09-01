@@ -3,7 +3,8 @@ import { Sidebar } from "../../ui/sidebar/Sidebar";
 import { useAuthContext } from "../../state/context/AuthContext";
 import { useWorkspaceContext } from "../../state/context/WorkspaceContext";
 import { useSidebarState } from "../../state/hooks/workspace/useSidebarState";
-import { useSearchContext } from "../../state/context/SearchContext";
+import { useOpenCommandPalette } from "../../state/hooks/workspace/useCommandPalette";
+import { useSidebarSearch } from "../../state/hooks/workspace/useWorkspaceSearch";
 import { useWorkspaceCommands } from "../../state/hooks/workspace/useWorkspaceCommands";
 import { workspaceSidebarService } from "../../services/workspace/workspaceSidebarService.ts";
 import { useAccountSignOut } from "../../state/hooks/auth/useAccountSignOut";
@@ -19,7 +20,8 @@ export function SidebarContainer() {
   );
   const commands = useWorkspaceCommands();
   const signOut = useAccountSignOut();
-  const { sidebarSearch, openPalette } = useSearchContext();
+  const search = useSidebarSearch();
+  const openPalette = useOpenCommandPalette();
   const model = useMemo(
     () => workspaceSidebarService.model(workspace.chats, workspace.projects),
     [workspace.chats, workspace.projects]
@@ -29,7 +31,7 @@ export function SidebarContainer() {
     <Sidebar
       open={workspace.ui.sidebarOpen}
       model={model}
-      search={sidebarSearch}
+      search={search}
       loading={!workspace.loaded}
       collapsed={sidebar.collapsed}
       sidebarCollapsed={sidebar.sidebarCollapsed}

@@ -69,6 +69,14 @@ something local — a date range, a textarea's height, a drag in progress — an
 those should stay local. Promoting a form's fields to a store to keep the
 folder count tidy is the failure this rule exists to prevent.
 
+**A store holds the input, not the result.** Workspace search keeps its
+selection — the keyword, the filters, the sort — in `workspaceSearchStore`,
+because it outlives the surface that set it and the sidebar's copy is written
+back to storage. The index and the ranked hits are not in any store: they are a
+function of that selection and of the chats the feed is pushing, so
+`useWorkspaceSearch` derives them where both are in hand rather than mirroring
+them into state that could fall behind either input.
+
 **Commands may be dispatched from anywhere.** Writing to a store is not a
 subscription and carries no re-render obligation. This matters because some
 dispatch sites are not components and cannot call a hook — see

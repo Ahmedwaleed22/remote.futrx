@@ -8,6 +8,7 @@ import type { WorkspaceSidebarModel } from "../models/workspace";
 import { AppShell } from "../ui/layout/AppShell";
 import { Sidebar } from "../ui/sidebar/Sidebar";
 import { useWorkspaceSearch } from "../state/hooks/workspace/useWorkspaceSearch";
+import { paletteSearchStore } from "../state/stores/workspace/workspaceSearchStore";
 import { ThreadHeader } from "../ui/chat/header/ThreadHeader";
 import { WorkspaceActions } from "../ui/chat/header/WorkspaceActions";
 import { MessageList } from "../ui/chat/messages/MessageList";
@@ -103,7 +104,10 @@ const previewChats = [
 ];
 
 function Preview() {
-  const search = useWorkspaceSearch(previewChats, projects);
+  // The palette's store rather than the sidebar's: it starts from the
+  // defaults and saves nothing, so this harness cannot overwrite the filters
+  // the real sidebar remembers.
+  const search = useWorkspaceSearch(paletteSearchStore, previewChats, projects);
   const [text, setText] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
