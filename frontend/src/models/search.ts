@@ -88,6 +88,13 @@ export const UNASSIGNED_PROJECT = " unassigned";
 export const STATUS_UNREAD = "unread";
 export const STATUS_RUNNING = "running";
 
+/**
+ * The facet value standing for "this chat recorded nothing here" — no provider,
+ * no model, no mode. A sentinel rather than an absence, so an unset field is a
+ * tickable option like any other instead of a hole in the list.
+ */
+export const UNSET_FACET_VALUE = "";
+
 export interface FacetOption {
   value: string;
   label: string;

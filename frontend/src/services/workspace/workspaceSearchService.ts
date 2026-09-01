@@ -28,6 +28,7 @@ import {
   STATUS_RUNNING,
   STATUS_UNREAD,
   UNASSIGNED_PROJECT,
+  UNSET_FACET_VALUE,
 } from "../../models/search.ts";
 import type {
   ChatSearchDoc,
@@ -80,7 +81,6 @@ interface KeywordScore {
   field: MatchedField;
 }
 
-const NONE = "";
 
 // Field and facet options are derived from the chats that actually exist rather
 // than from a catalog, so the menu never offers a provider or model the user
@@ -125,22 +125,22 @@ const FACETS: Record<FacetId, FacetDefinition> = {
     label: "Provider",
     advanced: false,
     emptyHint: "No providers recorded",
-    valuesOf: (doc) => [doc.chat.provider || NONE],
-    labelFor: (value) => (value === NONE ? "Default" : providerDisplayLabel(value)),
+    valuesOf: (doc) => [doc.chat.provider || UNSET_FACET_VALUE],
+    labelFor: (value) => (value === UNSET_FACET_VALUE ? "Default" : providerDisplayLabel(value)),
   },
   model: {
     label: "Model",
     advanced: false,
     emptyHint: "No models recorded",
-    valuesOf: (doc) => [doc.chat.model || NONE],
-    labelFor: (value) => (value === NONE ? "Auto" : modelShortLabel(value)),
+    valuesOf: (doc) => [doc.chat.model || UNSET_FACET_VALUE],
+    labelFor: (value) => (value === UNSET_FACET_VALUE ? "Auto" : modelShortLabel(value)),
   },
   mode: {
     label: "Mode",
     advanced: false,
     emptyHint: "No modes recorded",
-    valuesOf: (doc) => [doc.chat.mode || NONE],
-    labelFor: (value) => (value === NONE ? "Unset" : capitalize(value)),
+    valuesOf: (doc) => [doc.chat.mode || UNSET_FACET_VALUE],
+    labelFor: (value) => (value === UNSET_FACET_VALUE ? "Unset" : capitalize(value)),
   },
   status: {
     label: "Status",
@@ -158,15 +158,15 @@ const FACETS: Record<FacetId, FacetDefinition> = {
     label: "Reasoning effort",
     advanced: true,
     emptyHint: "No effort levels recorded",
-    valuesOf: (doc) => [doc.chat.reasoningEffort || NONE],
-    labelFor: (value) => (value === NONE ? "Auto" : capitalize(value)),
+    valuesOf: (doc) => [doc.chat.reasoningEffort || UNSET_FACET_VALUE],
+    labelFor: (value) => (value === UNSET_FACET_VALUE ? "Auto" : capitalize(value)),
   },
   tier: {
     label: "Service tier",
     advanced: true,
     emptyHint: "No service tiers recorded",
-    valuesOf: (doc) => [doc.chat.serviceTier || NONE],
-    labelFor: (value) => (value === NONE ? "Auto" : capitalize(value)),
+    valuesOf: (doc) => [doc.chat.serviceTier || UNSET_FACET_VALUE],
+    labelFor: (value) => (value === UNSET_FACET_VALUE ? "Auto" : capitalize(value)),
   },
   skill: {
     label: "Skills",
