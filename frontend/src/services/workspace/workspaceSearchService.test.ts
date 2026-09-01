@@ -116,7 +116,7 @@ test("matches despite a typo", () => {
   assert.deepEqual(idsFor("sidbar"), ["c2"]);
 });
 
-test("ranks a title hit above a path-only hit", () => {
+test("names the field a hit matched on, so the row can say why", () => {
   const hits = workspaceSearchService.run(docs, filters(), "workspace", "relevance", NOW).hits;
   assert.ok(hits.length > 1);
   assert.equal(hits[0].matchedField, "path");

@@ -11,8 +11,10 @@ const MAX_VISIBLE_RESULTS = 50;
 /**
  * Centered spotlight search, opened with Cmd/Ctrl+P or Cmd/Ctrl+K.
  *
- * It shares the sidebar's search state, so any project scoping set in the
- * filter menu also applies here — surfaced as chips rather than left implicit.
+ * It carries its own filter selection, separate from the sidebar's: a scratch
+ * surface you open, use and dismiss should not re-scope the list behind it, or
+ * outlive the session. What is selected here is surfaced as chips rather than
+ * left implicit.
  */
 export function CommandPalette({
   search,

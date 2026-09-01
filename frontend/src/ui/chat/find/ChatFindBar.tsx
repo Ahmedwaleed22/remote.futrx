@@ -33,7 +33,7 @@ export function ChatFindBar({
   if (!find.open) return null;
 
   const { status } = find;
-  const noMatches = status.kind !== "matched";
+  const canStep = status.kind === "matched";
 
   return (
     <div
@@ -81,7 +81,7 @@ export function ChatFindBar({
         <button
           type="button"
           onClick={find.previous}
-          disabled={noMatches}
+          disabled={!canStep}
           class={stepButtonClass}
           aria-label="Previous match"
           title="Previous match (Shift+Enter)"
@@ -91,7 +91,7 @@ export function ChatFindBar({
         <button
           type="button"
           onClick={find.next}
-          disabled={noMatches}
+          disabled={!canStep}
           class={stepButtonClass}
           aria-label="Next match"
           title="Next match (Enter)"
