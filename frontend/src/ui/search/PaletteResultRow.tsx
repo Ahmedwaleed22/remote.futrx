@@ -1,6 +1,5 @@
 import type { SearchHit } from "../../models/search";
 import { relativeTimeService } from "../../services/platform/relativeTimeService.ts";
-import { workspaceSearchService } from "../../services/workspace/workspaceSearchService.ts";
 import { HighlightedText } from "../primitives/HighlightedText";
 import { CornerDownLeft, Folder, Loader, MessageSquare } from "../primitives/icons";
 
@@ -16,17 +15,19 @@ import { CornerDownLeft, Folder, Loader, MessageSquare } from "../primitives/ico
 export function PaletteResultRow({
   hit,
   active,
+  reason,
   onActivate,
   onSelect,
 }: {
   hit: SearchHit;
   active: boolean;
+  /** Why this chat matched, or null when its title already shows it. */
+  reason: string | null;
   /** The pointer moved onto the row: take the keyboard cursor with it. */
   onActivate: () => void;
   onSelect: () => void;
 }) {
   const chat = hit.doc.chat;
-  const reason = workspaceSearchService.describeMatch(hit);
 
   return (
     <button

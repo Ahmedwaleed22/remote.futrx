@@ -7,6 +7,7 @@ import type {
   FacetId,
   FacetView,
   SearchFilters,
+  SearchHit,
   SearchOutcome,
   SearchPreferences,
   SortId,
@@ -52,6 +53,8 @@ export interface ResultsView {
   outcome: SearchOutcome;
   /** True when a keyword or any filter is narrowing the list. */
   isSearching: boolean;
+  /** Why a hit is in the list, when its title alone doesn't show it. */
+  describeMatch: (hit: SearchHit) => string | null;
 }
 
 /**
@@ -162,6 +165,11 @@ export function useWorkspaceSearch(
     };
   }, []);
 
+  const describeMatch = useCallback(
+    (hit: SearchHit) => workspaceSearchService.describeMatch(hit),
+    []
+  );
+
   const resetFilters = useCallback(() => setFilters(searchFilterService.defaults()), []);
 
   const clearAll = useCallback(() => {
@@ -188,6 +196,7 @@ export function useWorkspaceSearch(
     activeFilterCount,
     hasActiveFilters: activeFilterCount > 0,
     isSearching: query.trim().length > 0 || activeFilterCount > 0,
+    describeMatch,
     toggleFacetValue,
     setFacetValues,
     clearFacet,

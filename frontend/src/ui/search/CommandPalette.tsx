@@ -189,6 +189,7 @@ export function CommandPalette({
                   key={hit.doc.chat.id}
                   hit={hit}
                   active={index === activeIndex}
+                  reason={search.describeMatch(hit)}
                   onActivate={() => setActiveIndex(index)}
                   onSelect={() => choose(index)}
                 />
