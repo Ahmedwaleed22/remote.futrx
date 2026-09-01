@@ -6,6 +6,7 @@
 
 import { useEffect } from "preact/hooks";
 import type { RefObject } from "preact";
+import { useDismissShortcut } from "../../state/hooks/shared/useDismissShortcut.ts";
 
 /** Close on an outside pointer press or Escape, while `open`. */
 export function useDismissOnOutside(
@@ -20,18 +21,11 @@ export function useDismissOnOutside(
       const target = event.target as Node | null;
       if (target && !rootRef.current?.contains(target)) onClose();
     }
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      // Stop the sidebar's own Escape handler from also closing the drawer.
-      event.stopPropagation();
-      onClose();
-    }
-
     window.addEventListener("mousedown", closeOnOutsidePress);
-    window.addEventListener("keydown", closeOnEscape, true);
-    return () => {
-      window.removeEventListener("mousedown", closeOnOutsidePress);
-      window.removeEventListener("keydown", closeOnEscape, true);
-    };
+    return () => window.removeEventListener("mousedown", closeOnOutsidePress);
   }, [open, onClose, rootRef]);
+
+  // Topmost, so the sidebar's own Escape handler underneath does not also
+  // close the drawer this menu is sitting in.
+  useDismissShortcut(onClose, { enabled: open, topmost: true });
 }

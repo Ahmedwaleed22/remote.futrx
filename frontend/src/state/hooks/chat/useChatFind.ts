@@ -4,6 +4,8 @@ import { CHAT_FIND_SKIP_SELECTOR } from "../../../config/chat.ts";
 import { isFindShortcut } from "../../../config/shortcuts.ts";
 import { chatFindHighlightService } from "../../../services/chat/chatFindHighlightService.ts";
 import { domTextSearchService } from "../../../services/platform/domTextSearchService.ts";
+import { useDismissShortcut } from "../shared/useDismissShortcut.ts";
+import { useShortcut } from "../shared/useShortcut.ts";
 
 /**
  * Where the search stands. A union rather than a loose `(index, matchCount)`
@@ -50,15 +52,24 @@ export function useChatFind({
 
   const close = useCallback(() => setOpen(false), []);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (!isFindShortcut(event)) return;
+  useShortcut(isFindShortcut, (event) => {
+    // The browser's own find would otherwise open alongside ours.
+    event.preventDefault();
+    setOpen(true);
+  });
+
+  // Escape closes find from anywhere in the thread, not only from the bar's
+  // input, so it undoes Cmd/Ctrl+F wherever the cursor happens to be. It is
+  // topmost because the same Escape cancels a streaming reply behind it.
+  useDismissShortcut(
+    (event) => {
+      // The bar's input is usually focused, where Escape can otherwise revert
+      // what was typed before the bar closes over it.
       event.preventDefault();
-      setOpen(true);
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+      close();
+    },
+    { enabled: open, topmost: true }
+  );
 
   // A new query starts from the first match rather than wherever the last one
   // left off.
