@@ -4,9 +4,7 @@ import type { StoreApi } from "zustand/vanilla";
 import type { ChatMeta } from "../../../models/chat.ts";
 import type { ProjectMeta } from "../../../models/project.ts";
 import type {
-  DateFilter,
   DateFilterView,
-  FacetId,
   FacetView,
   SearchFilters,
   SearchHit,
@@ -29,36 +27,33 @@ export type WorkspaceSearchStore = StoreApi<
   WorkspaceSearchStoreState & WorkspaceSearchStoreActions
 >;
 
+// Each surface takes the commands straight from the store's contract, so their
+// signatures are stated once, in `models/search.ts`, and a change to one of
+// them reaches the components that call it.
+
 /** The keyword box: the text, and how to change it. */
-export interface QueryControl {
+export interface QueryControl extends Pick<WorkspaceSearchStoreActions, "setQuery"> {
   query: string;
-  setQuery: (query: string) => void;
 }
 
 /** The filter menu and the chips: the selection, and every way to change it. */
-export interface FilterControl {
+export interface FilterControl extends Pick<
+  WorkspaceSearchStoreActions,
+  | "setSort"
+  | "toggleFacetValue"
+  | "setFacetValues"
+  | "clearFacet"
+  | "setDateFilter"
+  | "clearDate"
+  | "resetFilters"
+  | "retainCounts"
+> {
   filters: SearchFilters;
   facetViews: FacetView[];
   dateView: DateFilterView;
   activeFilterCount: number;
   hasActiveFilters: boolean;
   sort: SortId;
-  setSort: (sort: SortId) => void;
-  toggleFacetValue: (facetId: FacetId, value: string) => void;
-  setFacetValues: (facetId: FacetId, values: string[]) => void;
-  clearFacet: (facetId: FacetId) => void;
-  setDateFilter: (date: DateFilter) => void;
-  /** Drop the date window, keeping which timestamp the user was asking about. */
-  clearDate: () => void;
-  resetFilters: () => void;
-  /**
-   * Ask for per-option facet counts, and release them with the returned
-   * function. They are only worth their cost while a filter menu is on screen,
-   * and two can be at once -- the sidebar's and the palette's -- so the store
-   * keeps a retain count rather than a flag either one could switch off
-   * underneath the other.
-   */
-  retainCounts: () => () => void;
 }
 
 /** What anything that renders results needs, and nothing more. */
@@ -75,10 +70,11 @@ export interface ResultsView {
  * the filter menu take `FilterControl` and cannot reach the query or the
  * results; the palette takes all of it because it genuinely is all of it.
  */
-export interface WorkspaceSearch extends QueryControl, FilterControl, ResultsView {
-  /** Drop the keyword and every filter at once. */
-  clearAll: () => void;
-}
+export interface WorkspaceSearch
+  extends QueryControl,
+    FilterControl,
+    ResultsView,
+    Pick<WorkspaceSearchStoreActions, "clearAll"> {}
 
 /** The sidebar's search: its selection is remembered across reloads. */
 export function useSidebarSearch(): WorkspaceSearch {
