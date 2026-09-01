@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import type { RefObject } from "preact";
 import { clearHighlight, paintHighlight } from "../../../services/platform/textHighlight.ts";
-import { findRanges } from "../../search/domTextSearch";
+import { domTextSearchService } from "../../../services/platform/domTextSearchService.ts";
 import { isFindShortcut } from "../../search/searchShortcuts";
 
 /** Keep the match this far from the scroller's edges when revealing it. */
@@ -62,7 +62,7 @@ function reveal(scroller: HTMLElement | null, range: Range): void {
  * Find-in-chat: the query, where you are in the results, and the highlighting.
  *
  * Matches come from the rendered thread rather than the message model, so what
- * it counts is exactly what is on screen -- see `findRanges`. `revision` is any
+ * it counts is exactly what is on screen -- see `domTextSearchService`. `revision` is any
  * value that changes when the thread's content does, so a match list cannot go
  * stale against a streaming reply.
  */
@@ -102,7 +102,7 @@ export function useChatFind({
       clearMatches();
       return;
     }
-    const ranges = findRanges(contentRef.current, query);
+    const ranges = domTextSearchService.findRanges(contentRef.current, query);
     setMatchCount(ranges.length);
     if (ranges.length === 0) {
       clearMatches();
