@@ -15,12 +15,52 @@
 import { FOLD_CACHE_LIMIT, MATCH_TIER_SCORES } from "../../config/search.ts";
 import type { FieldMatch, MatchSpan } from "../../models/search.ts";
 
+/**
+ * What counts as part of a word, in any script: letters, digits and the
+ * combining marks that attach to them. Everything else -- spaces, punctuation,
+ * symbols, emoji -- separates words.
+ *
+ * Latin-only classes (`[a-z0-9]`) were what made Arabic, Cyrillic, Hebrew, Greek
+ * and CJK queries tokenize to nothing, and a query with no tokens reads as "no
+ * keyword", so the surfaces answered it with the unfiltered list.
+ */
+const WORD_CHAR = /[\p{L}\p{N}\p{M}]/u;
+const WORD_RUN = /[\p{L}\p{N}\p{M}]+/gu;
+
+/**
+ * One-to-one character equivalences that NFD cannot express, so a word matches
+ * however the writer happened to spell it. Every entry maps a single code point
+ * to a single code point, which is what keeps folding length-preserving.
+ *
+ * The Arabic set is the usual orthographic drift: alef maksura written for yeh,
+ * teh marbuta for heh, and the Persian/Urdu keheh and yeh for their Arabic
+ * counterparts. Hamza carriers (أ إ آ ؤ ئ) already fold through NFD.
+ */
+const CHAR_EQUIVALENTS: ReadonlyMap<string, string> = new Map([
+  ["\u0649", "\u064A"], // alef maksura -> yeh
+  ["\u0629", "\u0647"], // teh marbuta -> heh
+  ["\u06CC", "\u064A"], // farsi yeh -> yeh
+  ["\u06A9", "\u0643"], // keheh -> kaf
+  ["\u06AA", "\u0643"], // swash kaf -> kaf
+  ["\u0670", "\u0627"], // superscript alef -> alef
+  // Arabic-Indic and extended Arabic-Indic digits, so "٥" and "۵" find "5".
+  ...Array.from({ length: 10 }, (_, d) => [String.fromCharCode(0x0660 + d), String(d)] as const),
+  ...Array.from({ length: 10 }, (_, d) => [String.fromCharCode(0x06F0 + d), String(d)] as const),
+]);
+
 class TextMatchService {
   readonly #foldCache = new Map<string, string>();
 
   /**
-   * Lowercase and strip diacritics without changing string length, so span
-   * offsets stay aligned with the original text.
+   * Lowercase, strip diacritics and settle script-specific spelling variants
+   * without changing string length, so span offsets stay aligned with the
+   * original text.
+   *
+   * The guard is per character rather than per string: each source character
+   * contributes exactly its own length, and any transform that would not
+   * (lowercasing "İ" to "i̇", decomposing an astral char) leaves it as it was.
+   * A whole-string fallback could still return a differently sized string,
+   * which is the one thing highlighting cannot survive.
    */
   fold(value: string): string {
     if (!value) return "";
@@ -28,32 +68,44 @@ class TextMatchService {
     if (cached !== undefined) return cached;
 
     let out = "";
-    const lowered = value.toLowerCase();
-    for (const char of lowered) {
+    for (const char of value) {
       // NFD splits an accented char into base + combining marks; taking the base
       // keeps one char per source char. Astral chars keep their own length.
-      const base = char.normalize("NFD")[0] ?? char;
-      out += base.length === char.length ? base : char;
+      const base = char.toLowerCase().normalize("NFD")[0] ?? char;
+      const folded = base.length === char.length ? base : char;
+      out += CHAR_EQUIVALENTS.get(folded) ?? folded;
     }
-    // Guard the rare locale cases where lowercasing changed length (e.g. "İ").
-    const result = out.length === value.length ? out : value.toLowerCase();
-    if (this.#foldCache.size < FOLD_CACHE_LIMIT) this.#foldCache.set(value, result);
-    return result;
+    if (this.#foldCache.size < FOLD_CACHE_LIMIT) this.#foldCache.set(value, out);
+    return out;
   }
 
   /**
    * Split a query or field into comparable tokens. Breaks on separators and on
    * camelCase boundaries, so `workspaceSidebarState.ts` yields
-   * ["workspace", "sidebar", "state", "ts"].
+   * ["workspace", "sidebar", "state", "ts"], and words in every script survive:
+   * "مرحبا بكم" is two tokens, not none.
+   *
+   * A run of punctuation or symbols normally separates rather than matches --
+   * that is what lets the query "remote.futrx" find a chat titled "remote
+   * futrx". But when a whitespace-separated chunk holds no word characters at
+   * all, separating is all it could do, and the user is plainly searching for
+   * the character itself, so the chunk is kept as a literal token. That is how
+   * "\u2192", "#" or "?!" become searchable instead of tokenizing to nothing.
    */
   tokenize(value: string): string[] {
     if (!value) return [];
     const withBoundaries = value
-      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-      .replace(/([A-Za-z])([0-9])/g, "$1 $2");
-    return this.fold(withBoundaries)
-      .split(/[^a-z0-9]+/)
-      .filter((token) => token.length > 0);
+      .replace(/(\p{Ll}|\p{N})(\p{Lu})/gu, "$1 $2")
+      .replace(/(\p{L})(\p{N})/gu, "$1 $2");
+
+    const tokens: string[] = [];
+    for (const chunk of this.fold(withBoundaries).split(/\s+/)) {
+      if (!chunk) continue;
+      const words = chunk.match(WORD_RUN);
+      if (words) tokens.push(...words);
+      else tokens.push(chunk);
+    }
+    return tokens;
   }
 
   /**
@@ -95,7 +147,7 @@ class TextMatchService {
     // edit budget can't be spent bridging unrelated words.
     const budget = this.#allowedTypos(token);
     if (budget > 0) {
-      const wordPattern = /[a-z0-9]+/g;
+      const wordPattern = new RegExp(WORD_RUN.source, "gu");
       let word: RegExpExecArray | null;
       while ((word = wordPattern.exec(folded)) !== null) {
         if (this.#withinEditDistance(word[0], token, budget)) {
@@ -113,13 +165,14 @@ class TextMatchService {
     return null;
   }
 
-  /** True when the character before `index` ends a word, making `index` a word start. */
+  /**
+   * True when the character before `index` ends a word, making `index` a word
+   * start. A lone surrogate half reads as a non-word character, which is the
+   * right answer: an emoji before the match is a boundary.
+   */
   #isWordStart(folded: string, index: number): boolean {
     if (index === 0) return true;
-    const previous = folded.charCodeAt(index - 1);
-    const isAlphaNumeric =
-      (previous >= 97 && previous <= 122) || (previous >= 48 && previous <= 57);
-    return !isAlphaNumeric;
+    return !WORD_CHAR.test(folded[index - 1]);
   }
 
   /** Typo tolerance scales with token length; short tokens get none. */
