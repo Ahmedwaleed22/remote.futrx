@@ -5,15 +5,15 @@
 // gave no way to rank one hit above another. This replaces that with a scored
 // match that also reports where it hit, so the UI can highlight.
 //
-// Normalization is deliberately length-preserving: every transform maps one
-// source character to exactly one output character, so an offset into the
-// folded string is a valid offset into the original. That lets a caller fold
-// once at index time and still emit highlight spans against the raw text.
+// Comparison runs over already-folded text (see textFoldService), which is
+// length-preserving, so every offset this file reports is a valid offset into
+// the caller's original string.
 //
 // Leaf service: it knows about text, never about chats or filters.
 
-import { FOLD_CACHE_LIMIT, MATCH_TIER_SCORES } from "../../config/search.ts";
+import { MATCH_TIER_SCORES } from "../../config/search.ts";
 import type { FieldMatch, MatchSpan } from "../../models/search.ts";
+import { textFoldService } from "./textFoldService.ts";
 
 /**
  * What counts as part of a word, in any script: letters, digits and the
@@ -27,58 +27,7 @@ import type { FieldMatch, MatchSpan } from "../../models/search.ts";
 const WORD_CHAR = /[\p{L}\p{N}\p{M}]/u;
 const WORD_RUN = /[\p{L}\p{N}\p{M}]+/gu;
 
-/**
- * One-to-one character equivalences that NFD cannot express, so a word matches
- * however the writer happened to spell it. Every entry maps a single code point
- * to a single code point, which is what keeps folding length-preserving.
- *
- * The Arabic set is the usual orthographic drift: alef maksura written for yeh,
- * teh marbuta for heh, and the Persian/Urdu keheh and yeh for their Arabic
- * counterparts. Hamza carriers (أ إ آ ؤ ئ) already fold through NFD.
- */
-const CHAR_EQUIVALENTS: ReadonlyMap<string, string> = new Map([
-  ["\u0649", "\u064A"], // alef maksura -> yeh
-  ["\u0629", "\u0647"], // teh marbuta -> heh
-  ["\u06CC", "\u064A"], // farsi yeh -> yeh
-  ["\u06A9", "\u0643"], // keheh -> kaf
-  ["\u06AA", "\u0643"], // swash kaf -> kaf
-  ["\u0670", "\u0627"], // superscript alef -> alef
-  // Arabic-Indic and extended Arabic-Indic digits, so "٥" and "۵" find "5".
-  ...Array.from({ length: 10 }, (_, d) => [String.fromCharCode(0x0660 + d), String(d)] as const),
-  ...Array.from({ length: 10 }, (_, d) => [String.fromCharCode(0x06F0 + d), String(d)] as const),
-]);
-
 class TextMatchService {
-  readonly #foldCache = new Map<string, string>();
-
-  /**
-   * Lowercase, strip diacritics and settle script-specific spelling variants
-   * without changing string length, so span offsets stay aligned with the
-   * original text.
-   *
-   * The guard is per character rather than per string: each source character
-   * contributes exactly its own length, and any transform that would not
-   * (lowercasing "İ" to "i̇", decomposing an astral char) leaves it as it was.
-   * A whole-string fallback could still return a differently sized string,
-   * which is the one thing highlighting cannot survive.
-   */
-  fold(value: string): string {
-    if (!value) return "";
-    const cached = this.#foldCache.get(value);
-    if (cached !== undefined) return cached;
-
-    let out = "";
-    for (const char of value) {
-      // NFD splits an accented char into base + combining marks; taking the base
-      // keeps one char per source char. Astral chars keep their own length.
-      const base = char.toLowerCase().normalize("NFD")[0] ?? char;
-      const folded = base.length === char.length ? base : char;
-      out += CHAR_EQUIVALENTS.get(folded) ?? folded;
-    }
-    if (this.#foldCache.size < FOLD_CACHE_LIMIT) this.#foldCache.set(value, out);
-    return out;
-  }
-
   /**
    * Split a query or field into comparable tokens. Breaks on separators and on
    * camelCase boundaries, so `workspaceSidebarState.ts` yields
@@ -99,7 +48,7 @@ class TextMatchService {
       .replace(/(\p{L})(\p{N})/gu, "$1 $2");
 
     const tokens: string[] = [];
-    for (const chunk of this.fold(withBoundaries).split(/\s+/)) {
+    for (const chunk of textFoldService.fold(withBoundaries).split(/\s+/)) {
       if (!chunk) continue;
       const words = chunk.match(WORD_RUN);
       if (words) tokens.push(...words);

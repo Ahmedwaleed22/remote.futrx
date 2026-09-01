@@ -13,7 +13,7 @@
 //
 // Leaf service: it knows about the document, never about chats.
 
-import { textMatchService } from "./textMatchService.ts";
+import { textFoldService } from "./textFoldService.ts";
 
 /** A rendered text node and where its text starts in the concatenated string. */
 interface TextChunk {
@@ -27,13 +27,13 @@ class DomTextSearchService {
    * order, skipping any subtree matching `skipSelector`.
    */
   findRanges(root: Node, query: string, skipSelector: string): Range[] {
-    const needle = textMatchService.fold(query);
+    const needle = textFoldService.fold(query);
     if (needle.trim().length === 0) return [];
 
     const chunks = this.#collectChunks(root, skipSelector);
     if (chunks.length === 0) return [];
 
-    const haystack = textMatchService.fold(chunks.map((chunk) => chunk.node.data).join(""));
+    const haystack = textFoldService.fold(chunks.map((chunk) => chunk.node.data).join(""));
     const ranges: Range[] = [];
     for (
       let at = haystack.indexOf(needle);

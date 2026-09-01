@@ -45,6 +45,7 @@ import type {
   SearchOutcome,
   SortId,
 } from "../../models/search.ts";
+import { textFoldService } from "../platform/textFoldService.ts";
 import { textMatchService } from "../platform/textMatchService.ts";
 import { searchFilterService } from "./searchFilterService.ts";
 
@@ -284,7 +285,7 @@ class WorkspaceSearchService {
         chat,
         project,
         folded: SEARCH_FIELD_IDS.map((id) =>
-          textMatchService.fold(SEARCH_FIELDS[id].textOf(chat, project))
+          textFoldService.fold(SEARCH_FIELDS[id].textOf(chat, project))
         ),
         unread: (chat.lastMessageAt || 0) > (chat.lastReadAt || 0),
       };

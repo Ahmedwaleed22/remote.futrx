@@ -10,7 +10,7 @@ Logic that belongs to no single caller, grouped by the domain it serves.
 | `projects/` | The `<slug>--<port>.dev.<host>` preview URL shape |
 | `usage/` | Date ranges, bar geometry, and how tokens and money are written |
 | `workspace/` | The sidebar and its search: what they show, what filters them, and what the user folded away or filtered by |
-| `platform/` | The browser and the language — storage, ids, time, diff, text matching, DOM text search |
+| `platform/` | The browser and the language — storage, ids, time, diff, text folding, text matching, DOM text search |
 
 The domain names are the ones the app already uses in `state/hooks/` and
 `ui/`, so a service sits under the same word as the hook and the screen that

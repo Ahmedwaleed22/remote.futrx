@@ -1,24 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { textFoldService } from "./textFoldService.ts";
 import { textMatchService } from "./textMatchService.ts";
-
-test("folding preserves length so highlight spans stay aligned", () => {
-  assert.equal(textMatchService.fold("Café Ünicode").length, "Café Ünicode".length);
-  assert.equal(textMatchService.fold("Café"), "cafe");
-  // Scripts with their own casing, marks, or none of either keep their length,
-  // including the locale cases where lowercasing alone would not.
-  for (const sample of ["İstanbul", "مُحَمَّد", "Привет ЖУРНАЛ", "工作区 · 検索", "🚀 ship"]) {
-    assert.equal(textMatchService.fold(sample).length, sample.length, sample);
-  }
-});
-
-test("folding settles Arabic spelling variants and digits", () => {
-  // Hamza carriers via NFD, alef maksura/teh marbuta via the equivalence table.
-  assert.equal(textMatchService.fold("أحمد"), textMatchService.fold("احمد"));
-  assert.equal(textMatchService.fold("مدرسة"), textMatchService.fold("مدرسه"));
-  assert.equal(textMatchService.fold("علي"), textMatchService.fold("على"));
-  assert.equal(textMatchService.fold("٥٧"), "57");
-});
 
 test("tokenizing splits separators and camelCase", () => {
   assert.deepEqual(textMatchService.tokenize("workspaceSidebarState.ts"), [
@@ -45,23 +28,23 @@ test("a chunk that is only symbols is searched for literally", () => {
 });
 
 test("non-latin queries match, and extra words still narrow", () => {
-  const folded = textMatchService.fold("مراجعة الكود العربي");
+  const folded = textFoldService.fold("مراجعة الكود العربي");
   assert.ok(textMatchService.matchField(folded, textMatchService.tokenize("الكود")));
   assert.ok(textMatchService.matchField(folded, textMatchService.tokenize("مراجعة الكود")));
   assert.equal(textMatchService.matchField(folded, textMatchService.tokenize("قاعدة")), null);
 });
 
 test("a symbol query matches only fields carrying that symbol", () => {
-  const arrow = textMatchService.fold("Deploy → QA");
+  const arrow = textFoldService.fold("Deploy → QA");
   assert.ok(textMatchService.matchField(arrow, textMatchService.tokenize("→")));
   assert.equal(
-    textMatchService.matchField(textMatchService.fold("Deploy to QA"), textMatchService.tokenize("→")),
+    textMatchService.matchField(textFoldService.fold("Deploy to QA"), textMatchService.tokenize("→")),
     null
   );
 });
 
 test("all query tokens must match, so extra words narrow the results", () => {
-  const folded = textMatchService.fold("Caddy TLS on-demand ask");
+  const folded = textFoldService.fold("Caddy TLS on-demand ask");
   assert.ok(textMatchService.matchField(folded, ["caddy", "tls"]));
   assert.equal(textMatchService.matchField(folded, ["caddy", "postgres"]), null);
 });
@@ -70,7 +53,7 @@ test("all query tokens must match, so extra words narrow the results", () => {
 // through the contract it serves: a near miss matches, a different word does
 // not, and the typo scores below the direct hit it stands in for.
 test("bounded typo tolerance accepts near misses and rejects far ones", () => {
-  const folded = textMatchService.fold("Sidebar search rewrite");
+  const folded = textFoldService.fold("Sidebar search rewrite");
   const exact = textMatchService.matchField(folded, ["sidebar"]);
   const typo = textMatchService.matchField(folded, ["sidbar"]);
   assert.ok(exact);
