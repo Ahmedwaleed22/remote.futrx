@@ -51,6 +51,9 @@ export function SearchBar({
             class="min-w-0 flex-1 bg-transparent text-[13px] text-ink-100 placeholder:text-ink-400 focus:outline-none"
             autocomplete="off"
             spellcheck={false}
+            // An Arabic or Hebrew query reads right-to-left; let the browser
+            // pick the direction from what was typed rather than forcing LTR.
+            dir="auto"
             aria-label="Search chats and projects"
           />
           {showClear && (
