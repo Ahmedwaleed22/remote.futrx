@@ -1,27 +1,8 @@
 import type { SearchHit } from "../../models/search";
-import { modelShortLabel } from "../../config/chat";
 import { relativeTimeService } from "../../services/platform/relativeTimeService.ts";
+import { workspaceSearchService } from "../../services/workspace/workspaceSearchService.ts";
 import { HighlightedText } from "../primitives/HighlightedText";
 import { CornerDownLeft, Folder, Loader, MessageSquare } from "../primitives/icons";
-
-/**
- * Why this chat is in the list, when the title alone doesn't show it. A title
- * match needs no explanation, so it gets none.
- */
-function whyItMatched(hit: SearchHit): string | null {
-  switch (hit.matchedField) {
-    case "project":
-      return hit.doc.project ? `project · ${hit.doc.project.name}` : "project";
-    case "path":
-      return hit.doc.chat.cwd ? `path · ${hit.doc.chat.cwd}` : "path";
-    case "skill":
-      return "skill";
-    case "model":
-      return `model · ${modelShortLabel(hit.doc.chat.model)}`;
-    default:
-      return null;
-  }
-}
 
 /**
  * One ranked result in the palette. The sidebar's `SearchResultRow` shows the
@@ -45,7 +26,7 @@ export function PaletteResultRow({
   onSelect: () => void;
 }) {
   const chat = hit.doc.chat;
-  const reason = whyItMatched(hit);
+  const reason = workspaceSearchService.describeMatch(hit);
 
   return (
     <button
