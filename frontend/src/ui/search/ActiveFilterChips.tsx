@@ -1,5 +1,4 @@
 import type { FilterControl } from "../../state/hooks/workspace/useWorkspaceSearch";
-import { searchFilterService } from "../../services/workspace/searchFilterService";
 import { X } from "../primitives/icons";
 
 /**
@@ -22,12 +21,11 @@ export function ActiveFilterChips({ search }: { search: FilterControl }) {
     }
   }
 
-  if (searchFilterService.isDateActive(search.filters.date)) {
+  if (search.dateView.active) {
     chips.push({
       key: "date",
-      label: searchFilterService.describeDate(search.filters.date),
-      onRemove: () =>
-        search.setDateFilter(searchFilterService.clearedDate(search.filters.date)),
+      label: search.dateView.label,
+      onRemove: search.clearDate,
     });
   }
 

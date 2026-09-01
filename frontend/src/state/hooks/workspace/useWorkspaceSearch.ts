@@ -3,6 +3,7 @@ import type { ChatMeta } from "../../../models/chat.ts";
 import type { ProjectMeta } from "../../../models/project.ts";
 import type {
   DateFilter,
+  DateFilterView,
   FacetId,
   FacetView,
   SearchFilters,
@@ -24,6 +25,7 @@ export interface QueryControl {
 export interface FilterControl {
   filters: SearchFilters;
   facetViews: FacetView[];
+  dateView: DateFilterView;
   activeFilterCount: number;
   hasActiveFilters: boolean;
   sort: SortId;
@@ -32,6 +34,8 @@ export interface FilterControl {
   setFacetValues: (facetId: FacetId, values: string[]) => void;
   clearFacet: (facetId: FacetId) => void;
   setDateFilter: (date: DateFilter) => void;
+  /** Drop the date window, keeping which timestamp the user was asking about. */
+  clearDate: () => void;
   resetFilters: () => void;
   /**
    * Ask for per-option facet counts, and release them with the returned
@@ -138,6 +142,12 @@ export function useWorkspaceSearch(
     setFilters((current) => searchFilterService.withDate(current, date));
   }, []);
 
+  const clearDate = useCallback(() => {
+    setFilters((current) =>
+      searchFilterService.withDate(current, searchFilterService.clearedDate(current.date))
+    );
+  }, []);
+
   const retainCounts = useCallback(() => {
     countsRetained.current += 1;
     setCountsEnabled(true);
@@ -159,6 +169,11 @@ export function useWorkspaceSearch(
     setFilters(searchFilterService.defaults());
   }, []);
 
+  const dateView: DateFilterView = {
+    active: searchFilterService.isDateActive(filters.date),
+    label: searchFilterService.describeDate(filters.date),
+  };
+
   const activeFilterCount = searchFilterService.countActive(filters);
 
   return {
@@ -169,6 +184,7 @@ export function useWorkspaceSearch(
     setSort,
     outcome,
     facetViews,
+    dateView,
     activeFilterCount,
     hasActiveFilters: activeFilterCount > 0,
     isSearching: query.trim().length > 0 || activeFilterCount > 0,
@@ -176,6 +192,7 @@ export function useWorkspaceSearch(
     setFacetValues,
     clearFacet,
     setDateFilter,
+    clearDate,
     resetFilters,
     clearAll,
     retainCounts,

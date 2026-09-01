@@ -177,6 +177,18 @@ export interface FacetView {
   counts: Map<string, number>;
 }
 
+/**
+ * The date window resolved for display. Facets have `FacetView`; without this
+ * the date filter was the one part of the selection each surface had to resolve
+ * for itself.
+ */
+export interface DateFilterView {
+  /** True when the window narrows the results. */
+  active: boolean;
+  /** Short label for the active-filter chip. */
+  label: string;
+}
+
 // ---------------------------------------------------------------------------
 // Keyboard
 // ---------------------------------------------------------------------------
