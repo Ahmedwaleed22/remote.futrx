@@ -19,6 +19,13 @@ where the coupling already was, not a grid imposed over it.
 and filing it under whichever domain holds today's callers would claim an
 ownership it does not have.
 
+`hooks/shared/` is the pressure valve, the way `platform/` is for services: a
+hook that knows nothing about any one domain goes there rather than being filed
+under whichever domain needed it first. `useShortcut` binds a chord to the
+window and `useDismissShortcut` puts one dismissible surface in front of the
+rest, and both are called from chat, workspace, projects and `ui/` alike. Keep
+it to that -- a hook about a domain has a domain folder.
+
 ## Pure functions are not a layer
 
 There used to be a fourth folder, `logic/`, holding the projectors, policies
