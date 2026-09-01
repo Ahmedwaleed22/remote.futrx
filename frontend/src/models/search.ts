@@ -196,6 +196,18 @@ export interface DateFilterView {
   label: string;
 }
 
+/**
+ * The palette's next step after a key press, resolved by
+ * `ui/search/commandPaletteKeyState`. `index` is a row to highlight, not to
+ * open: moving the cursor and opening what it sits on are separate presses.
+ */
+export type CommandPaletteKeyAction =
+  | { kind: "ignore" }
+  | { kind: "highlight"; index: number }
+  | { kind: "open" }
+  | { kind: "closeFilters" }
+  | { kind: "close" };
+
 // ---------------------------------------------------------------------------
 // Boundaries
 // ---------------------------------------------------------------------------

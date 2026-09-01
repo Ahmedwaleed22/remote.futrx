@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { MAX_PALETTE_RESULTS } from "../../config/search";
 import type { WorkspaceSearch } from "../../state/hooks/workspace/useWorkspaceSearch";
 import { ActiveFilterChips } from "./ActiveFilterChips";
+import { commandPaletteKeyState } from "./commandPaletteKeyState.ts";
 import { FilterPanelBody } from "./FilterPanel";
 import { PaletteResultRow } from "./PaletteResultRow";
 import { Search, SlidersHorizontal } from "../primitives/icons";
@@ -74,45 +75,30 @@ export function CommandPalette({
   }
 
   function onKeyDown(event: KeyboardEvent) {
-    // While the filter menu is up it owns the arrows and Enter; Escape steps
-    // back to the results rather than closing the palette outright.
-    if (filtersOpen) {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopPropagation();
-      closeFilters();
-      return;
-    }
+    const action = commandPaletteKeyState.next(event, {
+      activeIndex,
+      resultCount: results.length,
+      filtersOpen,
+    });
+    if (action.kind === "ignore") return;
 
-    switch (event.key) {
-      case "ArrowDown":
-        event.preventDefault();
-        setActiveIndex((current) => (results.length ? (current + 1) % results.length : 0));
+    event.preventDefault();
+    // The palette answers for this press, so nothing behind it -- the sidebar,
+    // a streaming reply -- sees the same key.
+    event.stopPropagation();
+
+    switch (action.kind) {
+      case "highlight":
+        setActiveIndex(action.index);
         break;
-      case "ArrowUp":
-        event.preventDefault();
-        setActiveIndex((current) =>
-          results.length ? (current - 1 + results.length) % results.length : 0
-        );
-        break;
-      case "Home":
-        event.preventDefault();
-        setActiveIndex(0);
-        break;
-      case "End":
-        event.preventDefault();
-        setActiveIndex(Math.max(0, results.length - 1));
-        break;
-      case "Enter":
-        event.preventDefault();
+      case "open":
         choose(activeIndex);
         break;
-      case "Escape":
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
+      case "closeFilters":
+        closeFilters();
         break;
-      default:
+      case "close":
+        onClose();
         break;
     }
   }
