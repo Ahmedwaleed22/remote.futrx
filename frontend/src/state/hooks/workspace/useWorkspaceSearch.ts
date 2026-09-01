@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useMemo } from "preact/hooks";
+import { useStore } from "zustand";
+import type { StoreApi } from "zustand/vanilla";
 import type { ChatMeta } from "../../../models/chat.ts";
 import type { ProjectMeta } from "../../../models/project.ts";
 import type {
@@ -9,12 +11,23 @@ import type {
   SearchFilters,
   SearchHit,
   SearchOutcome,
-  SearchPreferences,
   SortId,
+  WorkspaceSearchStoreActions,
+  WorkspaceSearchStoreState,
 } from "../../../models/search.ts";
 import { searchFilterService } from "../../../services/workspace/searchFilterService.ts";
-import { searchPreferenceService } from "../../../services/workspace/searchPreferenceService.ts";
 import { workspaceSearchService } from "../../../services/workspace/workspaceSearchService.ts";
+import {
+  paletteSearchStore,
+  sidebarSearchStore,
+} from "../../stores/workspace/workspaceSearchStore.ts";
+import { useWorkspaceContext } from "../../context/WorkspaceContext";
+
+/** A handle on one surface's selection. Named here because `stores/` declares
+ *  no types and a store handle is not a data shape. */
+export type WorkspaceSearchStore = StoreApi<
+  WorkspaceSearchStoreState & WorkspaceSearchStoreActions
+>;
 
 /** The keyword box: the text, and how to change it. */
 export interface QueryControl {
@@ -41,9 +54,9 @@ export interface FilterControl {
   /**
    * Ask for per-option facet counts, and release them with the returned
    * function. They are only worth their cost while a filter menu is on screen,
-   * and two can be at once -- the sidebar's and the palette's -- so this is a
-   * retain count rather than a flag either one could switch off underneath the
-   * other.
+   * and two can be at once -- the sidebar's and the palette's -- so the store
+   * keeps a retain count rather than a flag either one could switch off
+   * underneath the other.
    */
   retainCounts: () => () => void;
 }
@@ -67,34 +80,58 @@ export interface WorkspaceSearch extends QueryControl, FilterControl, ResultsVie
   clearAll: () => void;
 }
 
+/** The sidebar's search: its selection is remembered across reloads. */
+export function useSidebarSearch(): WorkspaceSearch {
+  const workspace = useWorkspaceContext();
+  return useWorkspaceSearch(sidebarSearchStore, workspace.chats, workspace.projects);
+}
+
+/** The palette's search, independent of the sidebar's and saved nowhere. */
+export function usePaletteSearch(): WorkspaceSearch {
+  const workspace = useWorkspaceContext();
+  return useWorkspaceSearch(paletteSearchStore, workspace.chats, workspace.projects);
+}
+
 /**
- * Owns workspace search: the keyword, the filter selection, and the derived
- * results.
+ * Reads one search store and derives what the surfaces render from it.
+ *
+ * The selection lives in the store, so it survives the surface unmounting and
+ * two components reading the same store agree. The index and the results do
+ * not: they are a function of the selection and of the chats the feed is
+ * pushing, cached per render pass here rather than duplicated into state that
+ * could fall behind either input.
  *
  * The index is rebuilt only when chats or projects change, so keystrokes pay
- * for comparison alone. Facet counts are computed only while the filter menu is
+ * for comparison alone. Facet counts are computed only while a filter menu is
  * open, since nothing else displays them.
- *
- * Each call owns a separate selection. Two surfaces searching the same chats
- * are two calls, not one shared state -- filtering in the palette leaves the
- * sidebar's scoping alone. `preferences` decides whether that selection
- * outlives the mount.
  */
 export function useWorkspaceSearch(
+  store: WorkspaceSearchStore,
   chats: readonly ChatMeta[],
   projects: readonly ProjectMeta[],
-  preferences: SearchPreferences = searchPreferenceService
 ): WorkspaceSearch {
-  const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<SearchFilters>(() => preferences.readFilters());
-  const [sort, setSortState] = useState<SortId>(() => preferences.readSort());
-  const [countsEnabled, setCountsEnabled] = useState(false);
-  const countsRetained = useRef(0);
-  const hydrated = useRef(false);
+  const query = useStore(store, (state) => state.query);
+  const filters = useStore(store, (state) => state.filters);
+  const sort = useStore(store, (state) => state.sort);
+  const countsEnabled = useStore(store, (state) => state.countsRetained > 0);
+
+  // Actions are selected one at a time rather than as an object: zustand
+  // compares the selected value by identity, and a fresh object every call
+  // would re-render on every store notification.
+  const setQuery = useStore(store, (state) => state.setQuery);
+  const setSort = useStore(store, (state) => state.setSort);
+  const toggleFacetValue = useStore(store, (state) => state.toggleFacetValue);
+  const setFacetValues = useStore(store, (state) => state.setFacetValues);
+  const clearFacet = useStore(store, (state) => state.clearFacet);
+  const setDateFilter = useStore(store, (state) => state.setDateFilter);
+  const clearDate = useStore(store, (state) => state.clearDate);
+  const resetFilters = useStore(store, (state) => state.resetFilters);
+  const clearAll = useStore(store, (state) => state.clearAll);
+  const retainCounts = useStore(store, (state) => state.retainCounts);
 
   const docs = useMemo(
     () => workspaceSearchService.buildIndex(chats, projects),
-    [chats, projects]
+    [chats, projects],
   );
 
   // `now` is pinned per render pass rather than read inside the search, so a
@@ -104,78 +141,18 @@ export function useWorkspaceSearch(
       workspaceSearchService.run(docs, filters, query, sort, Date.now(), {
         withCounts: countsEnabled,
       }),
-    [docs, filters, query, sort, countsEnabled]
+    [docs, filters, query, sort, countsEnabled],
   );
 
   const facetViews = useMemo(
     () => workspaceSearchService.facetViews(docs, filters, outcome),
-    [docs, filters, outcome]
+    [docs, filters, outcome],
   );
-
-  useEffect(() => {
-    // Skip the write triggered by hydrating from storage on mount.
-    if (!hydrated.current) {
-      hydrated.current = true;
-      return;
-    }
-    preferences.writeFilters(filters);
-  }, [filters, preferences]);
-
-  const setSort = useCallback(
-    (next: SortId) => {
-      setSortState(next);
-      preferences.writeSort(next);
-    },
-    [preferences]
-  );
-
-  const toggleFacetValue = useCallback((facetId: FacetId, value: string) => {
-    setFilters((current) => searchFilterService.toggleFacetValue(current, facetId, value));
-  }, []);
-
-  const setFacetValues = useCallback((facetId: FacetId, values: string[]) => {
-    setFilters((current) => searchFilterService.withFacetValues(current, facetId, values));
-  }, []);
-
-  const clearFacet = useCallback((facetId: FacetId) => {
-    setFilters((current) => searchFilterService.clearFacet(current, facetId));
-  }, []);
-
-  const setDateFilter = useCallback((date: DateFilter) => {
-    setFilters((current) => searchFilterService.withDate(current, date));
-  }, []);
-
-  const clearDate = useCallback(() => {
-    setFilters((current) =>
-      searchFilterService.withDate(current, searchFilterService.clearedDate(current.date))
-    );
-  }, []);
-
-  const retainCounts = useCallback(() => {
-    countsRetained.current += 1;
-    setCountsEnabled(true);
-    let released = false;
-    return () => {
-      // Idempotent, so a double release cannot drop the count below the number
-      // of menus still open.
-      if (released) return;
-      released = true;
-      countsRetained.current -= 1;
-      if (countsRetained.current === 0) setCountsEnabled(false);
-    };
-  }, []);
 
   const describeMatch = useCallback(
     (hit: SearchHit) => workspaceSearchService.describeMatch(hit),
-    []
+    [],
   );
-
-  const resetFilters = useCallback(() => setFilters(searchFilterService.defaults()), []);
-
-  const clearAll = useCallback(() => {
-    setQuery("");
-    setFilters(searchFilterService.defaults());
-  }, []);
 
   const dateView: DateFilterView = {
     active: searchFilterService.isDateActive(filters.date),

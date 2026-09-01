@@ -197,19 +197,6 @@ export interface DateFilterView {
 }
 
 // ---------------------------------------------------------------------------
-// Keyboard
-// ---------------------------------------------------------------------------
-
-/** The subset of a keyboard event a shortcut decision depends on. */
-export interface ShortcutChord {
-  key: string;
-  metaKey: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
-}
-
-// ---------------------------------------------------------------------------
 // Boundaries
 // ---------------------------------------------------------------------------
 
@@ -219,4 +206,52 @@ export interface SearchPreferences {
   writeFilters(filters: SearchFilters): void;
   readSort(): SortId;
   writeSort(sort: SortId): void;
+}
+
+// ---------------------------------------------------------------------------
+// The stores
+// ---------------------------------------------------------------------------
+
+/**
+ * One search surface's selection: the keyword, the filters, the ordering, and
+ * how many filter menus are currently asking for per-option counts.
+ */
+export interface WorkspaceSearchStoreState {
+  query: string;
+  filters: SearchFilters;
+  sort: SortId;
+  countsRetained: number;
+}
+
+export interface WorkspaceSearchStoreActions {
+  setQuery: (query: string) => void;
+  setSort: (sort: SortId) => void;
+  toggleFacetValue: (facetId: FacetId, value: string) => void;
+  setFacetValues: (facetId: FacetId, values: string[]) => void;
+  clearFacet: (facetId: FacetId) => void;
+  setDateFilter: (date: DateFilter) => void;
+  /** Drop the date window, keeping which timestamp the user was asking about. */
+  clearDate: () => void;
+  resetFilters: () => void;
+  /** Drop the keyword and every filter at once. */
+  clearAll: () => void;
+  /**
+   * Ask for per-option facet counts, and release them with the returned
+   * function. They are only worth their cost while a filter menu is on screen,
+   * and two can be at once -- the sidebar's and the palette's -- so this is a
+   * retain count rather than a flag either one could switch off underneath the
+   * other. Each release is single-use, so the count cannot fall below the
+   * number of menus still open.
+   */
+  retainCounts: () => () => void;
+}
+
+export interface CommandPaletteStoreState {
+  open: boolean;
+}
+
+export interface CommandPaletteStoreActions {
+  openPalette: () => void;
+  closePalette: () => void;
+  togglePalette: () => void;
 }
