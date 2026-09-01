@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
+import { CHAT_FIND_SKIP_ATTRIBUTE } from "../../../config/chat.ts";
 import type { ChatFind } from "../../../state/hooks/chat/useChatFind";
 import { ArrowDown, ArrowUp, Search, X } from "../../primitives/icons";
 
@@ -10,7 +11,7 @@ const stepButtonClass =
  * Find-in-chat, floating over the top of the thread the way an editor's find
  * widget does, so opening it never reflows the messages you are reading.
  *
- * `data-find-skip` keeps the bar out of its own results.
+ * `CHAT_FIND_SKIP_ATTRIBUTE` keeps the bar out of its own results.
  */
 export function ChatFindBar({
   find,
@@ -37,7 +38,7 @@ export function ChatFindBar({
 
   return (
     <div
-      data-find-skip
+      {...{ [CHAT_FIND_SKIP_ATTRIBUTE]: true }}
       class="absolute right-3 top-3 z-30 flex max-w-[calc(100%-1.5rem)] flex-col gap-1
              rounded-card border border-line bg-raised px-2 py-1.5 shadow-pop"
       role="search"

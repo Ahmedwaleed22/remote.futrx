@@ -21,16 +21,16 @@ interface TextChunk {
   start: number;
 }
 
-/** Marks a subtree as not-text-to-find, e.g. the find bar's own input. */
-const SKIP_SELECTOR = "script, style, [hidden], [data-find-skip]";
-
 class DomTextSearchService {
-  /** Every occurrence of `query` in the text rendered under `root`, in document order. */
-  findRanges(root: Node, query: string): Range[] {
+  /**
+   * Every occurrence of `query` in the text rendered under `root`, in document
+   * order, skipping any subtree matching `skipSelector`.
+   */
+  findRanges(root: Node, query: string, skipSelector: string): Range[] {
     const needle = textMatchService.fold(query);
     if (needle.trim().length === 0) return [];
 
-    const chunks = this.#collectChunks(root);
+    const chunks = this.#collectChunks(root, skipSelector);
     if (chunks.length === 0) return [];
 
     const haystack = textMatchService.fold(chunks.map((chunk) => chunk.node.data).join(""));
@@ -50,25 +50,25 @@ class DomTextSearchService {
     return ranges;
   }
 
-  #collectChunks(root: Node): TextChunk[] {
+  #collectChunks(root: Node, skipSelector: string): TextChunk[] {
     const chunks: TextChunk[] = [];
     let length = 0;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const textNode = node as Text;
-      if (!this.#isSearchable(textNode)) continue;
+      if (!this.#isSearchable(textNode, skipSelector)) continue;
       chunks.push({ node: textNode, start: length });
       length += textNode.data.length;
     }
     return chunks;
   }
 
-  /** Text the reader cannot see is not text the find bar should match. */
-  #isSearchable(node: Text): boolean {
+  /** Whether this node's text is the caller's to match, or skipped by `skipSelector`. */
+  #isSearchable(node: Text, skipSelector: string): boolean {
     if (node.data.length === 0) return false;
     const parent = node.parentElement;
     if (!parent) return false;
-    return !parent.closest(SKIP_SELECTOR);
+    return !parent.closest(skipSelector);
   }
 
   #locate(

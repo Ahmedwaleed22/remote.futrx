@@ -6,27 +6,20 @@
 // without disturbing anything else on the page. Both are about the document,
 // so they live together here and the hook keeps only the query and the cursor.
 
-import { CHAT_FIND_REVEAL_MARGIN } from "../../config/chat.ts";
+import { CHAT_FIND_HIGHLIGHTS, CHAT_FIND_REVEAL_MARGIN } from "../../config/chat.ts";
 import { textHighlightService } from "../platform/textHighlightService.ts";
-
-// Two layers so the current match reads differently from the rest. The current
-// one is painted separately rather than held out of `ALL`, so its rule wins by
-// being registered second. Styled in index.css as `::highlight(...)`; these
-// names and those selectors have to stay in step.
-const ALL_MATCHES = "chat-find";
-const CURRENT_MATCH = "chat-find-current";
 
 class ChatFindHighlightService {
   /** Paint every match, with `current` marked out among them. */
   show(matches: readonly Range[], current: Range | null): void {
-    textHighlightService.paint(ALL_MATCHES, matches);
-    if (current) textHighlightService.paint(CURRENT_MATCH, [current]);
-    else textHighlightService.clear(CURRENT_MATCH);
+    textHighlightService.paint(CHAT_FIND_HIGHLIGHTS.all, matches);
+    if (current) textHighlightService.paint(CHAT_FIND_HIGHLIGHTS.current, [current]);
+    else textHighlightService.clear(CHAT_FIND_HIGHLIGHTS.current);
   }
 
   clear(): void {
-    textHighlightService.clear(ALL_MATCHES);
-    textHighlightService.clear(CURRENT_MATCH);
+    textHighlightService.clear(CHAT_FIND_HIGHLIGHTS.all);
+    textHighlightService.clear(CHAT_FIND_HIGHLIGHTS.current);
   }
 
   /** Scroll `range` into view inside `scroller`, and nothing else. */

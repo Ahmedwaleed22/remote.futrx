@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import type { RefObject } from "preact";
+import { CHAT_FIND_SKIP_SELECTOR } from "../../../config/chat.ts";
 import { isFindShortcut } from "../../../config/shortcuts.ts";
 import { chatFindHighlightService } from "../../../services/chat/chatFindHighlightService.ts";
 import { domTextSearchService } from "../../../services/platform/domTextSearchService.ts";
@@ -69,7 +70,11 @@ export function useChatFind({
       chatFindHighlightService.clear();
       return;
     }
-    const ranges = domTextSearchService.findRanges(contentRef.current, query);
+    const ranges = domTextSearchService.findRanges(
+      contentRef.current,
+      query,
+      CHAT_FIND_SKIP_SELECTOR
+    );
     setMatchCount(ranges.length);
     if (ranges.length === 0) {
       chatFindHighlightService.clear();
