@@ -27,6 +27,14 @@ import { textFoldService } from "./textFoldService.ts";
 const WORD_CHAR = /[\p{L}\p{N}\p{M}]/u;
 const WORD_RUN = /[\p{L}\p{N}\p{M}]+/gu;
 
+/**
+ * Where one word ends and the next begins with no separator to say so: a
+ * lowercase letter or digit meeting a capital, and a letter meeting a digit.
+ * Splitting there is what makes `workspaceSidebarState` three words and not one.
+ */
+const CAMEL_BOUNDARY = /(\p{Ll}|\p{N})(\p{Lu})/gu;
+const LETTER_DIGIT_BOUNDARY = /(\p{L})(\p{N})/gu;
+
 class TextMatchService {
   /**
    * Split a query or field into comparable tokens. Breaks on separators and on
@@ -39,13 +47,13 @@ class TextMatchService {
    * futrx". But when a whitespace-separated chunk holds no word characters at
    * all, separating is all it could do, and the user is plainly searching for
    * the character itself, so the chunk is kept as a literal token. That is how
-   * "\u2192", "#" or "?!" become searchable instead of tokenizing to nothing.
+   * "→", "#" or "?!" become searchable instead of tokenizing to nothing.
    */
   tokenize(value: string): string[] {
     if (!value) return [];
     const withBoundaries = value
-      .replace(/(\p{Ll}|\p{N})(\p{Lu})/gu, "$1 $2")
-      .replace(/(\p{L})(\p{N})/gu, "$1 $2");
+      .replace(CAMEL_BOUNDARY, "$1 $2")
+      .replace(LETTER_DIGIT_BOUNDARY, "$1 $2");
 
     const tokens: string[] = [];
     for (const chunk of textFoldService.fold(withBoundaries).split(/\s+/)) {
@@ -96,9 +104,9 @@ class TextMatchService {
     // edit budget can't be spent bridging unrelated words.
     const budget = this.#allowedTypos(token);
     if (budget > 0) {
-      const wordPattern = new RegExp(WORD_RUN.source, "gu");
-      let word: RegExpExecArray | null;
-      while ((word = wordPattern.exec(folded)) !== null) {
+      // matchAll iterates a clone of the pattern, so the scan cannot be
+      // disturbed by -- or leave a lastIndex behind for -- another caller.
+      for (const word of folded.matchAll(WORD_RUN)) {
         if (this.#withinEditDistance(word[0], token, budget)) {
           return {
             score: MATCH_TIER_SCORES.fuzzy,
