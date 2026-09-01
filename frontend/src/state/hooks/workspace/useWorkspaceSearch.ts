@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "preact/hooks";
+import { useMemo } from "preact/hooks";
 import { useStore } from "zustand";
 import type { StoreApi } from "zustand/vanilla";
 import type { ChatMeta } from "../../../models/chat.ts";
@@ -76,6 +76,11 @@ export interface WorkspaceSearch
     ResultsView,
     Pick<WorkspaceSearchStoreActions, "clearAll"> {}
 
+// Closes over nothing, so it is built once rather than per render. Forwarded
+// rather than handed over as a method reference, which would depend on the
+// service never coming to need `this`.
+const describeMatch = (hit: SearchHit) => workspaceSearchService.describeMatch(hit);
+
 /** The sidebar's search: its selection is remembered across reloads. */
 export function useSidebarSearch(): WorkspaceSearch {
   const workspace = useWorkspaceContext();
@@ -143,11 +148,6 @@ export function useWorkspaceSearch(
   const facetViews = useMemo(
     () => workspaceSearchService.facetViews(docs, filters, outcome),
     [docs, filters, outcome],
-  );
-
-  const describeMatch = useCallback(
-    (hit: SearchHit) => workspaceSearchService.describeMatch(hit),
-    [],
   );
 
   const dateView: DateFilterView = {
