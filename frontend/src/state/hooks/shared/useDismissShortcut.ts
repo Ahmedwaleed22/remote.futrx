@@ -1,8 +1,8 @@
 // Escape, bound for one dismissible surface.
 //
-// Eight surfaces close on Escape -- find-in-chat, a menu, four modals, the
-// mobile sidebar, a streaming reply. Each was pairing `useShortcut` with
-// `isDismissShortcut` itself, and the ones sitting above another had to
+// Find-in-chat, the menus, the modals, the mobile sidebar, and a streaming
+// reply all close on Escape, and each was pairing `useShortcut` with
+// `isDismissShortcut` itself. The ones sitting in front of another had to
 // remember to stop the event as well. Naming the pairing says the intent once
 // and leaves the half-done version of it -- claiming the key first and then
 // letting the surface underneath act on the same press -- unrepresentable.

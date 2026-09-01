@@ -2,10 +2,10 @@
 //
 // Cmd/Ctrl+P, Cmd/Ctrl+F, and the Escape that closes each overlay had each
 // grown their own copy of the same effect: add a `keydown` listener, compare
-// `event.key` inline, call the handler, remove the listener. Nine copies meant
-// nine chances to spell a chord differently from `config/shortcuts.ts`, and
-// several of them needed a hand-rolled ref so the listener could see current
-// state without re-registering. Both problems are solved once here.
+// `event.key` inline, call the handler, remove the listener. Every copy was a
+// chance to spell a chord differently from `config/shortcuts.ts`, and several
+// needed a hand-rolled ref so the listener could see current state without
+// re-registering. Both problems are solved once here.
 
 import { useEffect, useRef } from "preact/hooks";
 import type { ShortcutChord } from "../../../models/shortcuts.ts";
