@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import type { RefObject } from "preact";
 import { CHAT_FIND_SKIP_SELECTOR } from "../../../config/chat.ts";
 import { isFindShortcut } from "../../../config/shortcuts.ts";
@@ -46,7 +46,7 @@ export function useChatFind({
   revision: number;
 }): ChatFind {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const [query, setQueryState] = useState("");
   const [index, setIndex] = useState(0);
   const [matchCount, setMatchCount] = useState(0);
 
@@ -74,7 +74,18 @@ export function useChatFind({
   // left off.
   useEffect(() => setIndex(0), [query]);
 
-  useEffect(() => {
+  const setQuery = useCallback((nextQuery: string) => {
+    // Clear on the input event itself. Besides avoiding a stale frame before
+    // hook effects run, this gives Safari an immediate highlight invalidation
+    // when the final character is removed.
+    if (nextQuery.trim().length === 0) chatFindHighlightService.clear();
+    setQueryState(nextQuery);
+  }, []);
+
+  // Keep the browser-owned highlight layers in lockstep with the rendered
+  // input. A normal effect runs after paint, which briefly leaves the final
+  // one-character match visible when the query changes from "c" to empty.
+  useLayoutEffect(() => {
     if (!open || !contentRef.current) {
       setMatchCount(0);
       chatFindHighlightService.clear();
