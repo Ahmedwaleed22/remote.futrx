@@ -51,14 +51,11 @@ export function ChatFindBar({
           value={find.query}
           onInput={(event) => find.setQuery((event.currentTarget as HTMLInputElement).value)}
           onKeyDown={(event) => {
+            // Escape is not handled here: `useChatFind` claims it for the
+            // whole thread, so closing works with the cursor anywhere.
             if (event.key === "Enter") {
               event.preventDefault();
               event.shiftKey ? find.previous() : find.next();
-            } else if (event.key === "Escape") {
-              // Stop here: further up, Escape cancels a streaming reply.
-              event.preventDefault();
-              event.stopPropagation();
-              find.close();
             }
           }}
           placeholder="Find in chat"

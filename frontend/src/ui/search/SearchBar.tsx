@@ -3,6 +3,7 @@ import type {
   FilterControl,
   QueryControl,
 } from "../../state/hooks/workspace/useWorkspaceSearch";
+import { isDismissShortcut } from "../../config/shortcuts.ts";
 import { useDismissOnOutside } from "../primitives/popover";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { FilterPanel } from "./FilterPanel";
@@ -40,7 +41,7 @@ export function SearchBar({
             value={search.query}
             onInput={(event) => search.setQuery((event.currentTarget as HTMLInputElement).value)}
             onKeyDown={(event) => {
-              if (event.key !== "Escape") return;
+              if (!isDismissShortcut(event)) return;
               if (!search.query) return;
               // Clear the query before letting Escape bubble out and close the
               // whole sidebar — one Escape, one obvious effect.
