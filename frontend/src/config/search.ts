@@ -108,3 +108,13 @@ export const RECENCY_WINDOW_MS = 30 * 86_400_000;
  * without letting weak fields pile up into a better score than a strong one.
  */
 export const SECONDARY_FIELD_BONUS = 0.15;
+
+// ---------------------------------------------------------------------------
+// What the surfaces show
+// ---------------------------------------------------------------------------
+
+/** Enough to fill the palette without rendering hundreds of rows nobody scrolls to. */
+export const MAX_PALETTE_RESULTS = 50;
+
+/** Above this many options, a facet's list gets its own filter box. */
+export const FACET_INLINE_FILTER_THRESHOLD = 8;

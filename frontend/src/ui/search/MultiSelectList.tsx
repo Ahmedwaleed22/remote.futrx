@@ -1,8 +1,7 @@
 import { useMemo, useState } from "preact/hooks";
+import { FACET_INLINE_FILTER_THRESHOLD } from "../../config/search";
 import type { FacetOption } from "../../models/search";
 import { Check, Search } from "../primitives/icons";
-
-const INLINE_FILTER_THRESHOLD = 8;
 
 /**
  * Checkbox list for one facet. Options carry the number of chats they would
@@ -45,7 +44,7 @@ export function MultiSelectList({
 
   return (
     <div>
-      {options.length > INLINE_FILTER_THRESHOLD && (
+      {options.length > FACET_INLINE_FILTER_THRESHOLD && (
         <label class="mb-1.5 flex items-center gap-1.5 h-8 rounded-control bg-inset border border-line px-2 focus-within:border-accent-blue/60 transition-colors">
           <Search class="w-3 h-3 flex-none text-ink-400" />
           <input

@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { MAX_PALETTE_RESULTS } from "../../config/search";
 import type { WorkspaceSearch } from "../../state/hooks/workspace/useWorkspaceSearch";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { FilterPanelBody } from "./FilterPanel";
 import { PaletteResultRow } from "./PaletteResultRow";
 import { Search, SlidersHorizontal } from "../primitives/icons";
-
-// Enough to fill the list without rendering hundreds of rows nobody scrolls to.
-const MAX_VISIBLE_RESULTS = 50;
 
 /**
  * Centered spotlight search, opened with Cmd/Ctrl+P or Cmd/Ctrl+K.
@@ -33,7 +31,7 @@ export function CommandPalette({
   const listRef = useRef<HTMLDivElement>(null);
 
   const results = useMemo(
-    () => search.outcome.hits.slice(0, MAX_VISIBLE_RESULTS),
+    () => search.outcome.hits.slice(0, MAX_PALETTE_RESULTS),
     [search.outcome]
   );
 
@@ -214,8 +212,8 @@ export function CommandPalette({
             </span>
             <span class="ml-auto tabular-nums">
               {search.outcome.hits.length} of {search.outcome.total}
-              {search.outcome.hits.length > MAX_VISIBLE_RESULTS &&
-                ` · showing ${MAX_VISIBLE_RESULTS}`}
+              {search.outcome.hits.length > MAX_PALETTE_RESULTS &&
+                ` · showing ${MAX_PALETTE_RESULTS}`}
             </span>
           </footer>
         )}
