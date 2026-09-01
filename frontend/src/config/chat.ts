@@ -19,3 +19,6 @@ export const CHAT_UPLOAD_PATHS = {
   /** The stable root a project chat's uploads hang off, whatever its live cwd. */
   projectRoot: "/workspace",
 } as const;
+
+/** Keep a find-in-chat match this far from the scroller's edges when revealing it. */
+export const CHAT_FIND_REVEAL_MARGIN = 80;

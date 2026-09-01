@@ -1,28 +1,8 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import type { RefObject } from "preact";
-import { clearHighlight, paintHighlight } from "../../../services/platform/textHighlight.ts";
-import { domTextSearchService } from "../../../services/platform/domTextSearchService.ts";
 import { isFindShortcut } from "../../../config/shortcuts.ts";
-
-/** Keep the match this far from the scroller's edges when revealing it. */
-const REVEAL_MARGIN = 80;
-
-// Two layers so the current match reads differently from the rest. The current
-// one is painted separately rather than held out of `ALL`, so its rule wins by
-// being registered second. Styled in index.css as `::highlight(...)`.
-const ALL_MATCHES = "chat-find";
-const CURRENT_MATCH = "chat-find-current";
-
-function paintMatches(all: readonly Range[], current: Range | null): void {
-  paintHighlight(ALL_MATCHES, all);
-  if (current) paintHighlight(CURRENT_MATCH, [current]);
-  else clearHighlight(CURRENT_MATCH);
-}
-
-function clearMatches(): void {
-  clearHighlight(ALL_MATCHES);
-  clearHighlight(CURRENT_MATCH);
-}
+import { chatFindHighlightService } from "../../../services/chat/chatFindHighlightService.ts";
+import { domTextSearchService } from "../../../services/platform/domTextSearchService.ts";
 
 /**
  * Where the search stands. A union rather than a loose `(index, matchCount)`
@@ -45,26 +25,13 @@ export interface ChatFind {
   close: () => void;
 }
 
-/** Scroll `range` into view inside `scroller`, and nothing else. */
-function reveal(scroller: HTMLElement | null, range: Range): void {
-  if (!scroller) return;
-  const rect = range.getBoundingClientRect();
-  const box = scroller.getBoundingClientRect();
-  if (rect.height === 0 && rect.width === 0) return;
-  if (rect.top >= box.top + REVEAL_MARGIN && rect.bottom <= box.bottom - REVEAL_MARGIN) return;
-  // Deliberately not `scrollIntoView`: that walks up and scrolls every
-  // scrollable ancestor, including the workspace card, which would drag the
-  // thread's own header out of view.
-  scroller.scrollTop += rect.top - box.top - (box.height - rect.height) / 2;
-}
-
 /**
- * Find-in-chat: the query, where you are in the results, and the highlighting.
+ * Find-in-chat: the query, and where you are in the results.
  *
  * Matches come from the rendered thread rather than the message model, so what
- * it counts is exactly what is on screen -- see `domTextSearchService`. `revision` is any
- * value that changes when the thread's content does, so a match list cannot go
- * stale against a streaming reply.
+ * it counts is exactly what is on screen -- see `domTextSearchService`.
+ * `revision` is any value that changes when the thread's content does, so a
+ * match list cannot go stale against a streaming reply.
  */
 export function useChatFind({
   scrollRef,
@@ -99,13 +66,13 @@ export function useChatFind({
   useEffect(() => {
     if (!open || !contentRef.current) {
       setMatchCount(0);
-      clearMatches();
+      chatFindHighlightService.clear();
       return;
     }
     const ranges = domTextSearchService.findRanges(contentRef.current, query);
     setMatchCount(ranges.length);
     if (ranges.length === 0) {
-      clearMatches();
+      chatFindHighlightService.clear();
       return;
     }
     // Content can shrink under a held cursor (a message collapsing, older
@@ -114,11 +81,11 @@ export function useChatFind({
       setIndex(0);
       return;
     }
-    paintMatches(ranges, ranges[index]);
-    reveal(scrollRef.current, ranges[index]);
+    chatFindHighlightService.show(ranges, ranges[index]);
+    chatFindHighlightService.reveal(scrollRef.current, ranges[index]);
   }, [open, query, index, revision, contentRef, scrollRef]);
 
-  useEffect(() => clearMatches, []);
+  useEffect(() => () => chatFindHighlightService.clear(), []);
 
   const step = useCallback(
     (delta: number) =>
