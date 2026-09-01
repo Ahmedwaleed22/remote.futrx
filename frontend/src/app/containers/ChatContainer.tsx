@@ -15,9 +15,9 @@ import { useChatBrowserController } from "../../state/hooks/chat/useChatBrowserC
 import { useChatComposerController } from "../../state/hooks/chat/useChatComposerController";
 import { useChatDrawerController } from "../../state/hooks/chat/useChatDrawerController";
 import { useChatFind } from "../../state/hooks/chat/useChatFind";
-import { useChatKeyboardShortcuts } from "../../state/hooks/chat/useChatKeyboardShortcuts";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
+import { useDismissShortcut } from "../../state/hooks/shared/useDismissShortcut.ts";
 import { useTerminalOverlayController } from "../../ui/chat/terminal/useTerminalOverlayController";
 import { useWorkspaceGitRepos } from "../../state/hooks/chat/useWorkspaceGitRepos";
 
@@ -86,7 +86,11 @@ export function ChatContainer({
   });
 
   useChatReadMarker({ chatId: chat.id, eventCount, status });
-  useChatKeyboardShortcuts({ status, onCancel: cancel });
+  // Escape cancels the reply being streamed. It is the outermost claim on
+  // Escape in a chat and deliberately the weakest: find-in-chat, a menu, or a
+  // modal in front of it takes the key on the way down, so Escape only reaches
+  // the run when nothing is open over it.
+  useDismissShortcut(cancel, { enabled: status === "streaming" });
   const { hasRepos } = useWorkspaceGitRepos({ chatId: chat.id, status });
   const workspaceActions = {
     cwd: displayMeta.cwd || "~",
