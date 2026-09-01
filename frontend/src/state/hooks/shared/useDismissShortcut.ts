@@ -2,29 +2,37 @@
 //
 // Find-in-chat, the menus, the modals, the mobile sidebar, and a streaming
 // reply all close on Escape, and each was pairing `useShortcut` with
-// `isDismissShortcut` itself. The ones sitting in front of another had to
-// remember to stop the event as well. Naming the pairing says the intent once
-// and leaves the half-done version of it -- claiming the key first and then
-// letting the surface underneath act on the same press -- unrepresentable.
+// `isDismissShortcut` itself. Naming the pairing says the intent once.
+//
+// Which of them a press reaches is `dismissStackService`'s rule, not this
+// hook's: every open surface listens, and the one holding the dismissal acts.
+// The hook keeps the lifecycle -- take a place on screen, give it back on the
+// way out -- which is the half a test cannot reach.
 
+import { useEffect, useRef } from "preact/hooks";
 import { isDismissShortcut } from "../../../config/shortcuts.ts";
+import {
+  NO_DISMISS_CLAIM,
+  dismissStackService,
+} from "../../../services/platform/dismissStackService.ts";
 import { useShortcut } from "./useShortcut.ts";
 
-export interface DismissOptions {
+interface DismissOptions {
   /** Listen only while the surface is on screen; defaults to always. */
   enabled?: boolean;
   /**
-   * This surface sits in front of another that also closes on Escape.
-   *
-   * It then takes the key on the way down and stops it there, so one press
-   * closes one surface: the menu inside a drawer without the drawer, or
-   * find-in-chat without also cancelling the reply streaming behind it.
+   * This is not a surface, but something Escape falls through to once every
+   * surface is closed -- the streaming reply it cancels.
    */
-  topmost?: boolean;
+  fallback?: boolean;
 }
 
 /**
- * Dismiss on Escape.
+ * Dismiss on Escape, if this surface is the one in front.
+ *
+ * A handler on the focused element still comes first: the palette, the search
+ * box, and a tooltip each stop the key on their own node, so they answer before
+ * any of this runs.
  *
  * The event is handed on, because whether Escape also has a browser default
  * worth suppressing depends on what the surface has focused -- a text input
@@ -32,14 +40,26 @@ export interface DismissOptions {
  */
 export function useDismissShortcut(
   onDismiss: (event: KeyboardEvent) => void,
-  { enabled = true, topmost = false }: DismissOptions = {}
+  { enabled = true, fallback = false }: DismissOptions = {}
 ): void {
+  const claimRef = useRef(NO_DISMISS_CLAIM);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const claim = dismissStackService.claim({ fallback });
+    claimRef.current = claim;
+    return () => {
+      claimRef.current = NO_DISMISS_CLAIM;
+      dismissStackService.release(claim);
+    };
+  }, [enabled, fallback]);
+
   useShortcut(
     isDismissShortcut,
     (event) => {
-      if (topmost) event.stopPropagation();
+      if (!dismissStackService.owns(claimRef.current)) return;
       onDismiss(event);
     },
-    { enabled, capture: topmost }
+    { enabled }
   );
 }

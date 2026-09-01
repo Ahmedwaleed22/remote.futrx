@@ -59,8 +59,7 @@ export function useChatFind({
   });
 
   // Escape closes find from anywhere in the thread, not only from the bar's
-  // input, so it undoes Cmd/Ctrl+F wherever the cursor happens to be. It is
-  // topmost because the same Escape cancels a streaming reply behind it.
+  // input, so it undoes Cmd/Ctrl+F wherever the cursor happens to be.
   useDismissShortcut(
     (event) => {
       // The bar's input is usually focused, where Escape can otherwise revert
@@ -68,7 +67,7 @@ export function useChatFind({
       event.preventDefault();
       close();
     },
-    { enabled: open, topmost: true }
+    { enabled: open }
   );
 
   // A new query starts from the first match rather than wherever the last one

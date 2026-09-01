@@ -10,19 +10,9 @@
 import { useEffect, useRef } from "preact/hooks";
 import type { ShortcutChord } from "../../../models/shortcuts.ts";
 
-export interface ShortcutOptions {
+interface ShortcutOptions {
   /** Listen only while true; defaults to always. */
   enabled?: boolean;
-  /**
-   * Listen on the way down instead of on the way back up.
-   *
-   * Two surfaces can both want the same chord -- Escape closes find-in-chat,
-   * and the Escape underneath it cancels a streaming reply. A capturing
-   * listener runs before every bubbling one, so the surface on top claims the
-   * chord first and calls `stopPropagation()` to keep the one below from also
-   * acting on it.
-   */
-  capture?: boolean;
 }
 
 /**
@@ -34,13 +24,16 @@ export interface ShortcutOptions {
  * state is correct here and does not re-register the listener.
  *
  * The event is handed to `onMatch` rather than pre-empted, because claiming a
- * chord from the browser (`preventDefault`) or from a handler underneath
- * (`stopPropagation`) is the caller's decision, not a property of the chord.
+ * chord from the browser (`preventDefault`) is the caller's decision, not a
+ * property of the chord.
+ *
+ * Two surfaces wanting the same chord is not settled here -- listener order
+ * cannot express which is in front. See `dismissStackService`.
  */
 export function useShortcut(
   matches: (chord: ShortcutChord) => boolean,
   onMatch: (event: KeyboardEvent) => void,
-  { enabled = true, capture = false }: ShortcutOptions = {}
+  { enabled = true }: ShortcutOptions = {}
 ): void {
   const matchesRef = useRef(matches);
   matchesRef.current = matches;
@@ -52,7 +45,7 @@ export function useShortcut(
     function onKeyDown(event: KeyboardEvent) {
       if (matchesRef.current(event)) onMatchRef.current(event);
     }
-    window.addEventListener("keydown", onKeyDown, capture);
-    return () => window.removeEventListener("keydown", onKeyDown, capture);
-  }, [enabled, capture]);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [enabled]);
 }

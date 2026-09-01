@@ -25,7 +25,7 @@ export function useDismissOnOutside(
     return () => window.removeEventListener("mousedown", closeOnOutsidePress);
   }, [open, onClose, rootRef]);
 
-  // Topmost, so the sidebar's own Escape handler underneath does not also
-  // close the drawer this menu is sitting in.
-  useDismissShortcut(onClose, { enabled: open, topmost: true });
+  // A menu opens over the drawer holding it, so it takes the Escape that
+  // would otherwise close them both.
+  useDismissShortcut(onClose, { enabled: open });
 }

@@ -86,11 +86,10 @@ export function ChatContainer({
   });
 
   useChatReadMarker({ chatId: chat.id, eventCount, status });
-  // Escape cancels the reply being streamed. It is the outermost claim on
-  // Escape in a chat and deliberately the weakest: find-in-chat, a menu, or a
-  // modal in front of it takes the key on the way down, so Escape only reaches
-  // the run when nothing is open over it.
-  useDismissShortcut(cancel, { enabled: status === "streaming" });
+  // Escape cancels the reply being streamed, and is the weakest claim on the
+  // key in a chat: it falls behind find-in-chat, a menu, and every modal, so
+  // Escape only reaches the run when nothing is open over it.
+  useDismissShortcut(cancel, { enabled: status === "streaming", fallback: true });
   const { hasRepos } = useWorkspaceGitRepos({ chatId: chat.id, status });
   const workspaceActions = {
     cwd: displayMeta.cwd || "~",
