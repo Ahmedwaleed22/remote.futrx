@@ -22,31 +22,34 @@ import { FOLD_CACHE_LIMIT } from "../../config/search.ts";
  * teh marbuta for heh, and the Persian/Urdu keheh and yeh for their Arabic
  * counterparts. Hamza carriers (أ إ آ ؤ ئ) already fold through NFD.
  */
-const CHAR_EQUIVALENTS: ReadonlyMap<string, string> = new Map([
-  ["ى", "ي"], // alef maksura -> yeh
-  ["ة", "ه"], // teh marbuta -> heh
-  ["ی", "ي"], // farsi yeh -> yeh
-  ["ک", "ك"], // keheh -> kaf
-  ["ڪ", "ك"], // swash kaf -> kaf
-  ["ٰ", "ا"], // superscript alef -> alef
+function buildCharEquivalents(): ReadonlyMap<string, string> {
+  const equivalents = new Map([
+    ["ى", "ي"], // alef maksura -> yeh
+    ["ة", "ه"], // teh marbuta -> heh
+    ["ی", "ي"], // farsi yeh -> yeh
+    ["ک", "ك"], // keheh -> kaf
+    ["ڪ", "ك"], // swash kaf -> kaf
+    ["ٰ", "ا"], // superscript alef -> alef
+  ]);
   // Arabic-Indic and extended Arabic-Indic digits, so "٥" and "۵" find "5".
-  ...Array.from({ length: 10 }, (_, d) => [String.fromCharCode(0x0660 + d), String(d)] as const),
-  ...Array.from({ length: 10 }, (_, d) => [String.fromCharCode(0x06F0 + d), String(d)] as const),
-]);
+  for (const zero of [0x0660, 0x06f0]) {
+    for (let digit = 0; digit <= 9; digit += 1) {
+      equivalents.set(String.fromCodePoint(zero + digit), String(digit));
+    }
+  }
+  return equivalents;
+}
+
+const CHAR_EQUIVALENTS = buildCharEquivalents();
 
 class TextFoldService {
   readonly #cache = new Map<string, string>();
 
   /**
-   * Lowercase, strip diacritics and settle script-specific spelling variants
-   * without changing string length, so span offsets stay aligned with the
-   * original text.
-   *
-   * The guard is per character rather than per string: each source character
-   * contributes exactly its own length, and any transform that would not
-   * (lowercasing "İ" to "i̇", decomposing an astral char) leaves it as it was.
-   * A whole-string fallback could still return a differently sized string,
-   * which is the one thing highlighting cannot survive.
+   * Lowercase, strip diacritics and settle script-specific spelling variants,
+   * leaving the string exactly as long as it arrived so span offsets stay
+   * aligned with the original text. Memoized, since a field is folded once at
+   * index time and then compared on every keystroke.
    */
   fold(value: string): string {
     if (!value) return "";
@@ -54,16 +57,24 @@ class TextFoldService {
     if (cached !== undefined) return cached;
 
     let out = "";
-    for (const char of value) {
-      // NFD splits an accented char into base + combining marks; taking the base
-      // keeps one char per source char. Astral chars keep their own length.
-      const base = char.toLowerCase().normalize("NFD")[0] ?? char;
-      const folded = base.length === char.length ? base : char;
-      out += CHAR_EQUIVALENTS.get(folded) ?? folded;
-    }
+    for (const char of value) out += this.#foldChar(char);
     // Bounded so a long session cannot grow the cache without limit.
     if (this.#cache.size < FOLD_CACHE_LIMIT) this.#cache.set(value, out);
     return out;
+  }
+
+  /**
+   * One character in, one character of the same length out -- the invariant the
+   * rest of the file rests on, in the one place it can be checked.
+   *
+   * NFD splits an accented char into base + combining marks, so taking the base
+   * strips the accent. Any transform that would change the length (lowercasing
+   * "İ" to "i̇", decomposing an astral char) is refused and the char stands.
+   */
+  #foldChar(char: string): string {
+    const base = char.toLowerCase().normalize("NFD")[0] ?? char;
+    const stripped = base.length === char.length ? base : char;
+    return CHAR_EQUIVALENTS.get(stripped) ?? stripped;
   }
 }
 
