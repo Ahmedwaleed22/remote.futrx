@@ -3,7 +3,7 @@
 
 import type { ChatSearchDoc, SearchFieldId } from "./searchDoc.ts";
 import type { FacetId } from "./facetRegistry.ts";
-import type { MatchSpan } from "./textMatch.ts";
+import type { MatchSpan } from "../../models/search.ts";
 
 /** Which field carried the match, for the "why did this match" line. */
 export type MatchedField = SearchFieldId | "none";

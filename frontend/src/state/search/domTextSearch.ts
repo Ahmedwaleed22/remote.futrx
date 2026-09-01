@@ -1,4 +1,4 @@
-import { fold } from "./textMatch";
+import { textMatchService } from "../../services/platform/textMatchService.ts";
 
 /** A rendered text node and where its text starts in the concatenated string. */
 interface TextChunk {
@@ -41,7 +41,7 @@ function locate(chunks: readonly TextChunk[], offset: number, isEnd: boolean) {
  * matching text the reader cannot see.
  */
 export function findRanges(root: Node, query: string): Range[] {
-  const needle = fold(query);
+  const needle = textMatchService.fold(query);
   if (needle.trim().length === 0) return [];
 
   const chunks: TextChunk[] = [];
@@ -55,7 +55,7 @@ export function findRanges(root: Node, query: string): Range[] {
   }
   if (chunks.length === 0) return [];
 
-  const haystack = fold(text);
+  const haystack = textMatchService.fold(text);
   const ranges: Range[] = [];
   for (
     let at = haystack.indexOf(needle);

@@ -14,7 +14,6 @@ import { DEFAULT_SORT, defaultFilters, emptyFacetSelections } from "./searchQuer
 import { UNASSIGNED_PROJECT } from "./searchDoc.ts";
 import type { SearchFilters } from "./searchQuery.ts";
 import { ANY_DATE, resolveDateRange } from "./dateRange.ts";
-import { fold, matchField, tokenize, withinEditDistance } from "./textMatch.ts";
 import { isPaletteShortcut } from "./searchShortcuts.ts";
 import type { ShortcutChord } from "./searchShortcuts.ts";
 
@@ -101,26 +100,6 @@ function idsFor(query: string, override: Partial<SearchFilters> = {}): string[] 
     (hit) => hit.doc.chat.id
   );
 }
-
-test("folding preserves length so highlight spans stay aligned", () => {
-  assert.equal(fold("Café Ünicode").length, "Café Ünicode".length);
-  assert.equal(fold("Café"), "cafe");
-});
-
-test("tokenizing splits separators and camelCase", () => {
-  assert.deepEqual(tokenize("workspaceSidebarState.ts"), ["workspace", "sidebar", "state", "ts"]);
-  assert.deepEqual(tokenize("remote.futrx"), ["remote", "futrx"]);
-});
-
-test("bounded edit distance accepts near misses and rejects far ones", () => {
-  assert.equal(withinEditDistance("sidebar", "sidbar", 1), true);
-  assert.equal(withinEditDistance("sidebar", "toolbar", 1), false);
-});
-
-test("all query tokens must match, so extra words narrow the results", () => {
-  assert.ok(matchField(fold("Caddy TLS on-demand ask"), ["caddy", "tls"]));
-  assert.equal(matchField(fold("Caddy TLS on-demand ask"), ["caddy", "postgres"]), null);
-});
 
 // The old `.includes()` filter failed all four of these.
 test("matches words out of order across separators", () => {

@@ -9,7 +9,7 @@
 
 import type { ChatMeta } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
-import { fold } from "./textMatch.ts";
+import { textMatchService } from "../../services/platform/textMatchService.ts";
 
 /** Sentinel for chats that belong to no project, so it can be a normal option. */
 export const UNASSIGNED_PROJECT = " unassigned";
@@ -97,7 +97,7 @@ export function buildSearchIndex(
     return {
       chat,
       project,
-      folded: SEARCH_FIELDS.map((field) => fold(field.textOf(chat, project))),
+      folded: SEARCH_FIELDS.map((field) => textMatchService.fold(field.textOf(chat, project))),
       unread: (chat.lastMessageAt || 0) > (chat.lastReadAt || 0),
     };
   });

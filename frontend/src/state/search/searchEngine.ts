@@ -20,8 +20,8 @@ import {
 import type { ChatSearchDoc } from "./searchDoc.ts";
 import type { FacetSelections, SearchFilters, SortId } from "./searchQuery.ts";
 import type { FacetCounts, MatchedField, SearchHit, SearchOutcome } from "./searchResults.ts";
-import { matchField, tokenize } from "./textMatch.ts";
-import type { MatchSpan } from "./textMatch.ts";
+import { textMatchService } from "../../services/platform/textMatchService.ts";
+import type { MatchSpan } from "../../models/search.ts";
 
 const FACET_COUNT = FACET_DEFINITIONS.length;
 const ALL_FACETS_MASK = (1 << FACET_COUNT) - 1;
@@ -59,7 +59,7 @@ function scoreDoc(doc: ChatSearchDoc, tokens: string[]): KeywordScore | null {
   let field: MatchedField = "none";
 
   for (let f = 0; f < SEARCH_FIELD_COUNT; f += 1) {
-    const hit = matchField(doc.folded[f], tokens);
+    const hit = textMatchService.matchField(doc.folded[f], tokens);
     if (!hit) continue;
 
     const value = hit.score * SEARCH_FIELDS[f].weight;
@@ -186,7 +186,7 @@ export function runSearch(
   now: number,
   options: SearchOptions = {}
 ): SearchOutcome {
-  const tokens = tokenize(query);
+  const tokens = textMatchService.tokenize(query);
   const scoring = tokens.length > 0;
   const facets = new FacetMatcher(filters.facets, options.withCounts === true);
   const hits: SearchHit[] = [];
