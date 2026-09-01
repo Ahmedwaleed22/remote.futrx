@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ANY_DATE } from "../../config/search.ts";
+import { DAY_MS as DAY } from "../../config/time.ts";
 import type { ChatMeta } from "../../models/chat.ts";
 import type { ProjectMeta } from "../../models/project.ts";
 import { UNASSIGNED_PROJECT } from "../../models/search.ts";
@@ -9,7 +10,6 @@ import { searchFilterService } from "./searchFilterService.ts";
 import { workspaceSearchService } from "./workspaceSearchService.ts";
 
 const NOW = new Date(2026, 7, 29, 12, 0, 0).getTime();
-const DAY = 86_400_000;
 
 const projects: ProjectMeta[] = [
   {

@@ -10,6 +10,7 @@
 // resolver stays pure.
 
 import { ANY_DATE, DATE_FIELD_LABELS, DATE_PRESET_LABELS } from "../../config/search.ts";
+import { DAY_MS } from "../../config/time.ts";
 import { FACET_IDS } from "../../models/search.ts";
 import type {
   DateFilter,
@@ -19,7 +20,6 @@ import type {
   SearchFilters,
 } from "../../models/search.ts";
 
-const DAY_MS = 86_400_000;
 
 class SearchFilterService {
   // -------------------------------------------------------------------------

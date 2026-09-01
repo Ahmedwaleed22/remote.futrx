@@ -5,6 +5,7 @@
 // the old paired option-table/id-list arrangement was written to provide, now
 // enforced by the compiler rather than by both lists being edited together.
 
+import { DAY_MS } from "./time.ts";
 import {
   DATE_FIELD_IDS,
   DATE_PRESET_IDS,
@@ -100,7 +101,7 @@ export const HIGHLIGHTED_FIELD_INDEX = SEARCH_FIELD_IDS.indexOf(HIGHLIGHTED_SEAR
 
 /** Tie-breakers, kept small so they never outrank a genuinely better match. */
 export const RECENCY_WEIGHT = 18;
-export const RECENCY_WINDOW_MS = 30 * 86_400_000;
+export const RECENCY_WINDOW_MS = 30 * DAY_MS;
 
 /**
  * What a matching field other than the best one adds. Small, so a chat matching
