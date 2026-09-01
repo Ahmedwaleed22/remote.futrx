@@ -1,5 +1,8 @@
 import { useRef, useState } from "preact/hooks";
-import type { FilterControl, QueryControl } from "../../state/search/searchController";
+import type {
+  FilterControl,
+  QueryControl,
+} from "../../state/hooks/workspace/useWorkspaceSearch";
 import { useDismissOnOutside } from "../primitives/popover";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { FilterPanel } from "./FilterPanel";

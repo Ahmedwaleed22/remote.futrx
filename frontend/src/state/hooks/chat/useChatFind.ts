@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "preact/hooks";
 import type { RefObject } from "preact";
 import { clearHighlight, paintHighlight } from "../../../services/platform/textHighlight.ts";
 import { domTextSearchService } from "../../../services/platform/domTextSearchService.ts";
-import { isFindShortcut } from "../../search/searchShortcuts";
+import { isFindShortcut } from "../../../config/shortcuts.ts";
 
 /** Keep the match this far from the scroller's edges when revealing it. */
 const REVEAL_MARGIN = 80;

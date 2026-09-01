@@ -1,4 +1,4 @@
-import type { SearchHit } from "../../state/search/searchResults";
+import type { SearchHit } from "../../models/search";
 import { modelShortLabel } from "../../config/chat";
 import { relativeTimeService } from "../../services/platform/relativeTimeService.ts";
 import { HighlightedText } from "../primitives/HighlightedText";

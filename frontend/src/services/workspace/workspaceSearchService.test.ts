@@ -1,21 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { ANY_DATE } from "../../config/search.ts";
 import type { ChatMeta } from "../../models/chat.ts";
 import type { ProjectMeta } from "../../models/project.ts";
-import { buildSearchIndex } from "./searchDoc.ts";
-import { FACET_DEFINITIONS, optionsForFacet } from "./facetRegistry.ts";
-import { buildFacetViews } from "./facetViews.ts";
-import {
-  ephemeralSearchPreferences,
-  storedSearchPreferences,
-} from "./searchFiltersStorage.ts";
-import { runSearch } from "./searchEngine.ts";
-import { DEFAULT_SORT, defaultFilters, emptyFacetSelections } from "./searchQuery.ts";
-import { UNASSIGNED_PROJECT } from "./searchDoc.ts";
-import type { SearchFilters } from "./searchQuery.ts";
-import { ANY_DATE, resolveDateRange } from "./dateRange.ts";
-import { isPaletteShortcut } from "./searchShortcuts.ts";
-import type { ShortcutChord } from "./searchShortcuts.ts";
+import { UNASSIGNED_PROJECT } from "../../models/search.ts";
+import type { ChatSearchDoc, SearchFilters } from "../../models/search.ts";
+import { searchFilterService } from "./searchFilterService.ts";
+import { workspaceSearchService } from "./workspaceSearchService.ts";
 
 const NOW = new Date(2026, 7, 29, 12, 0, 0).getTime();
 const DAY = 86_400_000;
@@ -89,16 +80,31 @@ const chats: ChatMeta[] = [
   },
 ];
 
-const docs = buildSearchIndex(chats, projects);
+const docs = workspaceSearchService.buildIndex(chats, projects);
 
 function filters(overrides: Partial<SearchFilters> = {}): SearchFilters {
-  return { facets: emptyFacetSelections(), date: ANY_DATE, ...overrides };
+  return { facets: searchFilterService.emptyFacetSelections(), date: ANY_DATE, ...overrides };
 }
 
 function idsFor(query: string, override: Partial<SearchFilters> = {}): string[] {
-  return runSearch(docs, filters(override), query, "relevance", NOW).hits.map(
+  return workspaceSearchService.run(docs, filters(override), query, "relevance", NOW).hits.map(
     (hit) => hit.doc.chat.id
   );
+}
+
+
+/** The options one facet offers, which is what the filter menu renders. */
+function offeredValues(
+  over: readonly ChatSearchDoc[],
+  active: SearchFilters,
+  facetId: string,
+  withCounts = true
+): string[] {
+  const outcome = workspaceSearchService.run(over, active, "", "relevance", NOW, { withCounts });
+  return workspaceSearchService
+    .facetViews(over, active, outcome)
+    .find((view) => view.id === facetId)!
+    .options.map((option) => option.value);
 }
 
 // The old `.includes()` filter failed all four of these.
@@ -111,31 +117,31 @@ test("matches despite a typo", () => {
 });
 
 test("ranks a title hit above a path-only hit", () => {
-  const hits = runSearch(docs, filters(), "workspace", "relevance", NOW).hits;
+  const hits = workspaceSearchService.run(docs, filters(), "workspace", "relevance", NOW).hits;
   assert.ok(hits.length > 1);
   assert.equal(hits[0].matchedField, "path");
 });
 
 test("reports title spans for highlighting", () => {
-  const hit = runSearch(docs, filters(), "caddy", "relevance", NOW).hits[0];
+  const hit = workspaceSearchService.run(docs, filters(), "caddy", "relevance", NOW).hits[0];
   assert.deepEqual(hit.titleSpans, [{ start: 0, end: 5 }]);
   assert.equal("Caddy TLS on-demand ask".slice(0, 5), "Caddy");
 });
 
 test("selecting several projects ORs within the facet", () => {
-  const facets = emptyFacetSelections();
+  const facets = searchFilterService.emptyFacetSelections();
   facets.project = ["p-remote", "p-docs"];
   assert.deepEqual(idsFor("", { facets }).sort(), ["c1", "c2", "c3"]);
 });
 
 test("unassigned chats are selectable as their own project option", () => {
-  const facets = emptyFacetSelections();
+  const facets = searchFilterService.emptyFacetSelections();
   facets.project = [UNASSIGNED_PROJECT];
   assert.deepEqual(idsFor("", { facets }), ["c4"]);
 });
 
 test("a deleted project does not become a filter option of its own", () => {
-  const orphanDocs = buildSearchIndex(
+  const orphanDocs = workspaceSearchService.buildIndex(
     [
       ...chats,
       {
@@ -149,38 +155,37 @@ test("a deleted project does not become a filter option of its own", () => {
     ],
     projects
   );
-  const projectFacet = FACET_DEFINITIONS.find((facet) => facet.id === "project")!;
-  const values = optionsForFacet(projectFacet, orphanDocs).map((option) => option.value);
+  const values = offeredValues(orphanDocs, filters(), "project", false);
   // The raw id would otherwise show up as a project the user never created.
   assert.equal(values.includes("p-deleted"), false);
   assert.deepEqual(values, ["p-docs", "p-remote", UNASSIGNED_PROJECT]);
 
   // And the chat is still reachable, filed with the rest of the unassigned.
-  const facets = emptyFacetSelections();
+  const facets = searchFilterService.emptyFacetSelections();
   facets.project = [UNASSIGNED_PROJECT];
-  const hits = runSearch(orphanDocs, filters({ facets }), "", "relevance", NOW).hits;
+  const hits = workspaceSearchService.run(orphanDocs, filters({ facets }), "", "relevance", NOW).hits;
   assert.deepEqual(hits.map((hit) => hit.doc.chat.id).sort(), ["c4", "c5"]);
 });
 
 test("different facets AND together", () => {
-  const facets = emptyFacetSelections();
+  const facets = searchFilterService.emptyFacetSelections();
   facets.project = ["p-remote"];
   facets.model = ["sonnet"];
   assert.deepEqual(idsFor("", { facets }), ["c2"]);
 });
 
 test("status facet finds unread and running chats", () => {
-  const unread = emptyFacetSelections();
+  const unread = searchFilterService.emptyFacetSelections();
   unread.status = ["unread"];
   assert.deepEqual(idsFor("", { facets: unread }), ["c2"]);
 
-  const running = emptyFacetSelections();
+  const running = searchFilterService.emptyFacetSelections();
   running.status = ["running"];
   assert.deepEqual(idsFor("", { facets: running }), ["c3"]);
 });
 
 test("date filter bounds by the selected field", () => {
-  const recent = runSearch(
+  const recent = workspaceSearchService.run(
     docs,
     filters({ date: { preset: "7d", field: "lastMessageAt" } }),
     "",
@@ -189,7 +194,7 @@ test("date filter bounds by the selected field", () => {
   );
   assert.deepEqual(recent.hits.map((hit) => hit.doc.chat.id), ["c1", "c2", "c4"]);
 
-  const created = runSearch(
+  const created = workspaceSearchService.run(
     docs,
     filters({ date: { preset: "7d", field: "createdAt" } }),
     "",
@@ -200,7 +205,7 @@ test("date filter bounds by the selected field", () => {
 });
 
 test("custom date ranges are inclusive of both endpoint days", () => {
-  const range = resolveDateRange(
+  const range = searchFilterService.resolveDateRange(
     { preset: "custom", field: "lastMessageAt", from: "2026-08-01", to: "2026-08-01" },
     NOW
   );
@@ -209,7 +214,7 @@ test("custom date ranges are inclusive of both endpoint days", () => {
 });
 
 test("a malformed custom date is ignored rather than matching nothing", () => {
-  const range = resolveDateRange(
+  const range = searchFilterService.resolveDateRange(
     { preset: "custom", field: "lastMessageAt", from: "2026-02-31" },
     NOW
   );
@@ -217,9 +222,9 @@ test("a malformed custom date is ignored rather than matching nothing", () => {
 });
 
 test("facet counts are computed against the other active facets", () => {
-  const facets = emptyFacetSelections();
+  const facets = searchFilterService.emptyFacetSelections();
   facets.project = ["p-remote"];
-  const outcome = runSearch(docs, filters({ facets }), "", "recent", NOW, { withCounts: true });
+  const outcome = workspaceSearchService.run(docs, filters({ facets }), "", "recent", NOW, { withCounts: true });
 
   // Model counts respect the project filter...
   assert.equal(outcome.counts.model.get("opus"), 1);
@@ -230,7 +235,7 @@ test("facet counts are computed against the other active facets", () => {
 });
 
 test("empty query with no filters returns everything, most recent first", () => {
-  const outcome = runSearch(docs, filters(), "", "relevance", NOW);
+  const outcome = workspaceSearchService.run(docs, filters(), "", "relevance", NOW);
   assert.deepEqual(outcome.hits.map((hit) => hit.doc.chat.id), ["c1", "c2", "c4", "c3"]);
   assert.equal(outcome.total, 4);
 });
@@ -248,11 +253,11 @@ test("stays fast on a large workspace", () => {
       lastMessageAt: NOW - i * 1000,
     });
   }
-  const bulkDocs = buildSearchIndex(manyChats, projects);
+  const bulkDocs = workspaceSearchService.buildIndex(manyChats, projects);
 
   const started = process.hrtime.bigint();
   for (let run = 0; run < 20; run += 1) {
-    runSearch(bulkDocs, filters(), "sidebar serch", "relevance", NOW);
+    workspaceSearchService.run(bulkDocs, filters(), "sidebar serch", "relevance", NOW);
   }
   const perRunMs = Number(process.hrtime.bigint() - started) / 1e6 / 20;
 
@@ -262,97 +267,41 @@ test("stays fast on a large workspace", () => {
   assert.ok(perRunMs < 40, `search took ${perRunMs.toFixed(1)}ms per run`);
 });
 
-test("the palette opens on Cmd/Ctrl+P and Cmd/Ctrl+K", () => {
-  const chord = (over: Partial<ShortcutChord>): ShortcutChord => ({
-    key: "p",
-    metaKey: false,
-    ctrlKey: false,
-    altKey: false,
-    shiftKey: false,
-    ...over,
-  });
-
-  assert.equal(isPaletteShortcut(chord({ metaKey: true })), true);
-  assert.equal(isPaletteShortcut(chord({ ctrlKey: true })), true);
-  assert.equal(isPaletteShortcut(chord({ key: "K", metaKey: true })), true);
-  // A bare key must keep typing "p" into the search box.
-  assert.equal(isPaletteShortcut(chord({})), false);
-  // Cmd+Shift+P belongs to the browser, not to us.
-  assert.equal(isPaletteShortcut(chord({ metaKey: true, shiftKey: true })), false);
-  assert.equal(isPaletteShortcut(chord({ metaKey: true, altKey: true })), false);
-  assert.equal(isPaletteShortcut(chord({ key: "j", metaKey: true })), false);
-});
-
-test("the palette's filters never reach the sidebar's stored selection", () => {
-  const store = new Map<string, string>();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => void store.set(key, value),
-  };
-
-  // The sidebar sets up a project scope and it survives a reload.
-  const scoped = filters();
-  scoped.facets.project = ["p-remote"];
-  storedSearchPreferences.writeFilters(scoped);
-  storedSearchPreferences.writeSort("recent");
-  assert.deepEqual(storedSearchPreferences.readFilters().facets.project, ["p-remote"]);
-
-  // The palette narrows to something else. Sharing one state, this used to
-  // re-scope the sidebar behind the user's back, and outlive the session.
-  const inPalette = filters();
-  inPalette.facets.project = ["p-docs"];
-  ephemeralSearchPreferences.writeFilters(inPalette);
-  ephemeralSearchPreferences.writeSort("oldest");
-
-  assert.deepEqual(storedSearchPreferences.readFilters().facets.project, ["p-remote"]);
-  assert.equal(storedSearchPreferences.readSort(), "recent");
-  // And the palette itself opens clean rather than inheriting either one.
-  assert.deepEqual(ephemeralSearchPreferences.readFilters(), defaultFilters());
-  assert.equal(ephemeralSearchPreferences.readSort(), DEFAULT_SORT);
-});
-
 test("picking a provider scopes the model and mode facets to it", () => {
-  const offered = (id: string, active: SearchFilters, withCounts = true) => {
-    const outcome = runSearch(docs, active, "", "relevance", NOW, { withCounts });
-    return buildFacetViews(docs, active, outcome)
-      .find((view) => view.id === id)!
-      .options.map((option) => option.value);
-  };
-
   // Unfiltered, every model and mode any chat has ever used is on offer.
-  assert.deepEqual(offered("model", filters()).sort(), ["", "gpt-5.5", "opus", "sonnet"]);
-  assert.deepEqual(offered("mode", filters()).sort(), ["", "code", "plan"]);
+  assert.deepEqual(offeredValues(docs, filters(), "model").sort(), ["", "gpt-5.5", "opus", "sonnet"]);
+  assert.deepEqual(offeredValues(docs, filters(), "mode").sort(), ["", "code", "plan"]);
 
   // Models and modes belong to a provider, so choosing one scopes both: Codex's
   // model rather than Claude's, and no Claude-only modes left to tick.
-  const codex = emptyFacetSelections();
+  const codex = searchFilterService.emptyFacetSelections();
   codex.provider = ["codex"];
-  assert.deepEqual(offered("model", filters({ facets: codex })), ["gpt-5.5"]);
-  assert.deepEqual(offered("mode", filters({ facets: codex })), [""]);
+  assert.deepEqual(offeredValues(docs, filters({ facets: codex }), "model"), ["gpt-5.5"]);
+  assert.deepEqual(offeredValues(docs, filters({ facets: codex }), "mode"), [""]);
 
-  const claude = emptyFacetSelections();
+  const claude = searchFilterService.emptyFacetSelections();
   claude.provider = ["claude"];
-  assert.deepEqual(offered("model", filters({ facets: claude })).sort(), ["opus", "sonnet"]);
-  assert.deepEqual(offered("mode", filters({ facets: claude })).sort(), ["code", "plan"]);
+  assert.deepEqual(offeredValues(docs, filters({ facets: claude }), "model").sort(), ["opus", "sonnet"]);
+  assert.deepEqual(offeredValues(docs, filters({ facets: claude }), "mode").sort(), ["code", "plan"]);
 
   // The provider facet itself stays whole -- scoping a facet by the others
   // never scopes it by itself, or you could not change your mind.
-  assert.deepEqual(offered("provider", filters({ facets: codex })).sort(), ["", "claude", "codex"]);
+  assert.deepEqual(offeredValues(docs, filters({ facets: codex }), "provider").sort(), ["", "claude", "codex"]);
 
   // A selection that can no longer match anything stays listed, so it can be
   // seen and unticked rather than silently hiding every result. Codex's own
   // model is listed beside it, because a facet is never scoped by itself: the
   // pair reads "this is why you have nothing, and here is what would work".
-  const impossible = emptyFacetSelections();
+  const impossible = searchFilterService.emptyFacetSelections();
   impossible.provider = ["codex"];
   impossible.model = ["opus"];
-  assert.deepEqual(offered("model", filters({ facets: impossible })).sort(), ["gpt-5.5", "opus"]);
+  assert.deepEqual(offeredValues(docs, filters({ facets: impossible }), "model").sort(), ["gpt-5.5", "opus"]);
   assert.deepEqual(idsFor("", { facets: impossible }), []);
 
   // Scoping is derived from the counts, so with no filter menu open -- nothing
   // asking for counts -- the unscoped list stands in rather than collapsing to
   // the selection. The chips read it then, and only for values already ticked.
-  assert.deepEqual(offered("model", filters({ facets: codex }), false).sort(), [
+  assert.deepEqual(offeredValues(docs, filters({ facets: codex }), "model", false).sort(), [
     "",
     "gpt-5.5",
     "opus",

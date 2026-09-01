@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import type { WorkspaceSearch } from "../../state/search/searchController";
+import type { WorkspaceSearch } from "../../state/hooks/workspace/useWorkspaceSearch";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { FilterPanelBody } from "./FilterPanel";
 import { PaletteResultRow } from "./PaletteResultRow";

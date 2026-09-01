@@ -1,6 +1,6 @@
 import type { ChatMeta } from "../../models/chat";
 import type { WorkspaceSidebarModel } from "../../models/workspace.ts";
-import type { WorkspaceSearch } from "../../state/search/searchController";
+import type { WorkspaceSearch } from "../../state/hooks/workspace/useWorkspaceSearch";
 import { useProjectDragReorder } from "../../state/hooks/workspace/useProjectDragReorder";
 import { ChatRow } from "./ChatRow";
 import { ProjectGroup } from "./ProjectGroup";

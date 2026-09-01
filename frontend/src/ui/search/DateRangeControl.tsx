@@ -1,8 +1,5 @@
-import {
-  DATE_FIELD_OPTIONS,
-  DATE_PRESET_OPTIONS,
-} from "../../state/search/dateRange";
-import type { DateField, DateFilter, DatePresetId } from "../../state/search/dateRange";
+import { DATE_FIELD_OPTIONS, DATE_PRESET_OPTIONS } from "../../config/search";
+import type { DateFilter, DatePresetId } from "../../models/search";
 
 /**
  * Date presets plus a custom range, and a choice of which timestamp to test.
@@ -83,7 +80,7 @@ export function DateRangeControl({
               type="button"
               role="radio"
               aria-checked={active}
-              onClick={() => onChange({ ...value, field: option.value as DateField })}
+              onClick={() => onChange({ ...value, field: option.value })}
               class={`flex-1 rounded px-2 py-1 text-[11px] font-medium transition-colors
                       ${active ? "bg-accent-blue/[0.18] text-accent-blue" : "text-ink-300 hover:text-ink-100"}`}
             >

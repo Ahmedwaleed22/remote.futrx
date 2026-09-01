@@ -3,9 +3,9 @@ import { createContext } from "preact";
 import { useCallback, useContext, useEffect, useState } from "preact/hooks";
 import { useWorkspaceContext } from "./WorkspaceContext";
 import { useWorkspaceSearch } from "../hooks/workspace/useWorkspaceSearch";
-import { isPaletteShortcut } from "../search/searchShortcuts";
-import { ephemeralSearchPreferences } from "../search/searchFiltersStorage";
-import type { WorkspaceSearch } from "../search/searchController";
+import { isPaletteShortcut } from "../../config/shortcuts.ts";
+import { ephemeralSearchPreferenceService } from "../../services/workspace/searchPreferenceService.ts";
+import type { WorkspaceSearch } from "../hooks/workspace/useWorkspaceSearch";
 
 interface SearchContextValue {
   /** The sidebar's search: remembered across reloads. */
@@ -35,7 +35,7 @@ export function SearchProvider({ children }: { children: ComponentChildren }) {
   const paletteSearch = useWorkspaceSearch(
     workspace.chats,
     workspace.projects,
-    ephemeralSearchPreferences
+    ephemeralSearchPreferenceService
   );
   const [paletteOpen, setPaletteOpen] = useState(false);
 

@@ -189,3 +189,15 @@ export interface ShortcutChord {
   altKey: boolean;
   shiftKey: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Boundaries
+// ---------------------------------------------------------------------------
+
+/** How one search surface loads and saves its selection. */
+export interface SearchPreferences {
+  readFilters(): SearchFilters;
+  writeFilters(filters: SearchFilters): void;
+  readSort(): SortId;
+  writeSort(sort: SortId): void;
+}

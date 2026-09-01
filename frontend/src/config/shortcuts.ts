@@ -1,12 +1,6 @@
-/** The keyboard chords the search surfaces claim. */
-/** The subset of a keyboard event the palette shortcut decision depends on. */
-export interface ShortcutChord {
-  key: string;
-  metaKey: boolean;
-  ctrlKey: boolean;
-  altKey: boolean;
-  shiftKey: boolean;
-}
+/** The keyboard chords this app claims, and what each one opens. */
+
+import type { ShortcutChord } from "../models/search.ts";
 
 /**
  * Cmd/Ctrl+P (VS Code's quick open) or Cmd/Ctrl+K opens the search palette.

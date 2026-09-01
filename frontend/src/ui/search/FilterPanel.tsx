@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { FacetView, FilterControl } from "../../state/search/searchController";
-import { isDateFilterActive } from "../../state/search/dateRange";
-import { SORT_OPTIONS } from "../../state/search/searchQuery";
-import type { SortId } from "../../state/search/searchQuery";
+import type { FacetView, SortId } from "../../models/search";
+import type { FilterControl } from "../../state/hooks/workspace/useWorkspaceSearch";
+import { SORT_OPTIONS } from "../../config/search";
+import { searchFilterService } from "../../services/workspace/searchFilterService";
 import { DateRangeControl } from "./DateRangeControl";
 import { FilterSection } from "./FilterSection";
 import { MultiSelectList } from "./MultiSelectList";
@@ -83,7 +83,7 @@ export function FilterPanelBody({
 
   const basicFacets = search.facetViews.filter((facet) => !facet.advanced);
   const advancedFacets = search.facetViews.filter((facet) => facet.advanced);
-  const dateActive = isDateFilterActive(search.filters.date);
+  const dateActive = searchFilterService.isDateActive(search.filters.date);
 
   return (
     <div
@@ -130,7 +130,7 @@ export function FilterPanelBody({
           expanded={expanded.date === true}
           selectedCount={dateActive ? 1 : 0}
           onToggle={() => toggleSection("date")}
-          onClear={() => search.setDateFilter({ preset: "any", field: search.filters.date.field })}
+          onClear={() => search.setDateFilter(searchFilterService.clearedDate(search.filters.date))}
         >
           <DateRangeControl value={search.filters.date} onChange={search.setDateFilter} />
         </FilterSection>
