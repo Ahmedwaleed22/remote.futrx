@@ -18,6 +18,7 @@ import { useChatFind } from "../../state/hooks/chat/useChatFind";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
 import { useDismissShortcut } from "../../state/hooks/shared/useDismissShortcut.ts";
+import { useSlashCommandMenu } from "../../state/hooks/chat/useSlashCommandMenu";
 import { useTerminalOverlayController } from "../../ui/chat/terminal/useTerminalOverlayController";
 import { useWorkspaceGitRepos } from "../../state/hooks/chat/useWorkspaceGitRepos";
 
@@ -42,6 +43,7 @@ export function ChatContainer({
     sendPrompt,
     promptOutcome,
     cancel,
+    respondInteraction,
     rewind,
     loadOlder,
     refreshMeta,
@@ -61,6 +63,14 @@ export function ChatContainer({
     rewind,
     refreshMeta,
     attachmentBasePath,
+  });
+  const slashCommandMenu = useSlashCommandMenu({
+    provider: displayMeta.provider || "codex",
+    projectId: displayMeta.projectId,
+    text: composer.text,
+    onSelectSkill: preferences.selectSkill,
+    onTextChange: composer.setText,
+    focusTextarea: () => composer.textareaRef.current?.focus(),
   });
   const browser = useChatBrowserController({
     chat: displayMeta,
@@ -154,12 +164,16 @@ export function ChatContainer({
       mode: displayMode,
       reasoningEffort: displayMeta.reasoningEffort || "",
       serviceTier: displayMeta.serviceTier || "",
+      approvalPolicy: displayMeta.approvalPolicy,
+      sandboxPolicy: displayMeta.sandboxPolicy,
     },
     preferenceActions: {
       changeAgent: preferences.changeAgent,
       changeMode: preferences.changeMode,
       changeReasoningEffort: preferences.changeReasoningEffort,
       changeServiceTier: preferences.changeServiceTier,
+      changeApprovalPolicy: preferences.changeApprovalPolicy,
+      changeSandboxPolicy: preferences.changeSandboxPolicy,
     },
     queuedPrompts: composer.queue.queuedPrompts,
     selectedSkills,
@@ -178,6 +192,17 @@ export function ChatContainer({
     onRemoveAttachment: composer.upload.removeAttachment,
     onSelectSkill: preferences.selectSkill,
     onRemoveSelectedSkill: preferences.removeSelectedSkill,
+    slashCommandMenu: {
+      open: slashCommandMenu.open,
+      loading: slashCommandMenu.loading,
+      error: slashCommandMenu.error,
+      query: slashCommandMenu.query,
+      items: slashCommandMenu.items,
+      highlight: slashCommandMenu.highlight,
+      onHighlight: slashCommandMenu.setHighlight,
+      onChoose: slashCommandMenu.choose,
+      onKeyDown: slashCommandMenu.onKeyDown,
+    },
   };
 
   return (
@@ -201,6 +226,7 @@ export function ChatContainer({
             onScroll={composer.scroll.onScroll}
             onJumpToBottom={composer.scroll.jumpToBottom}
             onAnswerQuestion={composer.handleAnswerQuestion}
+            onRespondInteraction={respondInteraction}
             onLoadOlder={loadOlder}
             onRewind={composer.handleRewind}
             projectName={project?.name}

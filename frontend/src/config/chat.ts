@@ -1,4 +1,23 @@
+import type { ApprovalPolicy, SandboxPolicy } from "../models/chat";
 import { capitalize } from "./text.ts";
+
+export const CODEX_APPROVAL_POLICY_OPTIONS: readonly {
+  value: ApprovalPolicy;
+  label: string;
+}[] = [
+  { value: "on-request", label: "Ask when needed" },
+  { value: "untrusted", label: "Untrusted only" },
+  { value: "never", label: "Never ask" },
+];
+
+export const CODEX_SANDBOX_POLICY_OPTIONS: readonly {
+  value: SandboxPolicy;
+  label: string;
+}[] = [
+  { value: "workspaceWrite", label: "Workspace write" },
+  { value: "readOnly", label: "Read only" },
+  { value: "dangerFullAccess", label: "Full access" },
+];
 
 export function modelShortLabel(model?: string): string {
   return model || "auto";
@@ -6,7 +25,18 @@ export function modelShortLabel(model?: string): string {
 
 export function providerDisplayLabel(provider?: string): string {
   if (!provider) return "Codex";
-  return capitalize(provider);
+  const knownLabels: Record<string, string> = {
+    antigravity: "Antigravity",
+    claude: "Claude",
+    codex: "Codex",
+    kimi: "Kimi",
+    minimax: "MiniMax",
+  };
+  return knownLabels[provider] ?? provider
+    .split("-")
+    .filter(Boolean)
+    .map(capitalize)
+    .join(" ");
 }
 
 /**
