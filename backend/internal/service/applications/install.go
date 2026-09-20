@@ -38,7 +38,7 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 		ID:                    id,
 		ApplicationID:         application.ID,
 		ApplicationVersion:    application.Version,
-		ContainerBuildVersion: containerBuildVersion(application),
+		ContainerBuildVersion: application.containerBuildVersion(),
 		Name:                  displayName(req.Name, application.Name),
 		Scope:                 req.Scope,
 		ProjectID:             req.ProjectID,

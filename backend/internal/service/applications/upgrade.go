@@ -4,16 +4,16 @@ import "context"
 
 // Upgrading an installed app to a new version of its application.
 //
-// An instance records the `version` from the application.json it was installed from.
-// When the catalog's version for that application no longer matches, the container
-// side is stale: the install script that provisioned it belonged to a
-// different release. Re-running that script is what makes it current, and the
-// recorded version is what tells us it has to happen.
+// An instance records the `version` from the application.json it was installed
+// from and, when present, the build identity derived from backend/container/.
+// When either no longer matches the catalog, the container side is stale.
+// Re-running the install script is what makes it current.
 //
 // The comparison is equality, not ordering. Versions are free text — "8.0",
 // "16", "1.2.3-rc1" — so there is no ordering to read, and none is invented:
 // a version that *differs* re-installs, whether that is forward or back. An
-// author who changes nothing keeps the version and nothing is re-run.
+// author who changes neither the manifest version nor container source keeps
+// the same identities and nothing is re-run.
 //
 // What is deliberately not re-run: nothing at all for a `ui` or `backend`
 // application, because neither provisions anything into a container. Their new code
@@ -93,14 +93,7 @@ func (s *Service) upgradeInstances(ctx context.Context, applicationID string) []
 // restarting the backend.
 func needsUpgrade(inst Instance, application Application) bool {
 	return application.NeedsContainer() && (inst.ApplicationVersion != application.Version ||
-		inst.ContainerBuildVersion != containerBuildVersion(application))
-}
-
-func containerBuildVersion(application Application) string {
-	if application.Container == nil {
-		return ""
-	}
-	return application.Container.BuildVersion
+		inst.ContainerBuildVersion != application.containerBuildVersion())
 }
 
 // reinstall re-runs an instance's install script against the current application and
@@ -126,6 +119,6 @@ func (s *Service) reinstall(ctx context.Context, img Application, inst *Instance
 		return err
 	}
 	inst.ApplicationVersion = img.Version
-	inst.ContainerBuildVersion = containerBuildVersion(img)
+	inst.ContainerBuildVersion = img.containerBuildVersion()
 	return s.saveStatus(ctx, inst, StatusRunning, "")
 }

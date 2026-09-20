@@ -71,7 +71,7 @@ func loadApplicationInfrastructure(catalog fs.FS, root, applicationID, applicati
 		return applicationInfrastructure{}, fmt.Errorf("inspect infra payload: %w", err)
 	}
 
-	buildVersion := containerBuildVersion(applicationVersion, container.digest)
+	buildVersion := deriveContainerBuildVersion(applicationVersion, container.digest)
 	prologue := containerBuildScript(applicationID, buildVersion, container.commands)
 	combined := append(prologue, script...)
 	return applicationInfrastructure{
@@ -85,7 +85,7 @@ func loadApplicationInfrastructure(catalog fs.FS, root, applicationID, applicati
 	}, nil
 }
 
-func containerBuildVersion(applicationVersion, digest string) string {
+func deriveContainerBuildVersion(applicationVersion, digest string) string {
 	if applicationVersion == "" {
 		return digest[:16]
 	}

@@ -211,6 +211,16 @@ func (application Application) NeedsContainer() bool {
 	return application.Install != "" || application.Container != nil
 }
 
+// containerBuildVersion returns the identity of the core-built container
+// programs carried by this catalog entry. Applications with only a custom
+// install script have no independently tracked container build.
+func (application Application) containerBuildVersion() string {
+	if application.Container == nil {
+		return ""
+	}
+	return application.Container.BuildVersion
+}
+
 // NeedsPort reports whether this application exposes its provisioned component.
 func (application Application) NeedsPort() bool {
 	return application.NeedsContainer() && application.Port.Internal > 0
