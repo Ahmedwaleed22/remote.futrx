@@ -15,10 +15,11 @@ import "context"
 // author who changes neither the manifest version nor container source keeps
 // the same identities and nothing is re-run.
 //
-// What is deliberately not re-run: nothing at all for a `ui` or `backend`
-// application, because neither provisions anything into a container. Their new code
-// is picked up by reloading the catalog and restarting the plugin, which
-// happens on every package replacement regardless of version.
+// What is deliberately not re-run: nothing at all for a UI-only or host-
+// backend-only application, because neither provisions anything into a
+// container. Their new code is picked up by reloading the catalog and
+// restarting the plugin, which happens on every package replacement regardless
+// of version.
 
 // UpgradeOutcome is what happened to one instance when its application's version
 // moved. It is reported rather than logged: an upgrade re-runs an install
@@ -39,8 +40,8 @@ type UpgradeOutcome struct {
 	Error string `json:"error,omitempty"`
 }
 
-// upgradeInstances re-runs the install script for every instance of an application
-// whose recorded version differs from the catalog's.
+// upgradeInstances re-runs the install script for every instance whose recorded
+// application version or container build identity differs from the catalog's.
 //
 // Stopped instances are left alone: re-running an install script also brings
 // the app up, and resurrecting an app an operator deliberately stopped is not
@@ -86,7 +87,8 @@ func (s *Service) upgradeInstances(ctx context.Context, applicationID string) []
 }
 
 // needsUpgrade reports whether an instance's container side was provisioned by
-// a different version of the application than the catalog now holds.
+// a different application release or container build than the catalog now
+// holds.
 //
 // Only applications that reach a container can be stale. A backend-only
 // application installs nothing to re-install; its new code is picked up by
