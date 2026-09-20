@@ -28,7 +28,27 @@ func TestContainerBuildScriptBuildsCommandsAndUsesMarker(t *testing.T) {
 
 func TestContainerBuildScriptBuildsRootProgramAsApplicationID(t *testing.T) {
 	script := string(containerBuildScript("example", "1+abc", nil))
-	if !strings.Contains(script, `-o "$APP_BUILD_DIR/example" .`) {
+	if !strings.Contains(script, `-o "$APP_BUILD_DIR"/'example' '.'`) {
 		t.Fatalf("root build command missing from:\n%s", script)
+	}
+}
+
+func TestContainerBuildScriptDoesNotConfuseMatchingCommandWithRootProgram(t *testing.T) {
+	script := string(containerBuildScript("s3disk", "1+abc", []string{"s3disk"}))
+	if !strings.Contains(script, "./cmd/s3disk") {
+		t.Fatalf("named command build target missing from:\n%s", script)
+	}
+}
+
+func TestContainerBuildScriptQuotesCommandPaths(t *testing.T) {
+	command := "worker's tool"
+	script := string(containerBuildScript("example", "1+abc", []string{command}))
+	for _, want := range []string{
+		shellQuote("./cmd/" + command),
+		shellQuote("/usr/local/bin/" + command),
+	} {
+		if !strings.Contains(script, want) {
+			t.Errorf("generated script does not contain quoted path %q", want)
+		}
 	}
 }

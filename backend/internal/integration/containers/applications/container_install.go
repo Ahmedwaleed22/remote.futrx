@@ -28,11 +28,6 @@ const containerBuildMarkerDir = "/usr/local/lib/remote"
 // drifted between them. An application supplies Go source; the shell is the
 // server's to write.
 func containerBuildScript(applicationID, buildVersion string, commands []string) []byte {
-	if len(commands) == 0 {
-		// Container source that is itself package main builds as one binary
-		// named after the application.
-		commands = []string{applicationID}
-	}
 	marker := fmt.Sprintf("%s/%s.build", containerBuildMarkerDir, applicationID)
 
 	var out strings.Builder
@@ -67,18 +62,16 @@ if [ "$(cat "$APP_BUILD_MARKER" 2>/dev/null || true)" != "$APP_BUILD_VERSION" ];
   APP_BUILD_DIR="$(mktemp -d)"
   trap 'rm -rf -- "$APP_BUILD_DIR"' EXIT
 `)
-	for _, command := range commands {
-		target := "."
-		if command != applicationID || len(commands) > 1 {
-			target = "./cmd/" + command
-		}
+	for _, build := range containerBuildTargets(applicationID, commands) {
+		output := `"$APP_BUILD_DIR"/` + shellQuote(build.command)
 		fmt.Fprintf(&out,
 			"  (cd \"$APP_CONTAINER_SOURCE\" && CGO_ENABLED=0 \"$GOROOT_DIR/bin/go\" build"+
 				" -mod=mod -buildvcs=false -trimpath"+
 				" -ldflags \"-s -w -X main.version=$APP_BUILD_VERSION\""+
-				" -o \"$APP_BUILD_DIR/%s\" %s)\n",
-			command, target)
-		fmt.Fprintf(&out, "  install -m 0755 \"$APP_BUILD_DIR/%s\" /usr/local/bin/%s\n", command, command)
+				" -o %s %s)\n",
+			output, shellQuote(build.target))
+		fmt.Fprintf(&out, "  install -m 0755 %s %s\n",
+			output, shellQuote("/usr/local/bin/"+build.command))
 	}
 	fmt.Fprintf(&out, `
   mkdir -p %s
@@ -86,6 +79,28 @@ if [ "$(cat "$APP_BUILD_MARKER" 2>/dev/null || true)" != "$APP_BUILD_VERSION" ];
 fi
 `, shellQuote(containerBuildMarkerDir))
 	return []byte(out.String())
+}
+
+type containerBuildTarget struct {
+	command string
+	target  string
+}
+
+// containerBuildTargets keeps root programs distinct from programs discovered
+// below cmd/. A command is allowed to have the same name as its application;
+// its source location, not its name, decides which Go package is built.
+func containerBuildTargets(applicationID string, commands []string) []containerBuildTarget {
+	if len(commands) == 0 {
+		return []containerBuildTarget{{command: applicationID, target: "."}}
+	}
+	targets := make([]containerBuildTarget, 0, len(commands))
+	for _, command := range commands {
+		targets = append(targets, containerBuildTarget{
+			command: command,
+			target:  "./cmd/" + command,
+		})
+	}
+	return targets
 }
 
 // shellQuote renders a value as a single-quoted shell word. Everything it is
