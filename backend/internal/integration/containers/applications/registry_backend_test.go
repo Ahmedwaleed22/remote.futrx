@@ -226,13 +226,13 @@ func TestLoadApplicationBackendAcceptsTheAPILayout(t *testing.T) {
 // container/ holds packages that are not main and never compile on the host.
 // Resolving the compiled root to backend/api/ is what keeps them out of the
 // package-clause check rather than having to special-case them inside it.
-func TestBackendSourceDirResolvesTheCompiledRoot(t *testing.T) {
+func TestResolveBackendSourceResolvesTheCompiledRoot(t *testing.T) {
 	api := backendTree(map[string]string{"backend/api/main.go": validPluginMain})
-	if got := backendSourceDir(api, "backend"); got != "backend/api" {
-		t.Errorf("backendSourceDir = %q, want backend/api", got)
+	if got, ok := resolveBackendSource(api, "backend"); !ok || got != "backend/api" {
+		t.Errorf("resolveBackendSource = %q, %t; want backend/api, true", got, ok)
 	}
 	flat := backendTree(map[string]string{"backend/main.go": validPluginMain})
-	if got := backendSourceDir(flat, "backend"); got != "backend" {
-		t.Errorf("backendSourceDir = %q, want the flat backend/ fallback", got)
+	if got, ok := resolveBackendSource(flat, "backend"); !ok || got != "backend" {
+		t.Errorf("resolveBackendSource = %q, %t; want backend, true", got, ok)
 	}
 }

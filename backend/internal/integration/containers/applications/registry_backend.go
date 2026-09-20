@@ -28,18 +28,31 @@ const (
 	backendContainerDir = "container"
 )
 
-// backendSourceDir resolves which directory under backend/ the host compiles.
+// resolveBackendSource resolves which directory under backend/ the host
+// compiles and reports whether the application carries host source at all.
 //
 // backend/api/ is the current layout. Go at backend/'s own root is the original
 // flat layout, still resolved so that packages uploaded before the split keep
 // building across a server update — uploaded packages outlive the binary that
 // installed them, so dropping the fallback would break them in place.
-func backendSourceDir(fsys fs.FS, root string) string {
+//
+// backend/container/ is an independent capability and does not, by itself,
+// opt the application into a host RPC process.
+func resolveBackendSource(fsys fs.FS, root string) (string, bool) {
 	api := path.Join(root, backendAPIDir)
 	if info, err := fs.Stat(fsys, api); err == nil && info.IsDir() {
-		return api
+		return api, true
 	}
-	return root
+	entries, err := fs.ReadDir(fsys, root)
+	if err != nil {
+		return "", false
+	}
+	for _, entry := range entries {
+		if entry.Name() != backendContainerDir {
+			return root, true
+		}
+	}
+	return "", false
 }
 
 // loadApplicationBackend resolves an application's backend/ directory into a validated
@@ -54,7 +67,8 @@ func loadApplicationBackend(fsys fs.FS, root string, declared *svc.ApplicationBa
 		}
 		return nil, nil
 	}
-	if !hasHostBackendSource(fsys, root) {
+	source, ok := resolveBackendSource(fsys, root)
+	if !ok {
 		if declared != nil {
 			return nil, fmt.Errorf("application.json declares backend but %s has no host source", root)
 		}
@@ -71,38 +85,15 @@ func loadApplicationBackend(fsys fs.FS, root string, declared *svc.ApplicationBa
 	if backend.TimeoutMS < 0 {
 		return nil, fmt.Errorf("timeoutMs must not be negative")
 	}
-	if err := validateBackendLayout(fsys, root); err != nil {
+	if err := validateBackendLayout(fsys, root, source); err != nil {
 		return nil, err
 	}
 	return &backend, nil
 }
 
-// hasHostBackendSource distinguishes the two independent capabilities below
-// backend/. A container-only application has a backend directory, but no host
-// RPC process for the plugin host to compile or run.
-func hasHostBackendSource(fsys fs.FS, root string) bool {
-	if info, err := fs.Stat(fsys, path.Join(root, backendAPIDir)); err == nil && info.IsDir() {
-		return true
-	}
-	entries, err := fs.ReadDir(fsys, root)
-	if err != nil {
-		return false
-	}
-	for _, entry := range entries {
-		if entry.IsDir() && entry.Name() == backendContainerDir {
-			continue
-		}
-		if entry.Name() != backendContainerDir {
-			return true
-		}
-	}
-	return false
-}
-
 // validateBackendLayout checks backend/ as a whole, then the one directory the
 // host actually compiles.
-func validateBackendLayout(fsys fs.FS, root string) error {
-	source := backendSourceDir(fsys, root)
+func validateBackendLayout(fsys fs.FS, root, source string) error {
 	if source != root {
 		if err := rejectStrayBackendRoot(fsys, root); err != nil {
 			return err
@@ -201,7 +192,11 @@ func (r *Registry) BackendSource(applicationID string) (fs.FS, bool) {
 		return nil, false
 	}
 	root := path.Join(catalogRoot, applicationID, backendDir)
-	sub, err := fs.Sub(catalog, backendSourceDir(catalog, root))
+	source, ok := resolveBackendSource(catalog, root)
+	if !ok {
+		return nil, false
+	}
+	sub, err := fs.Sub(catalog, source)
 	if err != nil {
 		return nil, false
 	}
