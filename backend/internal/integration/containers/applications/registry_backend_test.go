@@ -34,6 +34,18 @@ func TestLoadApplicationBackendIsOptional(t *testing.T) {
 	}
 }
 
+func TestLoadApplicationBackendIsOptionalForContainerOnlySource(t *testing.T) {
+	backend, err := loadApplicationBackend(backendTree(map[string]string{
+		"backend/container/main.go": validPluginMain,
+	}), "backend", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if backend != nil {
+		t.Errorf("backend = %+v, want no host backend", backend)
+	}
+}
+
 func TestLoadApplicationBackendDefaultsAreApplied(t *testing.T) {
 	backend, err := loadApplicationBackend(
 		backendTree(map[string]string{"backend/main.go": validPluginMain}), "backend", nil)

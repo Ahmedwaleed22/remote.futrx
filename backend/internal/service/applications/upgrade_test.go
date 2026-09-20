@@ -230,6 +230,22 @@ func TestUploadDoesNotReinstallApplicationsWithNoContainerSide(t *testing.T) {
 	}
 }
 
+func TestNeedsUpgradeWhenContainerSourceChanges(t *testing.T) {
+	application := serviceImageAt("1.0.0")
+	application.Install = ""
+	application.Container = &ApplicationContainer{BuildVersion: "1.0.0+newdigest"}
+	instance := installedAt("g1", "", "1.0.0", StatusRunning)
+	instance.ContainerBuildVersion = "1.0.0+olddigest"
+
+	if !needsUpgrade(instance, application) {
+		t.Fatal("container source change did not require reprovisioning")
+	}
+	instance.ContainerBuildVersion = application.Container.BuildVersion
+	if needsUpgrade(instance, application) {
+		t.Fatal("matching application and container build versions require an upgrade")
+	}
+}
+
 // Re-running an install script also brings the app up. An upload must not
 // resurrect an app someone deliberately stopped.
 func TestUploadLeavesStoppedInstancesAlone(t *testing.T) {

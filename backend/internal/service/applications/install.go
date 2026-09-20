@@ -35,15 +35,16 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 
 	id := newInstanceID()
 	inst := Instance{
-		ID:                 id,
-		ApplicationID:      application.ID,
-		ApplicationVersion: application.Version,
-		Name:               displayName(req.Name, application.Name),
-		Scope:              req.Scope,
-		ProjectID:          req.ProjectID,
-		Status:             StatusInstalling,
-		CreatedAt:          s.now(),
-		UpdatedAt:          s.now(),
+		ID:                    id,
+		ApplicationID:         application.ID,
+		ApplicationVersion:    application.Version,
+		ContainerBuildVersion: containerBuildVersion(application),
+		Name:                  displayName(req.Name, application.Name),
+		Scope:                 req.Scope,
+		ProjectID:             req.ProjectID,
+		Status:                StatusInstalling,
+		CreatedAt:             s.now(),
+		UpdatedAt:             s.now(),
 	}
 
 	// Resolve env inputs (apply defaults, generate secrets, enforce required).

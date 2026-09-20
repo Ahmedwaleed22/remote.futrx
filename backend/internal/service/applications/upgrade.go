@@ -92,7 +92,15 @@ func (s *Service) upgradeInstances(ctx context.Context, applicationID string) []
 // application installs nothing to re-install; its new code is picked up by
 // restarting the backend.
 func needsUpgrade(inst Instance, application Application) bool {
-	return application.NeedsContainer() && inst.ApplicationVersion != application.Version
+	return application.NeedsContainer() && (inst.ApplicationVersion != application.Version ||
+		inst.ContainerBuildVersion != containerBuildVersion(application))
+}
+
+func containerBuildVersion(application Application) string {
+	if application.Container == nil {
+		return ""
+	}
+	return application.Container.BuildVersion
 }
 
 // reinstall re-runs an instance's install script against the current application and
@@ -118,5 +126,6 @@ func (s *Service) reinstall(ctx context.Context, img Application, inst *Instance
 		return err
 	}
 	inst.ApplicationVersion = img.Version
+	inst.ContainerBuildVersion = containerBuildVersion(img)
 	return s.saveStatus(ctx, inst, StatusRunning, "")
 }

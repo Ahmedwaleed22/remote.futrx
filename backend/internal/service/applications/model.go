@@ -22,6 +22,15 @@ const (
 	ScopeProject Scope = "project"
 )
 
+// ApplicationContainer describes Go source shipped in backend/container/ and
+// built inside the target container. The registry derives it from the source;
+// application.json never declares it.
+type ApplicationContainer struct {
+	Commands     []string `json:"commands,omitempty"`
+	SourceDigest string   `json:"sourceDigest"`
+	BuildVersion string   `json:"buildVersion"`
+}
+
 // Valid reports whether s is a known scope.
 func (s Scope) Valid() bool { return s == ScopeGlobal || s == ScopeProject }
 
@@ -181,9 +190,13 @@ type Application struct {
 	// UI is set when the application ships a ui/ directory. Nil means the application has
 	// no browser-side extension and the SPA loads nothing for it.
 	UI *ApplicationUI `json:"ui,omitempty"`
-	// Backend is set when the application ships a backend/ directory. Nil means the
+	// Backend is set when the application ships backend/api/ (or a legacy flat
+	// backend/). Nil means the
 	// application has no Go backend and nothing is compiled or run for it.
 	Backend *ApplicationBackend `json:"backend,omitempty"`
+	// Container is set when the application ships backend/container/. Nil means
+	// it has no core-built container program.
+	Container *ApplicationContainer `json:"container,omitempty"`
 	// Skills names the agent skills this application ships. Like UI, it is filled in
 	// by the registry from the application's own skills/ directory rather than
 	// declared in application.json: each subdirectory holding a SKILL.md is one
@@ -192,8 +205,11 @@ type Application struct {
 	Skills []string `json:"skills,omitempty"`
 }
 
-// NeedsContainer reports whether this application has infrastructure to provision.
-func (application Application) NeedsContainer() bool { return application.Install != "" }
+// NeedsContainer reports whether this application has custom infrastructure or
+// a core-built container program to provision.
+func (application Application) NeedsContainer() bool {
+	return application.Install != "" || application.Container != nil
+}
 
 // NeedsPort reports whether this application exposes its provisioned component.
 func (application Application) NeedsPort() bool {
@@ -246,8 +262,12 @@ type Instance struct {
 	// "unknown, so re-install" — install scripts are idempotent, and assuming
 	// the container already holds the new version would be a guess.
 	ApplicationVersion string `json:"applicationVersion,omitempty"`
-	Name               string `json:"name"`
-	Scope              Scope  `json:"scope"`
+	// ContainerBuildVersion identifies the backend/container source installed
+	// alongside ApplicationVersion. It changes when that source changes even if
+	// an author forgets to bump application.json.
+	ContainerBuildVersion string `json:"containerBuildVersion,omitempty"`
+	Name                  string `json:"name"`
+	Scope                 Scope  `json:"scope"`
 	// ProjectID is set only for ScopeProject instances.
 	ProjectID string `json:"projectId,omitempty"`
 	// ContainerName is the LXD container the app runs in: a dedicated

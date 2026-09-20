@@ -39,7 +39,7 @@ func validateApplication(application svc.Application) error {
 	}
 	if !application.NeedsContainer() {
 		if application.Port.Internal != 0 || application.Port.DefaultExternal != 0 || application.Healthcheck.Command != "" || application.Service != "" {
-			return fmt.Errorf("port, healthcheck, and service require infra/install.sh")
+			return fmt.Errorf("port, healthcheck, and service require infra/install.sh or backend/container/")
 		}
 	} else if application.Port.Internal == 0 && (application.Port.DefaultExternal != 0 || application.Healthcheck.Command != "") {
 		return fmt.Errorf("port.defaultExternal and healthcheck require port.internal")

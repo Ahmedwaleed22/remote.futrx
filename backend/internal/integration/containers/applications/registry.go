@@ -220,6 +220,9 @@ func loadApplication(catalog fs.FS, id string) (svc.Application, []byte, error) 
 	if application.ID != id {
 		return svc.Application{}, nil, fmt.Errorf("application id %q does not match directory %q", application.ID, id)
 	}
+	// Container metadata is derived from backend/container/ below. A manifest
+	// cannot claim a build identity or commands that the package does not carry.
+	application.Container = nil
 	if err := validateInstallScriptPath(application.Install); err != nil {
 		return svc.Application{}, nil, err
 	}
@@ -242,7 +245,8 @@ func loadApplication(catalog fs.FS, id string) (svc.Application, []byte, error) 
 	application.Skills = skills
 
 	var script []byte
-	application.Install, script, err = loadApplicationInfrastructure(catalog, root, application.Install)
+	application.Install, script, application.Container, err = loadApplicationInfrastructure(
+		catalog, root, application.ID, application.Version, application.Install)
 	if err != nil {
 		return svc.Application{}, nil, err
 	}

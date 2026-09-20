@@ -113,6 +113,7 @@ func (s *Service) transition(ctx context.Context, id string, target InstanceStat
 	// upgrade again rather than claiming to have it.
 	if upgrading {
 		inst.ApplicationVersion = application.Version
+		inst.ContainerBuildVersion = containerBuildVersion(application)
 	}
 	if err := s.moveBackend(ctx, application, inst, target); err != nil {
 		_ = s.saveStatus(ctx, &inst, StatusError, err.Error())
