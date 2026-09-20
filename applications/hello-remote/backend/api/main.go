@@ -37,6 +37,7 @@ func main() {
 	b := &backend{mux: appplugin.NewMux(), inspectContainer: readContainerInfo}
 
 	b.mux.GET("hello", "Greet the calling user", b.hello)
+	b.mux.POST("echo", "Echo JSON, query, and headers from the frontend API explorer", b.echo)
 	b.mux.GET("container", "Report safe facts about this install's LXD container", b.container)
 	b.mux.GET("visits", "Report how many greetings this install has served", b.readVisits)
 	b.mux.POST("visits", "Count one greeting", b.countVisit)
@@ -51,7 +52,7 @@ func main() {
 func (b *backend) Describe() (appplugin.Descriptor, error) {
 	return appplugin.Descriptor{
 		Name:       "Hello Remote",
-		Version:    "4",
+		Version:    "5",
 		APIVersion: appplugin.APIVersion,
 		Routes:     b.mux.Routes(),
 	}, nil
@@ -98,6 +99,21 @@ func (b *backend) hello(request appplugin.Request) appplugin.Response {
 		"project": b.instance.ProjectID,
 		"admin":   request.Caller.IsAdmin,
 		"visits":  b.visits,
+	})
+}
+
+func (b *backend) echo(request appplugin.Request) appplugin.Response {
+	var body any
+	if len(request.Body) > 0 {
+		if err := json.Unmarshal(request.Body, &body); err != nil {
+			body = string(request.Body)
+		}
+	}
+	return appplugin.JSON(http.StatusOK, map[string]any{
+		"method":  request.Method,
+		"query":   request.Query,
+		"headers": request.Headers,
+		"body":    body,
 	})
 }
 

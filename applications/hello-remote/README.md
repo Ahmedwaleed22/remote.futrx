@@ -43,12 +43,26 @@ instance instead of failing the server. See
 
 ## What it does
 
-Two contributions, both calling the plugin:
+Hello Remote deliberately contributes controls throughout the product so this
+directory is a visual catalog of the frontend extension API:
 
 | Where | What |
 |---|---|
-| **Say hello** on this application's card | Opens a popup with the plugin's reply |
+| Sidebar header and search | Compact icon buttons through `ui.addIconButton` |
+| Every project row | A context-aware icon with that project's id and name |
+| Chat header and composer | Icons that receive the active project, chat, and working directory context |
+| This application's card | Labeled `ui.addButton` controls, scoped with `when` |
 | A panel below the applications list | Shows the greeting, counter, and live container facts |
+| Project settings | A custom panel mounted through `ui.register` with cleanup |
+
+Every API icon opens the same capability explorer. It displays `apiVersion`,
+application metadata, install visibility, slot context, backend availability,
+and observed `upload.completed` events. Its controls exercise
+`backend.call` (including method, JSON body, query, headers, and cancellation),
+`backend.fetch`, `backend.describe`, `backend.url`,
+`views.load`, `views.url`, `assets.url`, `remote.log`, and popup cleanup.
+The event subscription only observes uploads: the template does not call
+`claim`, because doing so would take ownership of a user's attachment.
 
 The greeting comes back as `"<greeting>, <your email>."`. The email is proof
 of something worth seeing: the browser never sent it. The server stamps the
@@ -73,7 +87,8 @@ again.
 | `backend/api/container.go` | The bounded `lxc exec` call from the host into the installed command. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without plugin-owned shell. |
-| `ui/scripts/main.js` | The entry module: one card button, one panel, and a render function that cleans up after itself. |
+| `ui/scripts/main.js` | The entry module: activates the showcase, card action, applications panel, and cleanup. |
+| `ui/scripts/showcase.js` | Buttons in every extension slot plus a live explorer for the complete frontend API. |
 | `ui/views/panel.html`, `ui/style/hello.css` | The two conventions — views loaded by name, CSS written against the platform's theme tokens. |
 
 Full documentation is in [`docs/dev/installable-applications/`](../../docs/dev/installable-applications/); the tutorial that builds an

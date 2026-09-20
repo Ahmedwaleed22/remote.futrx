@@ -1,11 +1,13 @@
 // Entry module for the Hello Remote example.
 //
 // The default export runs once, after sign-in, with the extension API. It adds
-// one card action and one panel, and both of them do the same thing: call this
-// application's own Go plugin and show what came back. That round trip — browser to
-// a process the server compiled out of backend/ — is the whole example.
+// controls across every extension slot plus the applications panel. Together
+// they expose the complete frontend API and call this application's own Go
+// plugin. That round trip — browser to a process the server compiled out of
+// backend/api/ — is the center of the example.
 
 import { mountContainerPanel } from "./containerPanel.js";
+import { activateFrontendShowcase } from "./showcase.js";
 
 const WAVE_ICON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
@@ -13,12 +15,15 @@ const WAVE_ICON =
   '<path d="M12 3v9M8.5 6.5v7M15.5 6.5v7M5 10v3.5a7 7 0 0 0 14 0V10"/></svg>';
 
 export default function activate(remote) {
+  activateFrontendShowcase(remote);
+
   // Per-instance action. The slot renders for every installed application, so
   // `when` is what keeps this button on this application's cards.
   remote.ui.addButton(remote.slots.applicationCardActions, {
     label: "Say hello",
     title: "Call this install's Go plugin",
     icon: WAVE_ICON,
+    variant: "solid",
     order: -10,
     when: (context) => context.instance?.applicationId === remote.application.id,
     onClick: (context) => sayHello(remote, context),

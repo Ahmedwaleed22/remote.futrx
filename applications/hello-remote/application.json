@@ -1,9 +1,9 @@
 {
   "id": "hello-remote",
   "name": "Hello Remote",
-  "description": "Example app: inspect its LXD container from a Go plugin and browser panel.",
+  "description": "Example app: explore every frontend extension slot and call its Go plugin and LXD container program.",
   "category": "development",
-  "version": "4",
+  "version": "5",
   "icon": "ui/assets/logo.svg",
   "scopes": ["global", "project"],
   "env": [

@@ -16,6 +16,7 @@ func newTestBackend(t *testing.T, dataDir string, env map[string]string) *backen
 	t.Helper()
 	b := &backend{mux: appplugin.NewMux()}
 	b.mux.GET("hello", "", b.hello)
+	b.mux.POST("echo", "", b.echo)
 	b.mux.GET("container", "", b.container)
 	b.mux.GET("visits", "", b.readVisits)
 	b.mux.POST("visits", "", b.countVisit)
@@ -75,6 +76,33 @@ func TestHelloUsesInstallGreetingAndCaller(t *testing.T) {
 
 	if got, want := call(t, b, "GET", "hello")["message"], "Good morning, user@example.com."; got != want {
 		t.Errorf("message = %v, want %v", got, want)
+	}
+}
+
+func TestEchoShowsFrontendRequestOptions(t *testing.T) {
+	b := newTestBackend(t, t.TempDir(), nil)
+	response, err := b.Handle(appplugin.Request{
+		Method:  http.MethodPost,
+		Path:    "echo",
+		Query:   map[string][]string{"source": {"frontend-showcase"}},
+		Headers: map[string][]string{"X-Hello-Remote": {"frontend-showcase"}},
+		Body:    []byte(`{"message":"hello"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body struct {
+		Method  string              `json:"method"`
+		Query   map[string][]string `json:"query"`
+		Headers map[string][]string `json:"headers"`
+		Body    map[string]string   `json:"body"`
+	}
+	if err := json.Unmarshal(response.Body, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Method != http.MethodPost || body.Query["source"][0] != "frontend-showcase" ||
+		body.Headers["X-Hello-Remote"][0] != "frontend-showcase" || body.Body["message"] != "hello" {
+		t.Fatalf("echo response = %+v", body)
 	}
 }
 
