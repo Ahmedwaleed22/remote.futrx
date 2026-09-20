@@ -16,6 +16,32 @@ import (
 // defaults, so a plugin cannot be declared without shipping one.
 const backendDir = "backend"
 
+// An application's backend/ holds Go for two different machines, and the
+// directory names are the only thing that says which is which.
+//
+// backendAPIDir is compiled here, by this server, and run as a child process on
+// the host. backendContainerDir is never compiled here: it is packed and built
+// inside the target LXD container, for that container's own architecture, and
+// reached over lxc exec.
+const (
+	backendAPIDir       = "api"
+	backendContainerDir = "container"
+)
+
+// backendSourceDir resolves which directory under backend/ the host compiles.
+//
+// backend/api/ is the current layout. Go at backend/'s own root is the original
+// flat layout, still resolved so that packages uploaded before the split keep
+// building across a server update — uploaded packages outlive the binary that
+// installed them, so dropping the fallback would break them in place.
+func backendSourceDir(fsys fs.FS, root string) string {
+	api := path.Join(root, backendAPIDir)
+	if info, err := fs.Stat(fsys, api); err == nil && info.IsDir() {
+		return api
+	}
+	return root
+}
+
 // loadApplicationBackend resolves an application's backend/ directory into a validated
 // descriptor. It checks the shape the build depends on — that there is Go
 // source, that it is a program rather than a library, and that it does not
@@ -39,15 +65,54 @@ func loadApplicationBackend(fsys fs.FS, root string, declared *svc.ApplicationBa
 	if backend.TimeoutMS < 0 {
 		return nil, fmt.Errorf("timeoutMs must not be negative")
 	}
-	if err := validateBackendSource(fsys, root); err != nil {
+	if err := validateBackendLayout(fsys, root); err != nil {
 		return nil, err
 	}
 	return &backend, nil
 }
 
+// validateBackendLayout checks backend/ as a whole, then the one directory the
+// host actually compiles.
+func validateBackendLayout(fsys fs.FS, root string) error {
+	source := backendSourceDir(fsys, root)
+	if source != root {
+		if err := rejectStrayBackendRoot(fsys, root); err != nil {
+			return err
+		}
+	}
+	return validateBackendSource(fsys, source)
+}
+
+// rejectStrayBackendRoot enforces that backend/'s own root carries no build
+// inputs once backend/api/ exists. Go source left there is never compiled and
+// never runs, which reads as live code to everyone who opens it; a module file
+// there is never used at all. Both are silent mistakes, so both are errors.
+func rejectStrayBackendRoot(fsys fs.FS, root string) error {
+	entries, err := fs.ReadDir(fsys, root)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", root, err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if name == "go.mod" || name == "go.sum" {
+			return fmt.Errorf(
+				"%s/%s is not supported: the server generates the plugin module", root, name)
+		}
+		if strings.HasSuffix(name, ".go") {
+			return fmt.Errorf(
+				"%s/%s is ignored when %s exists: move host source into %s",
+				root, name, path.Join(root, backendAPIDir), path.Join(root, backendAPIDir))
+		}
+	}
+	return nil
+}
+
 // validateBackendSource enforces what the build directory the server generates
-// can actually compile: package main at the root of backend/, and no module
-// file of its own, since the server writes one that pins the SDK.
+// can actually compile: package main at the root of the compiled directory, and
+// no module file of its own, since the server writes one that pins the SDK.
 func validateBackendSource(fsys fs.FS, root string) error {
 	entries, err := fs.ReadDir(fsys, root)
 	if err != nil {
@@ -93,16 +158,22 @@ func packageName(fsys fs.FS, name string) (string, error) {
 	return file.Name.Name, nil
 }
 
-// BackendSource returns the Go source under an application's backend/ directory,
-// rooted at that directory. These bytes are compiled by the plugin host; unlike
-// ui/ assets they are never served, so there is no path-traversal surface here
-// — a caller gets the whole subtree or nothing.
+// BackendSource returns the Go source the plugin host compiles, rooted at the
+// directory that holds it — backend/api/ in the current layout, backend/ itself
+// in the flat one. Unlike ui/ assets these bytes are never served, so there is
+// no path-traversal surface here: a caller gets the whole subtree or nothing.
+//
+// backend/container/ is deliberately outside whatever this returns. That source
+// is built inside the target container, so handing it to the host compiler
+// would be wrong, and including it would make the build fingerprint change
+// whenever container-only code changed.
 func (r *Registry) BackendSource(applicationID string) (fs.FS, bool) {
 	img, catalog, ok := r.applicationSource(applicationID)
 	if !ok || img.Backend == nil {
 		return nil, false
 	}
-	sub, err := fs.Sub(catalog, path.Join(catalogRoot, applicationID, backendDir))
+	root := path.Join(catalogRoot, applicationID, backendDir)
+	sub, err := fs.Sub(catalog, backendSourceDir(catalog, root))
 	if err != nil {
 		return nil, false
 	}

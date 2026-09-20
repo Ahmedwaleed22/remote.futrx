@@ -3,6 +3,7 @@ package pluginhost
 import (
 	"context"
 	"encoding/json"
+	"io/fs"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -97,7 +98,7 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 			"scopes": ["global", "project"],
 			"backend": {"access": "registered", "timeoutMs": 10000}
 		}`),
-		"applications/catalog-fixture/backend/main.go": file(catalogPluginMain),
+		"applications/catalog-fixture/backend/api/main.go": file(catalogPluginMain),
 	})
 	if err != nil {
 		t.Fatalf("load catalog: %v", err)
@@ -200,4 +201,79 @@ func decode(t *testing.T, host *Host, spec svc.BackendSpec, request appplugin.Re
 		t.Fatalf("%s %s: body %s is not JSON: %v", request.Method, request.Path, response.Body, err)
 	}
 	return payload
+}
+
+// The same proof for the api/container layout: the registry resolves the
+// compiled root to backend/api/, and backend/container/ — source meant for the
+// target container, which is not package main and would not compile here — is
+// kept out of what the host is handed rather than breaking the build.
+func TestPluginWithTheAPILayoutCompilesAndServes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("compiles a plugin with the Go toolchain")
+	}
+	if _, err := findGoTool(testGoToolOverride()); err != nil {
+		t.Skipf("no Go toolchain available: %v", err)
+	}
+	file := func(data string) *fstest.MapFile { return &fstest.MapFile{Data: []byte(data)} }
+	registry, err := containerapplications.NewRegistryFromFS(fstest.MapFS{
+		"applications/api-fixture/application.json": file(`{
+			"name": "API Fixture",
+			"version": "1.0.0",
+			"scopes": ["global", "project"],
+			"backend": {"access": "registered", "timeoutMs": 10000}
+		}`),
+		"applications/api-fixture/backend/api/main.go": file(catalogPluginMain),
+		// Not package main, and referencing nothing the host build provides.
+		// Reaching the compiler at all would fail this test.
+		"applications/api-fixture/backend/container/cmd/agent/main.go": file(
+			"package main\n\nfunc main() { panic(\"never built on the host\") }\n"),
+		"applications/api-fixture/backend/container/internal/info/info.go": file(
+			"package info\n\nfunc Read() string { return \"\" }\n"),
+	})
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	application, ok := registry.Get("api-fixture")
+	if !ok || application.Backend == nil {
+		t.Fatal("the api-layout application did not load with a backend")
+	}
+
+	source, ok := registry.BackendSource("api-fixture")
+	if !ok {
+		t.Fatal("no backend source")
+	}
+	if _, err := fs.Stat(source, "main.go"); err != nil {
+		t.Errorf("backend source is not rooted at backend/api: %v", err)
+	}
+	if _, err := fs.Stat(source, "container"); err == nil {
+		t.Error("container source reached the host build tree")
+	}
+
+	host := New(sharedRoot(t), registry, Options{GoTool: testGoToolOverride()})
+	t.Cleanup(host.Shutdown)
+	spec := svc.BackendSpec{
+		ApplicationID: application.ID,
+		Instance: appplugin.Instance{
+			ID:            "api-layout-e2e",
+			ApplicationID: application.ID,
+			Scope:         string(svc.ScopeGlobal),
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	descriptor, err := host.Ensure(ctx, spec)
+	if err != nil {
+		t.Fatalf("start the api-layout plugin: %v", err)
+	}
+	if descriptor.APIVersion != appplugin.APIVersion {
+		t.Fatalf("descriptor = %+v", descriptor)
+	}
+	health := decode(t, host, spec, appplugin.Request{
+		Method: "GET", Path: "health",
+		Caller: appplugin.Caller{Email: "admin@example.com", IsAdmin: true},
+	})
+	if health["ok"] != true {
+		t.Errorf("health = %v", health)
+	}
 }

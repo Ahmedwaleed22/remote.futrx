@@ -113,6 +113,44 @@ func TestLoadApplicationBackendRejectsBrokenLayouts(t *testing.T) {
 			declared: &svc.ApplicationBackend{TimeoutMS: -1},
 			contains: "negative",
 		},
+		{
+			name: "host source left beside backend/api",
+			files: map[string]string{
+				"backend/api/main.go": validPluginMain,
+				"backend/main.go":     validPluginMain,
+			},
+			contains: "move host source into backend/api",
+		},
+		{
+			name: "a module file beside backend/api",
+			files: map[string]string{
+				"backend/api/main.go": validPluginMain,
+				"backend/go.mod":      "module example.com/backend\n",
+			},
+			contains: "generates the plugin module",
+		},
+		{
+			name: "backend/api carrying its own module file",
+			files: map[string]string{
+				"backend/api/main.go": validPluginMain,
+				"backend/api/go.mod":  "module example.com/backend\n",
+			},
+			contains: "generates the plugin module",
+		},
+		{
+			name: "backend/api holding a library rather than a program",
+			files: map[string]string{
+				"backend/api/helper.go": "package helper\n",
+			},
+			contains: "want main",
+		},
+		{
+			name: "backend/api with no Go source",
+			files: map[string]string{
+				"backend/api/README.md": "notes",
+			},
+			contains: "backend/api contains no package main",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := loadApplicationBackend(backendTree(tc.files), "backend", tc.declared)
@@ -155,5 +193,34 @@ func TestRegistryBackendSource(t *testing.T) {
 		if _, ok := r.BackendSource(id); ok {
 			t.Errorf("%s reports backend source it does not have", id)
 		}
+	}
+}
+
+// The api/ and container/ split is what states which Go runs where. Only
+// backend/api/ is compiled on the host, and container source must stay out of
+// what the host is handed — it is built inside the target container instead.
+func TestLoadApplicationBackendAcceptsTheAPILayout(t *testing.T) {
+	_, err := loadApplicationBackend(backendTree(map[string]string{
+		"backend/api/main.go":                    validPluginMain,
+		"backend/api/main_test.go":               "package main\n",
+		"backend/container/cmd/agent/main.go":    validPluginMain,
+		"backend/container/internal/x/helper.go": "package x\n",
+	}), "backend", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// container/ holds packages that are not main and never compile on the host.
+// Resolving the compiled root to backend/api/ is what keeps them out of the
+// package-clause check rather than having to special-case them inside it.
+func TestBackendSourceDirResolvesTheCompiledRoot(t *testing.T) {
+	api := backendTree(map[string]string{"backend/api/main.go": validPluginMain})
+	if got := backendSourceDir(api, "backend"); got != "backend/api" {
+		t.Errorf("backendSourceDir = %q, want backend/api", got)
+	}
+	flat := backendTree(map[string]string{"backend/main.go": validPluginMain})
+	if got := backendSourceDir(flat, "backend"); got != "backend" {
+		t.Errorf("backendSourceDir = %q, want the flat backend/ fallback", got)
 	}
 }
