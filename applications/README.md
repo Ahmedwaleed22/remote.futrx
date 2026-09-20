@@ -9,8 +9,8 @@ any an administrator has uploaded as a `.zip` — same shape, same validator,
 stored outside the binary. See [Uploaded packages](../docs/dev/installable-applications/16-uploaded-packages.md).
 
 **One application ships here: [`hello-remote/`](hello-remote/)**, the worked example
-— a Go backend and the browser UI that calls it, installing nothing in any
-container. Real apps — MySQL, PostgreSQL, Redis, s3disk — live in their own
+— a host Go backend, a container Go command, and the browser UI that calls it.
+Real apps — MySQL, PostgreSQL, Redis, s3disk — live in their own
 repositories and reach a server as uploaded packages, so the catalog format can
 change here without a database application riding along in the same review.
 Everything below is the format they are all written against, and dropping a
@@ -41,14 +41,17 @@ applications/
   backend-playground/
     README.md
     application.json
-    backend/         Go source, compiled by the server and run as a process
-      main.go
+    backend/
+      api/           Go source, compiled by the server and run as a process
+        main.go
+      container/     Go source, compiled inside the target container
+        cmd/my-agent/main.go
     ui/              the extension that calls it
 ```
 
 Keep regular files at the application root limited to `README.md` and
-`application.json`. Put provisioning files in `infra/`, server code in
-`backend/`, and browser code and assets in `ui/`.
+`application.json`. Put custom provisioning files in `infra/`, host code in
+`backend/api/`, container programs in `backend/container/`, and browser assets in `ui/`.
 
 ## 📚 Full documentation: [`docs/dev/installable-applications/`](../docs/dev/installable-applications/)
 
@@ -78,16 +81,17 @@ and nothing else. Start with
 ## Adding an app, in short
 
 1. Create `applications/<id>/application.json`. `id` must equal the directory name, and
-   `version` is required — changing it is what re-runs `infra/install.sh` on copies
+   `version` is required — changing it is what reprovisions copies
    people already installed. See
    [Versions and upgrades](../docs/dev/installable-applications/17-versions-and-upgrades.md).
-2. Add any capabilities the application needs. `infra/install.sh` provisions a
-   container; `port.internal` exposes it; `backend/` adds server behavior; and
+2. Add any capabilities the application needs. `infra/install.sh` performs custom
+   provisioning; `backend/container/` adds core-built container commands;
+   `port.internal` exposes it; `backend/api/` adds server behavior; and
    `ui/` adds browser behavior. These may be used independently or together.
 3. Optionally add `ui/` to contribute to the interface. The layout is the
    manifest: `scripts/main.js` is the entry, `style/*.css` are injected,
    `views/*.html` are loadable by name.
-4. Optionally add `backend/` for server-side work. `main.go` implements
+4. Optionally add `backend/api/` for server-side work. `main.go` implements
    `appplugin.Backend`; the application's `ui/` reaches it through
    `remote.backend.call(...)`. See
    [Backend plugins](../docs/dev/installable-applications/15-backend-plugins.md).
@@ -126,8 +130,9 @@ install's secrets. It deserves the same review as any change under
 ## The example app
 
 [`hello-remote/`](hello-remote/) is the one application this repository ships, and it
-is here to be installed. It has `backend/` and `ui/` capabilities but no
-`infra/install.sh`, so it needs no LXD, port, or proxy device and works on a laptop. Installing it exercises the
+is here to be installed. It has `backend/api/`, `backend/container/`, and `ui/`
+capabilities but no plugin-owned shell. It needs LXD for container inspection
+but no port or proxy device. Installing it exercises the
 catalog, the install dialog's `env[]` field, both extension slots it draws in,
 and a real backend process — so if it works, the feature works.
 

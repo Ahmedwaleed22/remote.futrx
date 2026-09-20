@@ -76,7 +76,7 @@ broke the contract.
 ## Backend Playground
 
 The counterpart to UI Playground on the other side of the wire. It ships a Go
-plugin in `backend/main.go` and a `ui/`
+plugin in `backend/api/main.go` and a `ui/`
 that calls it, and every route exists to demonstrate one property of the
 contract:
 

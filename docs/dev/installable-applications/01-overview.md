@@ -13,10 +13,11 @@ applications/
     application.json         metadata and capability configuration
     infra/
       install.sh              provisioner, run inside a container
-      package.sh              builds the optional infrastructure payload
-      payload.tar.gz          files staged for install.sh
-    backend/                  Go backend, compiled and run on the host
-      main.go
+    backend/
+      api/                    Go backend, compiled and run on the host
+        main.go
+      container/              Go programs built inside the target container
+        cmd/my-agent/main.go
     ui/                       browser extension
       scripts/main.js
       style/
@@ -33,7 +34,8 @@ applications/
 
 The only regular files at an application root are `README.md` and
 `application.json`. Everything executable or distributable is grouped by
-capability: provisioning in `infra/`, server code in `backend/`, browser code
+capability: custom provisioning in `infra/`, host code in `backend/api/`,
+container code in `backend/container/`, browser code
 and assets in `ui/`, and project skills in `skills/`. These capability folders
 are optional; the tree above shows the complete layout rather than a list of
 required folders.
@@ -58,11 +60,9 @@ Applications tab.
 ```
                          application.json
             /                 |              |             \
- infra/install.sh         backend/          ui/           skills/
-         |                    |              |               |
- provisions a container   runs on the    runs in the     is published to
- (optionally with a port)  host as a      browser         target projects
-                           process
+ infra/install.sh      backend/api/    backend/container/      ui/        skills/
+         |                  |                  |                |            |
+ custom provisioning   host process      container programs   browser      projects
 ```
 
 There are no application types and `application.json` has no `type` field.
@@ -71,9 +71,9 @@ optional and independent:
 
 | Capability | Declared by | What Remote does |
 |---|---|---|
-| Infrastructure | `infra/install.sh`, or an `install` path inside `infra/` | Provisions software in a container |
+| Infrastructure | `infra/install.sh`, an `install` path inside `infra/`, or `backend/container/` | Provisions software in a container |
 | Network exposure | infrastructure plus `port.internal` | Allocates a host port and adds an LXD proxy device |
-| Backend | `backend/` | Compiles and runs the Go backend on the host |
+| Backend | `backend/api/` | Compiles and runs the Go backend on the host |
 | UI | `ui/` | Loads the browser extension |
 | Skills | `skills/*/SKILL.md` | Publishes skills to the target project |
 

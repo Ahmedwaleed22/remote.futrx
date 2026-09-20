@@ -1,7 +1,6 @@
-// Hello Remote is the catalog's worked example. It ships a backend/ the server
-// compiles and runs as a child process, and a ui/ that calls it from the browser.
-// Its infrastructure installs the fixed inspector command the backend invokes
-// inside the target LXD container.
+// Hello Remote is the catalog's worked example. Required host plugin surface:
+// package main, main calling pluginrpc.Serve, and the Describe, Init, and Handle
+// methods. Mux, persistence, and the example routes are optional conveniences.
 package main
 
 import (
@@ -32,7 +31,9 @@ type backend struct {
 	visits   int
 }
 
+// REQUIRED — main must serve a value implementing appplugin.Backend.
 func main() {
+	// OPTIONAL — Mux keeps route discovery and dispatch in one table.
 	b := &backend{mux: appplugin.NewMux(), inspectContainer: readContainerInfo}
 
 	b.mux.GET("hello", "Greet the calling user", b.hello)
@@ -43,19 +44,20 @@ func main() {
 	pluginrpc.Serve(b)
 }
 
-// Describe runs once, when the host connects. Routes() reports exactly what
+// REQUIRED — Describe runs once when the host connects. APIVersion must use
+// appplugin.APIVersion or the host refuses the process. Routes() reports what
 // was registered above, so the route table the SPA discovers through
 // remote.backend.describe() cannot drift from the one actually served.
 func (b *backend) Describe() (appplugin.Descriptor, error) {
 	return appplugin.Descriptor{
 		Name:       "Hello Remote",
-		Version:    "2",
+		Version:    "4",
 		APIVersion: appplugin.APIVersion,
 		Routes:     b.mux.Routes(),
 	}, nil
 }
 
-// Init runs once before the first request, and is where the process learns
+// REQUIRED — Init runs once before the first request, and is where the process learns
 // which installed copy it belongs to. A global install and two project
 // installs are three processes, each with its own Instance and its own
 // DataDir.
@@ -67,7 +69,7 @@ func (b *backend) Init(instance appplugin.Instance) error {
 	return nil
 }
 
-// Handle may be called concurrently, so everything below takes the lock.
+// REQUIRED — Handle may be called concurrently.
 func (b *backend) Handle(request appplugin.Request) (appplugin.Response, error) {
 	return b.mux.Serve(request), nil
 }

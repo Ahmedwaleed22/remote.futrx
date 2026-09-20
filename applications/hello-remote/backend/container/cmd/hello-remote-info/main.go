@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 
-	"hello-remote.local/infra/internal/containerinfo"
+	"futrx.local/catalog/applications/hello-remote/backend/container/internal/containerinfo"
 )
 
 var version = "development"
 
+// REQUIRED — each cmd/<name> program needs package main and func main().
+// Remote supplies packaging, the Go toolchain, installation, and build markers.
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--version" {
 		fmt.Println(version)

@@ -22,7 +22,7 @@ type containerInfo struct {
 	UptimeSeconds    int64  `json:"uptimeSeconds"`
 }
 
-// readContainerInfo invokes the inspector installed from infra/ in the target
+// readContainerInfo invokes the inspector built from backend/container/ in the target
 // container. The backend runs on the host and crosses only this fixed command.
 func readContainerInfo(name string) (containerInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), containerInspectionTimeout)

@@ -94,8 +94,10 @@ type Response struct {
 	Body    []byte              `json:"body,omitempty"`
 }
 
-// Backend is what an application's plugin implements. The host calls Describe once
-// on connect, Init once before the first request, and Handle per request.
+// Backend is the required contract for an application's host plugin. All three
+// methods are mandatory: pluginrpc.Serve accepts a Backend, so an incomplete
+// implementation fails to compile. Describe must report APIVersion or the host
+// refuses the plugin during its handshake.
 //
 // Handle may be called concurrently. The process is killed when the app is
 // stopped or uninstalled, so a plugin must not rely on a graceful shutdown for

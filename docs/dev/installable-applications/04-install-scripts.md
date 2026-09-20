@@ -1,7 +1,8 @@
 # 04 — Install scripts
 
-Applications that provision a container have one. UI-only or backend-only
-applications need no script — see
+Applications may provide one for custom container provisioning. A Go program in
+`backend/container/` needs no shell: Remote packages and builds it automatically.
+UI-only and host-backend-only applications need neither — see
 [03 — Application capabilities](03-application-capabilities.md).
 
 ## The contract
@@ -40,7 +41,34 @@ attached to the error message when the script fails.
 There is an 8-minute timeout (`execTimeout` in `installer.go`), which is
 generous enough for an `apt-get install` on a cold container.
 
-## Bundled infra files
+## Container-side Go programs
+
+Put container programs under `backend/container/cmd/<binary>/`. Each program
+must use `package main` and provide `func main()`:
+
+```text
+backend/
+  container/
+    cmd/
+      my-agent/
+        main.go
+    internal/
+      state/
+        state.go
+```
+
+Remote deterministically packs the source, stages it in the target LXD
+container, installs the matching Go toolchain, builds every `cmd/*`, and places
+the binaries in `/usr/local/bin`. It records a source-derived build marker, so
+idempotence does not require `--version`, a version variable, `package.sh`, or a
+committed archive. An optional `infra/install.sh` runs after these generated
+build steps when the application also needs systemd units or other setup.
+
+Applications uploaded as ZIPs may ship their own `backend/container/go.mod` for
+dependencies. The built-in catalog's container source participates in the
+catalog module and receives a generated module when staged.
+
+## Legacy bundled infra files
 
 An application may include `infra/payload.tar.gz`. The archive holds
 regular files and directories under `infra/`. The catalog validates the
@@ -49,20 +77,9 @@ inside the target container. The script receives that directory as
 `APP_PACKAGE_DIR`; cleanup runs when the script exits, including on failure.
 Applications without an archive retain the plain `bash -s` behavior.
 
-For example, an application whose container-side program is a Go module builds it
-from `$APP_PACKAGE_DIR/infra/`. That module, the application's host `backend/` and
-its browser `ui/` all belong to the same application folder, and a packaging script
-in the application refreshes the archive from that source. The archive is what allows
-a catalog to carry nested Go modules, which `go:embed` does not traverse.
-
-The s3disk application is the worked example, and it lives in its own repository
-rather than here. Its `infra/` is a Go module with its own `go.mod`, its
-`infra/package.sh` rebuilds `infra/payload.tar.gz` reproducibly, and `infra/install.sh`
-compiles the staged source inside the container. Copy that shape if your application
-needs one — including the part that is easy to miss: because
-`go:embed` skips a nested module in silence rather than failing, a stale or
-missing archive produces a green build and a broken install, so the freshness
-of the archive needs a test of its own.
+This transport remains supported for existing uploaded packages. New Go-based
+container programs should use `backend/container/`; it removes the possibility
+of committing a payload that is stale relative to its source.
 
 Payloads are limited to 8 MiB compressed and 32 MiB expanded. Paths outside
 `infra/`, links, duplicate entries and special files are rejected. An

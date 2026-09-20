@@ -6,9 +6,9 @@ application does from its files and manifest fields.
 
 | Capability | How it is detected | Effect when installed |
 |---|---|---|
-| Infrastructure | `infra/install.sh` exists, or `install` names another script inside `infra/` | Provisions the target container |
+| Infrastructure | `infra/install.sh` exists, `install` names another script inside `infra/`, or `backend/container/` exists | Provisions the target container |
 | Network port | Infrastructure exists and `port.internal` is greater than zero | Allocates a host port and creates an LXD proxy device |
-| Backend | `backend/` exists | Compiles and runs the Go backend on the host |
+| Backend | `backend/api/` exists (legacy flat `backend/` is accepted) | Compiles and runs the Go backend on the host |
 | UI | `ui/` exists | Loads the browser extension |
 | Skills | `skills/*/SKILL.md` exists | Publishes the skills into the target project |
 

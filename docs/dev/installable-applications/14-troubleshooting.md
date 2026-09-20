@@ -14,7 +14,7 @@ Common causes:
 | Message | Cause |
 |---|---|
 | `application id "x" does not match directory "y"` | `id` in `application.json` differs from the directory name |
-| `port, healthcheck, and service require infra/install.sh` | add infrastructure or remove container-only fields |
+| `port, healthcheck, and service require infra/install.sh or backend/container/` | add a container capability or remove container-only fields |
 | `port.defaultExternal and healthcheck require port.internal` | declare the internal listener port |
 | `read install script "…"` | the explicitly configured install script does not exist |
 | `application has no infra, backend, ui, or skills` | add at least one capability directory |

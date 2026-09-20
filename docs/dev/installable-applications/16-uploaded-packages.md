@@ -48,18 +48,17 @@ application.json     required — and it must set "id" and "version"
 infra/install.sh     optional container provisioning
 infra/payload.tar.gz optional infra payload (see 04 — Install scripts)
 ui/…                  optional browser extension
-backend/…             optional Go backend
+backend/api/…         optional host Go backend
+backend/container/…   optional Go programs built inside the target container
 ```
 
 Both shapes are accepted: the files at the archive root, or inside a single
 folder — which is what "compress this folder" produces on a desktop. macOS
 bookkeeping (`__MACOSX/`, `.DS_Store`, `._*`) is ignored.
 
-So any zip tool will do — unless the application carries an `infra/payload.tar.gz`, which
-nothing here builds for you: the archive is extracted as it arrives, and an
-application whose container source is a nested Go module has to ship the payload
-already packed. The convention is `infra/package.sh`, which builds
-`infra/payload.tar.gz` and, with `--zip`, writes the whole archive.
+So any zip tool will do. Container-side Go ships as ordinary source under
+`backend/container/`; Remote packs and builds it. Legacy packages may still
+carry `infra/payload.tar.gz`, which is extracted as it arrives.
 
 `application.json` must set both `"id"` and `"version"`.
 

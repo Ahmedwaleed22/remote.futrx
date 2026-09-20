@@ -1,6 +1,6 @@
 # 15 — Backend plugins
 
-An application can ship a `backend/` directory of Go source. The server compiles it,
+An application can ship a `backend/api/` directory of Go source. The server compiles it,
 runs it as a separate process, and forwards HTTP calls to it — so an application can
 add a **server-side feature**, and its `ui/` can call that feature, without any
 change to the Remote codebase.
@@ -8,13 +8,14 @@ change to the Remote codebase.
 ```
 applications/my-backend/
   application.json
-  backend/            ← Go source, compiled and run on the host
-    main.go
+  backend/
+    api/              ← Go source, compiled and run on the host
+      main.go
   ui/                ← runs in the browser, calls the plugin
     scripts/main.js
 ```
 
-`ui/` is what an application can add to the interface. `backend/` is what it can add
+`ui/` is what an application can add to the interface. `backend/api/` is what it can add
 to the server. Together they are the whole shape of a feature that could
 otherwise only be added by editing this repository.
 
@@ -31,10 +32,12 @@ import (
 )
 
 type backend struct {
+	// OPTIONAL — Mux is a routing convenience, not part of Backend.
 	mux      *appplugin.Mux
 	instance appplugin.Instance
 }
 
+// REQUIRED — serve a value implementing appplugin.Backend.
 func main() {
 	b := &backend{mux: appplugin.NewMux()}
 	b.mux.GET("hello", "Say hello", func(request appplugin.Request) appplugin.Response {
@@ -45,6 +48,7 @@ func main() {
 	pluginrpc.Serve(b)
 }
 
+// REQUIRED — APIVersion must be the SDK constant.
 func (b *backend) Describe() (appplugin.Descriptor, error) {
 	return appplugin.Descriptor{
 		Name:       "My Plugin",
@@ -54,11 +58,13 @@ func (b *backend) Describe() (appplugin.Descriptor, error) {
 	}, nil
 }
 
+// REQUIRED — called once before the first request.
 func (b *backend) Init(instance appplugin.Instance) error {
 	b.instance = instance
 	return nil
 }
 
+// REQUIRED — may be called concurrently.
 func (b *backend) Handle(request appplugin.Request) (appplugin.Response, error) {
 	return b.mux.Serve(request), nil
 }
@@ -81,6 +87,27 @@ const greeting = await remote.backend.call("hello");
 ```
 
 That is the entire round trip.
+
+## Required surface
+
+The host side is a Go program rooted at `backend/api/`. These are the parts a
+plugin must have; `Mux`, `appplugin.JSON`, route registration, persistence, and
+the route table are conveniences rather than contract requirements.
+
+| Requirement | Enforced by | Failure if omitted |
+|---|---|---|
+| `package main` and at least one non-test Go file in `backend/api/` | catalog validator | application is refused at load |
+| no `go.mod` or `go.sum` in `backend/api/` | catalog validator; Remote generates the module | application is refused at load |
+| `func main()` calling `pluginrpc.Serve` | compiler and plugin handshake | build failure, or a process that cannot connect |
+| `Describe() (appplugin.Descriptor, error)` | `appplugin.Backend` interface | build failure |
+| `Init(appplugin.Instance) error` | `appplugin.Backend` interface | build failure |
+| `Handle(appplugin.Request) (appplugin.Response, error)` | `appplugin.Backend` interface | build failure |
+| `Descriptor.APIVersion: appplugin.APIVersion` | runtime handshake | host refuses the plugin |
+
+`backend/container/` is a separate, optional execution context. Programs under
+`backend/container/cmd/<binary>/` are copied into and built inside LXD. Their
+only required Go surface is `package main` and `func main()`; Remote owns their
+module fallback, packaging, toolchain, installation, and build marker.
 
 ## The contract
 
@@ -207,7 +234,7 @@ does not. An application can narrow that itself:
 
 ## What the server does with your source
 
-Nothing is compiled until an application with a `backend/` directory is installed.
+Nothing is compiled until an application with a `backend/api/` directory is installed.
 Then, on install — and on start, and on the first call after a restart:
 
 ```
@@ -240,9 +267,9 @@ A plugin may import the **standard library** and **this SDK**. The generated
 `go.mod` pins every module to the version the server itself was built with,
 which is what lets a plugin compile with no network at all.
 
-A `go.mod` inside `backend/` is rejected at catalog load: the server writes that
+A `go.mod` inside `backend/api/` is rejected at catalog load: the server writes that
 file. If you need a third-party module, the honest answer today is to vendor
-the code you need into `backend/` or add the dependency to the server.
+the code you need into `backend/api/` or add the dependency to the server.
 
 ### Where things live
 
@@ -265,7 +292,7 @@ finding them in the cache the server's own build left behind. Give the service a
 ### No toolchain, no plugin
 
 A server with no Go toolchain installs and runs everything else normally; an
-application with a `backend/` reports the missing toolchain on its installed row. Set
+application with a `backend/api/` reports the missing toolchain on its installed row. Set
 `REMOTE_PLUGIN_GO` to point at a specific `go` binary if it is somewhere
 unusual.
 
@@ -302,10 +329,10 @@ its work unobserved and answers the next request normally.
 
 ## Combining capabilities
 
-`backend/` and `ui/` install nothing in a container and work on a host with no
-container runtime. Add `infra/install.sh` when the same application must also
-provision software; the backend can then coordinate that software and its UI can
-expose it to the user.
+`backend/api/` and `ui/` install nothing in a container and work on a host with no
+container runtime. Add `backend/container/` for Go commands built in LXD, and
+`infra/install.sh` only for additional custom provisioning; the host backend can
+coordinate that software and its UI can expose it to the user.
 to.
 
 ## Why net/rpc rather than gRPC
@@ -331,7 +358,7 @@ contract. See [10 — Fixtures](10-fixtures.md).
 ## Related
 
 - [02 — application.json reference](02-application-json.md#backend) — the `backend` block.
-- [03 — Application capabilities](03-application-capabilities.md) — how `backend/` composes with the others.
+- [03 — Application capabilities](03-application-capabilities.md) — how `backend/api/` composes with the others.
 - [06 — Extension API](06-extension-api.md#remotebackend) — `remote.backend` in full.
 - [12 — HTTP API](12-http-api.md#backend-plugin-routes) — the routes and their authorization.
 - [13 — Security model](13-security-model.md#backend-plugins) — what a plugin can do, and what stops it.

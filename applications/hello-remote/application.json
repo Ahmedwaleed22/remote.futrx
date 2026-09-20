@@ -3,7 +3,7 @@
   "name": "Hello Remote",
   "description": "Example app: inspect its LXD container from a Go plugin and browser panel.",
   "category": "development",
-  "version": "3",
+  "version": "4",
   "icon": "ui/assets/logo.svg",
   "scopes": ["global", "project"],
   "env": [
