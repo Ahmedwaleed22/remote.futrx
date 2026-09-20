@@ -43,7 +43,7 @@ func (i *failingInstaller) Install(ctx context.Context, spec InstallSpec) error 
 	return i.recordingInstaller.Install(ctx, spec)
 }
 
-func serviceImageAt(version string) Application {
+func serviceApplicationAt(version string) Application {
 	return Application{
 		ID:      "db",
 		Name:    "Database",
@@ -105,7 +105,7 @@ func TestUploadReinstallsInstancesWhenTheVersionChanges(t *testing.T) {
 		},
 	}
 	installer := &failingInstaller{}
-	registry := &versionedRegistry{application: serviceImageAt("2.0.0")}
+	registry := &versionedRegistry{application: serviceApplicationAt("2.0.0")}
 	catalog := &recordingCatalog{pkg: Package{ID: "db", Name: "Database", Version: "2.0.0"}}
 	service := upgradeService(store, registry, installer, catalog, &recordingHost{})
 
@@ -148,7 +148,7 @@ func TestUploadReinstallsInstancesWhenTheVersionChanges(t *testing.T) {
 func TestUploadDoesNotReinstallWhenTheVersionIsUnchanged(t *testing.T) {
 	store := &fakeStore{global: []Instance{installedAt("g1", "", "1.0.0", StatusRunning)}}
 	installer := &failingInstaller{}
-	registry := &versionedRegistry{application: serviceImageAt("1.0.0")}
+	registry := &versionedRegistry{application: serviceApplicationAt("1.0.0")}
 	catalog := &recordingCatalog{pkg: Package{ID: "db", Version: "1.0.0"}}
 	host := &recordingHost{}
 	service := upgradeService(store, registry, installer, catalog, host)
@@ -176,7 +176,7 @@ func TestUploadDoesNotReinstallWhenTheVersionIsUnchanged(t *testing.T) {
 func TestUploadReinstallsAnInstanceWithNoRecordedVersion(t *testing.T) {
 	store := &fakeStore{global: []Instance{installedAt("g1", "", "", StatusRunning)}}
 	installer := &failingInstaller{}
-	registry := &versionedRegistry{application: serviceImageAt("1.0.0")}
+	registry := &versionedRegistry{application: serviceApplicationAt("1.0.0")}
 	service := upgradeService(
 		store, registry, installer, &recordingCatalog{pkg: Package{ID: "db"}}, nil)
 
@@ -197,7 +197,7 @@ func TestUploadReinstallsAnInstanceWithNoRecordedVersion(t *testing.T) {
 func TestUploadDoesNotReinstallApplicationsWithNoContainerSide(t *testing.T) {
 	for _, capability := range []string{"ui", "backend"} {
 		t.Run(capability, func(t *testing.T) {
-			application := serviceImageAt("2.0.0")
+			application := serviceApplicationAt("2.0.0")
 			application.Install = ""
 			application.Port = Port{}
 			application.Service = ""
@@ -231,7 +231,7 @@ func TestUploadDoesNotReinstallApplicationsWithNoContainerSide(t *testing.T) {
 }
 
 func TestNeedsUpgradeWhenContainerSourceChanges(t *testing.T) {
-	application := serviceImageAt("1.0.0")
+	application := serviceApplicationAt("1.0.0")
 	application.Install = ""
 	application.Container = &ApplicationContainer{BuildVersion: "1.0.0+newdigest"}
 	instance := installedAt("g1", "", "1.0.0", StatusRunning)
@@ -253,7 +253,7 @@ func TestUploadLeavesStoppedInstancesAlone(t *testing.T) {
 	installer := &failingInstaller{}
 	service := upgradeService(
 		store,
-		&versionedRegistry{application: serviceImageAt("2.0.0")},
+		&versionedRegistry{application: serviceApplicationAt("2.0.0")},
 		installer,
 		&recordingCatalog{pkg: Package{ID: "db", Version: "2.0.0"}},
 		nil,
@@ -276,7 +276,7 @@ func TestStartingAStaleInstanceReinstallsIt(t *testing.T) {
 	store := &fakeStore{global: []Instance{installedAt("g1", "", "1.0.0", StatusStopped)}}
 	installer := &failingInstaller{}
 	service := upgradeService(
-		store, &versionedRegistry{application: serviceImageAt("2.0.0")}, installer, nil, nil)
+		store, &versionedRegistry{application: serviceApplicationAt("2.0.0")}, installer, nil, nil)
 
 	view, err := service.Start(context.Background(), "g1")
 	if err != nil {
@@ -306,7 +306,7 @@ func TestFailedUpgradeIsReportedAndKeepsTheOldVersion(t *testing.T) {
 	installer := &failingInstaller{installErr: errors.New("apt-get failed")}
 	service := upgradeService(
 		store,
-		&versionedRegistry{application: serviceImageAt("2.0.0")},
+		&versionedRegistry{application: serviceApplicationAt("2.0.0")},
 		installer,
 		&recordingCatalog{pkg: Package{ID: "db", Version: "2.0.0"}},
 		nil,
@@ -332,9 +332,9 @@ func TestFailedUpgradeIsReportedAndKeepsTheOldVersion(t *testing.T) {
 
 // A fresh install records the version it came from, which is what every
 // upgrade decision later reads.
-func TestInstallRecordsTheImageVersion(t *testing.T) {
+func TestInstallRecordsTheApplicationVersion(t *testing.T) {
 	service := upgradeService(
-		&fakeStore{}, &versionedRegistry{application: serviceImageAt("3.1.4")}, &failingInstaller{}, nil, nil)
+		&fakeStore{}, &versionedRegistry{application: serviceApplicationAt("3.1.4")}, &failingInstaller{}, nil, nil)
 
 	view, err := service.Install(context.Background(), InstallRequest{
 		ApplicationID: "db",
@@ -351,7 +351,7 @@ func TestInstallRecordsTheImageVersion(t *testing.T) {
 // An application installs only where it says it does. The catalog grid hides a card
 // it cannot install and the API refuses the request anyway, because a UI that
 // filters is a convenience and the service is the rule.
-func TestInstallRefusesAScopeTheImageDoesNotDeclare(t *testing.T) {
+func TestInstallRefusesAScopeTheApplicationDoesNotDeclare(t *testing.T) {
 	for _, testCase := range []struct {
 		name    string
 		scopes  []Scope
@@ -384,7 +384,7 @@ func TestInstallRefusesAScopeTheImageDoesNotDeclare(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			application := serviceImageAt("1.0.0")
+			application := serviceApplicationAt("1.0.0")
 			application.Scopes = testCase.scopes
 			store := &fakeStore{}
 			installer := &failingInstaller{}
@@ -409,8 +409,8 @@ func TestInstallRefusesAScopeTheImageDoesNotDeclare(t *testing.T) {
 
 // The scopes an uploaded package declares are what the catalog reports, so the
 // management list can say where it installs rather than implying "everywhere".
-func TestInstallAcceptsEveryScopeTheImageDeclares(t *testing.T) {
-	application := serviceImageAt("1.0.0")
+func TestInstallAcceptsEveryScopeTheApplicationDeclares(t *testing.T) {
+	application := serviceApplicationAt("1.0.0")
 	application.Scopes = []Scope{ScopeProject}
 	service := upgradeService(
 		&fakeStore{}, &versionedRegistry{application: application}, &failingInstaller{}, nil, nil)

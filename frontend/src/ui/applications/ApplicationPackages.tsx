@@ -1,9 +1,14 @@
 import { useRef, useState } from "preact/hooks";
-import type { AppPackage, AppScope } from "../../models/application";
+import type { AppPackage, AppPackageInstall, AppScope } from "../../models/application";
 import { useConfirm } from "../../state/context/ConfirmContext";
 import {
   describeInstalls,
   describeOutcome,
+  describeRemovedInstall,
+  packageCountLabel,
+  packageRemovalConfirmLabel,
+  packageRemovalReach,
+  packageRemovalSummary,
   packageScopes,
   packageSummary,
   whereToInstall,
@@ -49,7 +54,7 @@ export function ApplicationPackages({
   const [uploaded, setUploaded] = useState<AppPackage | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const { packages, scope } = controller;
+  const { packages, packagesError, scope } = controller;
 
   const send = async (file: File) => {
     setBusy(true);
@@ -89,44 +94,18 @@ export function ApplicationPackages({
     // take down rather than asking the operator to go and find them.
     await confirm({
       title: `Remove ${pkg.name || pkg.id}?`,
-      description:
-        installs.length > 0
-          ? `${installs.length} installed ${
-              installs.length === 1 ? "copy" : "copies"
-            } will be uninstalled first.`
-          : "The uploaded package is deleted from this server.",
-      message: (
-        <>
-          It disappears from the catalog for{" "}
-          {scope === "project" ? "every project on this server" : "the whole server"}{" "}
-          and can no longer be installed. Upload the .zip again to bring it back.
-          {installs.length > 0 && (
-            <>
-              <span class="mt-2 block">Uninstalling first removes:</span>
-              <ul class="mt-1 space-y-0.5">
-                {installs.map((install) => (
-                  <li key={install.instanceId} class="font-mono text-[11.5px]">
-                    · {install.name}{" "}
-                    {install.scope === "project"
-                      ? `in project ${install.projectId}`
-                      : "installed globally"}
-                  </li>
-                ))}
-              </ul>
-              <span class="mt-2 block">
-                Anything those copies provisioned in a container — a database
-                and its data included — goes with them.
-              </span>
-            </>
-          )}
-        </>
-      ),
-      confirmLabel: installs.length > 0 ? "Uninstall and remove" : "Remove",
+      description: packageRemovalSummary(installs),
+      message: <RemovalConsequences installs={installs} scope={scope} />,
+      confirmLabel: packageRemovalConfirmLabel(installs),
       pendingLabel: "Removing…",
       tone: "danger",
       action: async () => {
         setError(null);
         await controller.removePackage(pkg.id, installs.length > 0);
+        // The receipt names a package that is now gone from the catalog it
+        // says it is in, so it goes with it. Another package's receipt is
+        // still true and stays.
+        setUploaded((current) => (current?.id === pkg.id ? null : current));
       },
     });
   };
@@ -137,9 +116,7 @@ export function ApplicationPackages({
         <div class="flex items-center gap-2">
           <h3 class="text-[13px] font-medium text-ink-100">Uploaded apps in the catalog</h3>
           <span class="text-[11.5px] text-ink-400">
-            {packages.length > 0
-              ? `${packages.length} ${packages.length === 1 ? "package" : "packages"}`
-              : "none yet"}
+            {packageCountLabel(packages.length, !!packagesError)}
           </span>
         </div>
         {/* Uploading adds an app to one server-wide catalog. Where it can
@@ -150,6 +127,11 @@ export function ApplicationPackages({
             ? "Uploading adds an app to this server's catalog — every project can then install the ones that offer project scope. Admins only."
             : "These are available across the server. Each one installs only at the scopes it declares."}
         </p>
+        {packagesError && (
+          <p class="text-[11.5px] text-accent-red break-words whitespace-pre-wrap">
+            The uploaded apps could not be listed: {packagesError}
+          </p>
+        )}
       </div>
 
       <div
@@ -157,7 +139,15 @@ export function ApplicationPackages({
           event.preventDefault();
           setDragging(true);
         }}
-        onDragLeave={() => setDragging(false)}
+        onDragLeave={(event) => {
+          // dragleave fires again for every child the pointer crosses — the
+          // button, the paragraph — so the only one that means "left the zone"
+          // is the one whose related target is outside it, or nowhere at all
+          // because the pointer left the window.
+          const entering = event.relatedTarget as Node | null;
+          if (entering && event.currentTarget.contains(entering)) return;
+          setDragging(false);
+        }}
         onDrop={drop}
         class={`rounded-md border border-dashed px-3 py-4 text-center transition-colors ${
           dragging
@@ -215,6 +205,45 @@ export function ApplicationPackages({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Everything the removal destroys, named rather than counted. The copies are
+ * listed because "uninstall it everywhere first" is useless advice without an
+ * "everywhere", and the container warning is last because it is the part that
+ * cannot be undone by uploading the .zip again.
+ */
+function RemovalConsequences({
+  installs,
+  scope,
+}: {
+  installs: AppPackageInstall[];
+  scope: AppScope;
+}) {
+  return (
+    <>
+      It disappears from the catalog for{" "}
+      {packageRemovalReach(scope)}{" "}
+      and can no longer be installed. Upload the .zip again to bring it back.
+      {installs.length > 0 && (
+        <>
+          <span class="mt-2 block">Uninstalling first removes:</span>
+          <ul class="mt-1 space-y-0.5">
+            {installs.map((install) => (
+              <li key={install.instanceId} class="font-mono text-[11.5px]">
+                · {install.name}{" "}
+                {describeRemovedInstall(install)}
+              </li>
+            ))}
+          </ul>
+          <span class="mt-2 block">
+            Anything those copies provisioned in a container — a database
+            and its data included — goes with them.
+          </span>
+        </>
+      )}
+    </>
   );
 }
 

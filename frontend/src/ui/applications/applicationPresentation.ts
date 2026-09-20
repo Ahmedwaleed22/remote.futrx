@@ -2,6 +2,7 @@ import type {
   AppApplication,
   AppInstance,
   AppPackage,
+  AppPackageInstall,
   AppScope,
   AppUpgradeOutcome,
 } from "../../models/application";
@@ -110,9 +111,12 @@ export function packageScopes(pkg: AppPackage, viewing: AppScope): string {
   const global = scopes.includes("global");
   const project = scopes.includes("project");
   if (!global && !project) return "Declares no scope, so it cannot be installed.";
-  const here = scopes.includes(viewing);
   if (global && project) {
-    return here
+    // "Here, and in every other project" is a sentence only a project page can
+    // say. Settings is not standing in a project, so from there the two scopes
+    // are named rather than pointed at — the reader is told where the app goes,
+    // not that it goes where they already are.
+    return viewing === "project"
       ? "Installs here, and in every other project — it offers both scopes."
       : "Installs globally, or inside a project.";
   }
@@ -157,6 +161,51 @@ export function describeOutcome(outcome: AppUpgradeOutcome): string {
   return outcome.scope === "project"
     ? `${outcome.name} in project ${outcome.projectId}`
     : outcome.name;
+}
+
+/**
+ * What removing a package costs, in one line under the dialog title. Removing
+ * one that is still installed has to uninstall those copies first — otherwise
+ * they would point at a catalog entry that no longer exists — and that is real
+ * destruction, so it is said before the operator agrees rather than after.
+ */
+export function packageRemovalSummary(installs: AppPackageInstall[]): string {
+  if (installs.length === 0) return "The uploaded package is deleted from this server.";
+  return `${installs.length} installed ${
+    installs.length === 1 ? "copy" : "copies"
+  } will be uninstalled first.`;
+}
+
+/** The confirm button, named for everything it does and not just the last bit. */
+export function packageRemovalConfirmLabel(installs: AppPackageInstall[]): string {
+  return installs.length > 0 ? "Uninstall and remove" : "Remove";
+}
+
+/**
+ * How far the removal reaches, said from the page the operator is standing on.
+ * There is one catalog, so removing from a project removes for every project.
+ */
+export function packageRemovalReach(viewing: AppScope): string {
+  return viewing === "project" ? "every project on this server" : "the whole server";
+}
+
+/** One copy the removal will take down, as the dialog lists it. */
+export function describeRemovedInstall(install: AppPackageInstall): string {
+  return install.scope === "project"
+    ? `in project ${install.projectId}`
+    : "installed globally";
+}
+
+/**
+ * How many uploaded apps the catalog holds, beside the heading. A listing that
+ * failed is counted as neither: "none yet" would state the one thing the
+ * request never established, and it is the answer an operator is most likely
+ * to act on by uploading a package they already uploaded.
+ */
+export function packageCountLabel(count: number, failed: boolean): string {
+  if (failed) return "could not be listed";
+  if (count === 0) return "none yet";
+  return `${count} ${count === 1 ? "package" : "packages"}`;
 }
 
 /** Enough provenance to tell two uploads of the same app apart. */

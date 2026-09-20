@@ -69,23 +69,14 @@ func newCatalogView() catalogView {
 // where an app author finds it.
 func EmbeddedCatalog() fs.FS { return catalog.FS }
 
-// NewRegistry loads and validates the catalog embedded in the binary.
-func NewRegistry() (*Registry, error) { return NewRegistryFromFS(catalog.FS) }
-
-// NewRegistryFromFS loads and validates every applications/<id>/application.json in the
-// given filesystem. A malformed entry is a build/asset error, so loading fails
-// loudly rather than silently dropping an app.
+// NewRegistry loads and validates every applications/<id>/application.json in the
+// given catalog, plus — when packages is non-nil — every uploaded package
+// stored beside it.
 //
-// Taking the filesystem as an argument is what keeps the catalog a *set of
-// applications* rather than a fixed list: the server loads the embedded one, and
-// anything else — a test fixture, a catalog assembled from uploaded packages —
-// goes through exactly the same validation.
-func NewRegistryFromFS(catalog fs.FS) (*Registry, error) {
-	return NewRegistryWithPackages(catalog, nil)
-}
-
-// NewRegistryWithPackages loads the built-in catalog and, when packages is
-// non-nil, every uploaded package stored beside it.
+// Taking the catalog as an argument is what keeps it a *set of applications*
+// rather than a fixed list: the server loads the embedded one, and anything
+// else — a test fixture, a catalog assembled from uploaded packages — goes
+// through exactly the same validation.
 //
 // The two halves are held to different standards on purpose. A built-in application
 // that does not load is a broken build and fails startup. An uploaded package
@@ -93,7 +84,7 @@ func NewRegistryFromFS(catalog fs.FS) (*Registry, error) {
 // different version of Remote: it is skipped with its reason recorded, because
 // refusing to boot the whole server over it would turn one bad upload into an
 // outage.
-func NewRegistryWithPackages(catalog fs.FS, packages *PackageStore) (*Registry, error) {
+func NewRegistry(catalog fs.FS, packages *PackageStore) (*Registry, error) {
 	r := &Registry{base: catalog, packages: packages}
 	if err := r.Reload(); err != nil {
 		return nil, err
@@ -103,7 +94,9 @@ func NewRegistryWithPackages(catalog fs.FS, packages *PackageStore) (*Registry, 
 
 // Reload rebuilds the catalog from the built-in applications and the package store.
 // It returns an error only when the built-in catalog itself is unloadable;
-// per-package failures are recorded and reported through Packages.
+// per-package failures are recorded and reported through Packages. A failure
+// to read the package directory at all is neither: it is swallowed here, and
+// the empty listing it also produces is all the caller sees.
 func (r *Registry) Reload() error {
 	view := newCatalogView()
 	if _, err := loadCatalogInto(&view, r.base, svc.SourceBuiltin, nil); err != nil {
@@ -129,16 +122,12 @@ func (r *Registry) Reload() error {
 			}
 			return nil
 		}
-		skipped, err := loadCatalogInto(&view, r.packages.FS(), svc.SourceUploaded, reserve)
-		if err != nil {
-			// loadCatalogInto only returns an error here if the packages
-			// directory itself is unreadable, which is a store problem rather
-			// than a package problem.
-			failures[""] = err.Error()
-		} else {
-			for id, reason := range skipped {
-				failures[id] = reason
-			}
+		// loadCatalogInto only returns an error here if the packages directory
+		// itself is unreadable, which is a store problem rather than a package
+		// problem; skipped is nil then and the loop below does nothing.
+		skipped, _ := loadCatalogInto(&view, r.packages.FS(), svc.SourceUploaded, reserve)
+		for id, reason := range skipped {
+			failures[id] = reason
 		}
 	}
 	sortCatalog(&view)

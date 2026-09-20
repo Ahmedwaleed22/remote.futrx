@@ -2,7 +2,9 @@ package applications
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -11,10 +13,10 @@ import (
 // policy around an upload — whether it is allowed, and what else has to happen
 // when it succeeds — so what the store does with the bytes is irrelevant here.
 type recordingCatalog struct {
-	stored  []Package
+	stored  []PackageView
 	uploads []PackageUpload
 	removed []string
-	// pkg is what InstallPackage reports having stored. The zero value stands
+	// pkg is what AddPackage reports having stored. The zero value stands
 	// in for an ordinary UI package, so a test only sets it when the id or the
 	// version is what it is about.
 	pkg        Package
@@ -22,9 +24,9 @@ type recordingCatalog struct {
 	removeErr  error
 }
 
-func (c *recordingCatalog) Packages() []Package { return c.stored }
+func (c *recordingCatalog) Packages() []PackageView { return c.stored }
 
-func (c *recordingCatalog) InstallPackage(upload PackageUpload) (Package, error) {
+func (c *recordingCatalog) AddPackage(upload PackageUpload) (Package, error) {
 	c.uploads = append(c.uploads, upload)
 	if c.installErr != nil {
 		return Package{}, c.installErr
@@ -33,7 +35,7 @@ func (c *recordingCatalog) InstallPackage(upload PackageUpload) (Package, error)
 	if pkg.ID == "" {
 		pkg = Package{ID: "uploaded-app", Name: "Uploaded App"}
 	}
-	c.stored = append(c.stored, pkg)
+	c.stored = append(c.stored, PackageView{Package: pkg})
 	return pkg, nil
 }
 
@@ -89,7 +91,7 @@ func TestUploadPackageRejectsAnEmptyArchive(t *testing.T) {
 // Replacing a package leaves plugin processes running against the binary
 // compiled from the previous version. Stopping them is what makes the upgrade
 // take effect on the next call.
-func TestUploadPackageRestartsPluginsOfTheReplacedImage(t *testing.T) {
+func TestUploadPackageRestartsPluginsOfTheReplacedApplication(t *testing.T) {
 	store := &fakeStore{
 		global: []Instance{instance("uploaded-app", "", StatusRunning)},
 		byProject: map[string][]Instance{
@@ -196,7 +198,7 @@ func TestPackageRoutesReportUnavailableWithoutAStore(t *testing.T) {
 }
 
 func TestPackagesListsWhatTheStoreHolds(t *testing.T) {
-	catalog := &recordingCatalog{stored: []Package{{ID: "a"}, {ID: "b", Error: "broken"}}}
+	catalog := &recordingCatalog{stored: []PackageView{{Package: Package{ID: "a"}}, {Package: Package{ID: "b"}, Error: "broken"}}}
 	service := packageService(&fakeStore{}, catalog, nil)
 
 	list, err := service.Packages(context.Background())
@@ -206,11 +208,11 @@ func TestPackagesListsWhatTheStoreHolds(t *testing.T) {
 	if len(list) != 2 {
 		t.Fatalf("list = %+v", list)
 	}
-	if !list[0].Installed() {
-		t.Fatal("a package with no error must report itself installed")
+	if list[0].Error != "" {
+		t.Fatalf("a package that loaded must carry no error: %q", list[0].Error)
 	}
-	if list[1].Installed() {
-		t.Fatal("a package with an error must not report itself installed")
+	if list[1].Error == "" {
+		t.Fatal("a package that failed to load must carry its reason")
 	}
 }
 
@@ -263,7 +265,7 @@ func TestRemovePackageUninstallsEveryCopyWhenAsked(t *testing.T) {
 // A package that no longer loads cannot describe how to tear its copies down —
 // which is exactly when an operator most needs to be rid of it. Refusing here
 // would leave them with a package they can neither repair nor remove.
-func TestRemovePackageDropsCopiesOfAnUnloadableImage(t *testing.T) {
+func TestRemovePackageDropsCopiesOfAnUnloadableApplication(t *testing.T) {
 	store := &fakeStore{global: []Instance{instance("broken-app", "", StatusError)}}
 	catalog := &recordingCatalog{}
 	host := &recordingHost{}
@@ -307,7 +309,7 @@ func TestRemovePackageReportsACopyItCouldNotUninstall(t *testing.T) {
 	installer := &failingInstaller{}
 	installer.uninstallErr = errors.New("lxd unavailable")
 	service := New(
-		&versionedRegistry{application: serviceImageAt("1.0.0")},
+		&versionedRegistry{application: serviceApplicationAt("1.0.0")},
 		store,
 		installer,
 		nil,
@@ -347,7 +349,7 @@ func TestPackagesReportWhereTheyAreInstalled(t *testing.T) {
 			"p1": {instance("uploaded-app", "p1", StatusStopped)},
 		},
 	}
-	catalog := &recordingCatalog{stored: []Package{{ID: "uploaded-app"}, {ID: "unused"}}}
+	catalog := &recordingCatalog{stored: []PackageView{{Package: Package{ID: "uploaded-app"}}, {Package: Package{ID: "unused"}}}}
 	service := packageService(store, catalog, nil)
 
 	list, err := service.Packages(context.Background())
@@ -378,7 +380,7 @@ func TestPackagesReportWhereTheyAreInstalled(t *testing.T) {
 // stored files are inert — and deleting inert files must not offer, let alone
 // agree, to take down the applications still running under that name.
 func TestRemovingASupersededPackageLeavesItsInstallsAlone(t *testing.T) {
-	catalog := &recordingCatalog{stored: []Package{{ID: "s3disk", Error: "superseded"}}}
+	catalog := &recordingCatalog{stored: []PackageView{{Package: Package{ID: "s3disk"}, Error: "superseded"}}}
 	store := &fakeStore{global: []Instance{instance("s3disk", "", StatusRunning)}}
 	service := New(
 		&fakeRegistry{builtin: []string{"s3disk"}}, store, nil, nil, nil,
@@ -413,4 +415,71 @@ func TestRemovingASupersededPackageLeavesItsInstallsAlone(t *testing.T) {
 	if len(store.deleted) != 0 {
 		t.Fatalf("a working application was uninstalled to delete a dead package: %v", store.deleted)
 	}
+}
+
+// TestPackageViewIsOneFlatObject pins the wire shape that splitting the stored
+// record from the reported view has to leave alone: the SPA reads one object
+// with every key at the top level, and the record written to the metadata file
+// carries none of the three fields that are only true while the server runs.
+func TestPackageViewIsOneFlatObject(t *testing.T) {
+	view := PackageView{
+		Package: Package{
+			ID:         "s3disk",
+			Name:       "S3 Disk",
+			Version:    "1.2.0",
+			Scopes:     []Scope{ScopeGlobal, ScopeProject},
+			Filename:   "s3disk.zip",
+			Size:       2048,
+			SHA256:     "9f86d08",
+			UploadedAt: 1700000000,
+			UploadedBy: "admin@example.com",
+		},
+		Installs: []PackageInstall{{
+			InstanceID: "inst-1", Name: "S3", Scope: ScopeGlobal, Status: StatusRunning,
+		}},
+		Upgraded: []UpgradeOutcome{{InstanceID: "inst-1", To: "1.2.0"}},
+		Error:    "shadowed by a built-in",
+	}
+
+	reported := marshalKeys(t, view)
+	for _, key := range []string{
+		"id", "name", "version", "scopes", "filename", "size", "sha256",
+		"uploadedAt", "uploadedBy", "installs", "upgraded", "error",
+	} {
+		if _, ok := reported[key]; !ok {
+			t.Errorf("the API no longer reports %q: %v", key, sortedKeys(reported))
+		}
+	}
+	if _, nested := reported["Package"]; nested {
+		t.Fatalf("the embedded record surfaced as its own object: %v", sortedKeys(reported))
+	}
+
+	onDisk := marshalKeys(t, view.Package)
+	for _, key := range []string{"installs", "upgraded", "error"} {
+		if _, ok := onDisk[key]; ok {
+			t.Errorf("%q is written to the package metadata file: %v", key, sortedKeys(onDisk))
+		}
+	}
+}
+
+func marshalKeys(t *testing.T, value any) map[string]json.RawMessage {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var keyed map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &keyed); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	return keyed
+}
+
+func sortedKeys(keyed map[string]json.RawMessage) []string {
+	keys := make([]string, 0, len(keyed))
+	for key := range keyed {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }

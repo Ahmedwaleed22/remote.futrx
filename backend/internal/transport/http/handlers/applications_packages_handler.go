@@ -1,10 +1,13 @@
 package httphandlers
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
+	"github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	serviceapplications "github.com/futrx-com/remote.futrx.com/internal/service/applications"
 	httptransport "github.com/futrx-com/remote.futrx.com/internal/transport/http"
 )
@@ -15,11 +18,6 @@ import (
 // audience as installing a global application, and for the same reason: a
 // package ships an install script, a browser extension and possibly a server
 // plugin, all of which run with the server's own privileges once installed.
-
-// maxPackageUpload bounds the whole request. The catalog's own archive limit
-// is smaller; this leaves room for the multipart envelope around it and lets
-// an oversized upload be refused by the transport before it is buffered.
-const maxPackageUpload = 80 << 20
 
 // packageFormField is the multipart field the SPA sends the archive in. A raw
 // application/zip body is accepted too, for `curl --data-binary`.
@@ -71,15 +69,8 @@ func (h *ApplicationsHandler) removePackage(w http.ResponseWriter, r *http.Reque
 	}
 	httptransport.SendJSON(w, http.StatusOK, map[string]any{
 		"ok":          true,
-		"uninstalled": orEmptyInstalls(removed),
+		"uninstalled": orEmpty(removed),
 	})
-}
-
-func orEmptyInstalls(installs []serviceapplications.PackageInstall) []serviceapplications.PackageInstall {
-	if installs == nil {
-		return []serviceapplications.PackageInstall{}
-	}
-	return installs
 }
 
 func (h *ApplicationsHandler) uploadPackage(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +95,7 @@ func (h *ApplicationsHandler) uploadPackage(w http.ResponseWriter, r *http.Reque
 // readUploadedPackage accepts the archive either as a multipart file — what a
 // browser form sends — or as the raw request body.
 func readUploadedPackage(w http.ResponseWriter, r *http.Request) (string, []byte, error) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxPackageUpload)
+	r.Body = http.MaxBytesReader(w, r.Body, constants.MaxApplicationPackageUploadBytes)
 
 	if !strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
 		archive, err := io.ReadAll(r.Body)
@@ -134,13 +125,9 @@ func readUploadedPackage(w http.ResponseWriter, r *http.Request) (string, []byte
 	return header.Filename, archive, nil
 }
 
-type uploadError string
-
-func (e uploadError) Error() string { return string(e) }
-
-const errNoPackageField = uploadError(
+var errNoPackageField = errors.New(
 	"no package in request: attach the .zip as the \"" + packageFormField + "\" field")
 
 func errUploadTooLarge(err error) error {
-	return uploadError("upload too large or malformed: " + err.Error())
+	return fmt.Errorf("upload too large or malformed: %s", err)
 }
