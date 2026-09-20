@@ -244,16 +244,17 @@ func loadApplication(catalog fs.FS, id string) (svc.Application, []byte, error) 
 	}
 	application.Skills = skills
 
-	var script []byte
-	application.Install, script, application.Container, err = loadApplicationInfrastructure(
+	infrastructure, err := loadApplicationInfrastructure(
 		catalog, root, application.ID, application.Version, application.Install)
 	if err != nil {
 		return svc.Application{}, nil, err
 	}
+	application.Install = infrastructure.installPath
+	application.Container = infrastructure.container
 	if err := validateApplication(application); err != nil {
 		return svc.Application{}, nil, err
 	}
-	return application, script, nil
+	return application, infrastructure.script, nil
 }
 
 // List returns the catalog sorted by display name.
