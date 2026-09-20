@@ -176,4 +176,13 @@ cd frontend && npm run build && npm test
 
 Then, if you touched the extension surface or the plugin contract, install
 [`hello-remote`](../../../applications/hello-remote/README.md) at both scopes and confirm its
-panel still greets you and still counts across a server restart.
+panel still greets you, still counts across a server restart, and still reports its
+container's facts under **Refresh**. Those three checks map onto its three layers —
+`ui/`, `backend/`, and `infra/` — so a failure tells you which one broke.
+
+**This step needs LXD.** `hello-remote` ships `infra/install.sh`, so installing it
+provisions a container: a dedicated one at global scope, the project's own at project
+scope. On a host without a container runtime the install fails on the instance, and
+with it the backend and UI halves — an instance only reaches `running`, and only
+loads its extension, once every layer it declares has installed. If you have no LXD,
+exercise the first two layers through the unit suites above instead.

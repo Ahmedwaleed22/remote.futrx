@@ -17,6 +17,16 @@ expose it on a port, run a backend, extend the UI, and publish skills. Removing
 one folder removes only that capability; no manifest discriminator needs to be
 kept in sync with the package layout.
 
+[`hello-remote`](../../../applications/hello-remote/README.md) is the worked example of
+that composition: `infra/` installs an inspector into the container, `backend/` calls
+it from the host, and `ui/` renders the answer in the browser. Read it when the table
+above is clear but the way the layers talk to each other is not.
+
+Composition is not, however, independence at install time. An install provisions the
+layers in order and stops at the first failure, so an application whose `infra/` fails
+never starts its backend and never loads its UI — see
+[Lifecycle](#lifecycle) below and [01 — Overview](01-overview.md#what-installing-does).
+
 ## Infrastructure and scope
 
 At global scope, infrastructure runs in a dedicated container named

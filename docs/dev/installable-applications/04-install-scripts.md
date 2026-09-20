@@ -55,8 +55,16 @@ its browser `ui/` all belong to the same application folder, and a packaging scr
 in the application refreshes the archive from that source. The archive is what allows
 a catalog to carry nested Go modules, which `go:embed` does not traverse.
 
-The s3disk application is the worked example, and it lives in its own repository
-rather than here. Its `infra/` is a Go module with its own `go.mod`, its
+[`hello-remote`](../../../applications/hello-remote/README.md) is the worked example
+in this repository: `infra/source/` is a Go module with its own `go.mod`,
+`infra/package.sh` rebuilds `infra/payload.tar.gz` reproducibly, and
+`infra/install.sh` builds the staged source inside the container and installs
+`hello-remote-info`, which the application's `backend/` then calls with `lxc exec`.
+It is nested one level down, at `infra/source/`, so that `go:embed` can still see
+`infra/install.sh` and `infra/payload.tar.gz` beside it.
+
+The s3disk application is the same shape at production scale, and it lives in its
+own repository rather than here. Its `infra/` is a Go module with its own `go.mod`, its
 `infra/package.sh` rebuilds `infra/payload.tar.gz` reproducibly, and `infra/install.sh`
 compiles the staged source inside the container. Copy that shape if your application
 needs one — including the part that is easy to miss: because

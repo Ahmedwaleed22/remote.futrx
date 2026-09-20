@@ -9,8 +9,10 @@ any an administrator has uploaded as a `.zip` — same shape, same validator,
 stored outside the binary. See [Uploaded packages](../docs/dev/installable-applications/16-uploaded-packages.md).
 
 **One application ships here: [`hello-remote/`](hello-remote/)**, the worked example
-— a Go backend and the browser UI that calls it, installing nothing in any
-container. Real apps — MySQL, PostgreSQL, Redis, s3disk — live in their own
+— and it deliberately carries all three capability layers at once: an `infra/`
+provisioner that runs in a container, a Go `backend/` that runs on the host, and
+the browser `ui/` that calls it. One package, so the layers can be seen composing
+rather than described separately. Real apps — MySQL, PostgreSQL, Redis, s3disk — live in their own
 repositories and reach a server as uploaded packages, so the catalog format can
 change here without a database application riding along in the same review.
 Everything below is the format they are all written against, and dropping a
@@ -126,13 +128,29 @@ install's secrets. It deserves the same review as any change under
 ## The example app
 
 [`hello-remote/`](hello-remote/) is the one application this repository ships, and it
-is here to be installed. It has `backend/` and `ui/` capabilities but no
-`infra/install.sh`, so it needs no LXD, port, or proxy device and works on a laptop. Installing it exercises the
-catalog, the install dialog's `env[]` field, both extension slots it draws in,
-and a real backend process — so if it works, the feature works.
+is here to be installed. It carries every capability layer a package can have, so
+installing it exercises the catalog, the install dialog's `env[]` field, the
+extension slots it draws in, a real backend process, *and* a real container
+provisioner — if it works, the feature works.
+
+| Layer | What it contributes | Where it runs |
+|---|---|---|
+| `infra/install.sh` | Builds and installs the `hello-remote-info` inspector | Inside the target LXD container, as root |
+| `backend/` | The Go plugin: greeting, counter, and the `container` route that calls the inspector | On the host, as a child of the server |
+| `ui/` | The card button and the panel that render the replies | In the browser |
+
+Reading it top to bottom is the point: the panel calls the backend, the backend
+calls into the container, and the container answers with what `infra/` put there.
+
+**It needs LXD.** Because it now ships `infra/install.sh`, installing it provisions
+a container — a dedicated one at global scope, the project's own at project scope.
+On a host with no container runtime the install reports the failure on the instance.
+The platform itself still supports container-free applications (an application with no
+`infra/` never touches LXD); this example simply is not one of them any more.
 
 Install it globally *and* in a project to watch one application run as two processes
-with two counters. Its [README](hello-remote/README.md) says what to look at
+with two counters — and to compare a dedicated application container against a
+project's existing one. Its [README](hello-remote/README.md) says what to look at
 and why.
 
 The larger developer fixtures described in [Fixtures](../docs/dev/installable-applications/10-fixtures.md) —

@@ -87,6 +87,14 @@ discriminator to keep synchronized with the package layout.
 | `mysql` | yes | no | yes | no | provisions a database and adds a Connect action |
 | `ui-playground` | no | no | yes | no | extends only the browser UI |
 | `backend-playground` | no | yes | yes | no | runs a host backend and exposes its actions in the UI |
+| `hello-remote` | yes | yes | yes | no | the shipped example: all three layers in one package |
+
+Every row above except the last describes an application in another repository or a
+fixture this repository does not ship. [`hello-remote`](../../../applications/hello-remote/README.md)
+is the one that is actually here, and it is deliberately the maximal case: it
+provisions a container, runs a host backend, and draws in the browser, so a reader
+can watch the three layers compose in a single package instead of inferring it from
+four that do not exist. Because it carries `infra/`, installing it requires LXD.
 
 The layout supplies these capabilities directly — see
 [03 — Application capabilities](03-application-capabilities.md). `backend/` is covered in full by
@@ -137,7 +145,7 @@ flowchart TB
     end
 
     subgraph Catalog["applications/ — embedded by go:embed"]
-        C_Hello["hello-remote/<br/>the worked example: backend/ + ui/"]
+        C_Hello["hello-remote/<br/>the worked example: infra/ + backend/ + ui/"]
     end
 
     FE_Section --> FE_Catalog
@@ -214,7 +222,11 @@ contract, so it depends on nothing but the standard library.
 
 An install crosses every layer above and provisions only the capabilities the
 application carries. An application without `infra/install.sh` works on a host
-with no container runtime at all.
+with no container runtime at all — that remains true of the platform, but note
+that the shipped example, `hello-remote`, does carry `infra/` and so does need
+LXD. Nothing in this repository currently demonstrates the container-free case;
+the `ui`-only tutorial in [07 — Tutorial](07-tutorial-build-a-plugin.md) is the
+closest written account of it.
 
 ```mermaid
 sequenceDiagram

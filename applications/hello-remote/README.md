@@ -28,6 +28,18 @@ capability supplies `ContainerName`, without any Remote-specific code changes.
 | Global | **Settings → Applications** |
 | Project | **Project → Applications** |
 
+**Prerequisites.** Because this application ships `infra/`, installing it needs a
+working LXD on the host, and the target container needs network egress: the install
+script builds `hello-remote-info` from the staged source, fetching a Go toolchain
+into the container first if one is not already at `/usr/local/go`. The first install
+is therefore not instant. Subsequent installs skip the build when the staged source
+hash is unchanged.
+
+The layers install in order, and the install stops at the first failure — so if
+`infra/` cannot provision, the backend never starts and the UI never loads. That is
+worth knowing when reading a failed install: the reported error is the layer that
+broke, not necessarily the one you were testing.
+
 The install dialog shows one field, `Greeting`, because `application.json` declares
 it in `env[]`. Whatever is typed there reaches the plugin as
 `Instance.Env["HELLO_GREETING"]` — the same path a database application's password

@@ -2,10 +2,14 @@
 
 > **These fixture applications are not in this repository.** What ships here is one
 > worked example, [`hello-remote`](../../../applications/hello-remote/README.md), which covers the
-> same ground more briefly: a slot contribution, a view, a plugin process, and
-> per-instance storage. The fixtures below are described as the fuller surface
-> a developer working on the extension API itself would want, and the document
-> stands as the specification for them.
+> same ground more briefly: a slot contribution, a view, a plugin process,
+> per-instance storage, and — unlike anything described below — a real provisioned
+> container it inspects through its own `infra/` payload. It is the one package that
+> shows all three capability layers composing at once, which is why it carries them
+> all rather than being split up. The trade is that it needs LXD, where the fixtures
+> below deliberately do not. The fixtures are described as the fuller surface a
+> developer working on the extension API itself would want, and the document stands
+> as the specification for them.
 
 Three applications exist purely to exercise the extension surface. None of them
 needs LXD or creates a container, so you can run the whole extension system on

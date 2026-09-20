@@ -76,8 +76,10 @@ Both halves are code, and neither is sandboxed:
 Read [`applications/README.md`](applications/README.md) for the
 `application.json` schema, the install-script contract, the extension API, and the
 slot list. [`applications/hello-remote/`](applications/hello-remote/)
-is the worked example for both halves — a `ui/` and the `backend/` it calls —
-and real apps live in their own repositories rather than here. The full plugin
+is the worked example for all three layers — an `infra/` provisioner, the
+`backend/` that calls into what it installed, and the `ui/` that calls the
+backend — and real apps live in their own repositories rather than here.
+Installing it needs LXD, because of that `infra/` directory. The full plugin
 contract is
 [`docs/dev/installable-applications/15-backend-plugins.md`](docs/dev/installable-applications/15-backend-plugins.md).
 
