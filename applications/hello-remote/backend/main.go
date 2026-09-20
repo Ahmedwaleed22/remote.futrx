@@ -1,20 +1,20 @@
-// Hello Remote is the catalog's worked example: the smallest application that still
-// exercises both halves of the feature. It ships a backend/ the server compiles
-// and runs as a child process, and a ui/ that calls it from the browser.
-//
-// It deliberately installs nothing. Without infra/ it gets no container or port
-// and no proxy device, so this app installs on a laptop with no LXD at all —
-// which is what makes it usable as the thing you install first to see whether
-// the plumbing works end to end.
+// Hello Remote is the catalog's worked example. It ships a backend/ the server
+// compiles and runs as a child process, and a ui/ that calls it from the browser.
+// Its infrastructure installs the fixed inspector command the backend invokes
+// inside the target LXD container.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
 	"github.com/futrx-com/remote.futrx.com/pkg/appplugin/pluginrpc"
@@ -28,7 +28,8 @@ import (
 const visitsFile = "visits.json"
 
 type backend struct {
-	mux *appplugin.Mux
+	mux              *appplugin.Mux
+	inspectContainer func(string) (containerInfo, error)
 
 	mu       sync.Mutex
 	instance appplugin.Instance
@@ -36,13 +37,25 @@ type backend struct {
 }
 
 func main() {
-	b := &backend{mux: appplugin.NewMux()}
+	b := &backend{mux: appplugin.NewMux(), inspectContainer: readContainerInfo}
 
 	b.mux.GET("hello", "Greet the calling user", b.hello)
+	b.mux.GET("container", "Report safe facts about this install's LXD container", b.container)
 	b.mux.GET("visits", "Report how many greetings this install has served", b.readVisits)
 	b.mux.POST("visits", "Count one greeting", b.countVisit)
 
 	pluginrpc.Serve(b)
+}
+
+type containerInfo struct {
+	Name             string `json:"name"`
+	Hostname         string `json:"hostname"`
+	OperatingSystem  string `json:"operatingSystem"`
+	Kernel           string `json:"kernel"`
+	Architecture     string `json:"architecture"`
+	CPUCount         int    `json:"cpuCount"`
+	MemoryTotalBytes int64  `json:"memoryTotalBytes"`
+	UptimeSeconds    int64  `json:"uptimeSeconds"`
 }
 
 // Describe runs once, when the host connects. Routes() reports exactly what
@@ -51,7 +64,7 @@ func main() {
 func (b *backend) Describe() (appplugin.Descriptor, error) {
 	return appplugin.Descriptor{
 		Name:       "Hello Remote",
-		Version:    "1",
+		Version:    "2",
 		APIVersion: appplugin.APIVersion,
 		Routes:     b.mux.Routes(),
 	}, nil
@@ -99,6 +112,54 @@ func (b *backend) hello(request appplugin.Request) appplugin.Response {
 		"admin":   request.Caller.IsAdmin,
 		"visits":  b.visits,
 	})
+}
+
+func (b *backend) container(appplugin.Request) appplugin.Response {
+	b.mu.Lock()
+	name := b.instance.ContainerName
+	inspect := b.inspectContainer
+	b.mu.Unlock()
+
+	if name == "" {
+		return appplugin.JSON(http.StatusConflict, map[string]string{
+			"error": "this install has no LXD container",
+		})
+	}
+	if inspect == nil {
+		inspect = readContainerInfo
+	}
+	info, err := inspect(name)
+	if err != nil {
+		return appplugin.JSON(http.StatusBadGateway, map[string]string{
+			"error": fmt.Sprintf("could not inspect the LXD container: %v", err),
+		})
+	}
+	info.Name = name
+	return appplugin.JSON(http.StatusOK, info)
+}
+
+// readContainerInfo invokes the inspector installed from infra/ in the target
+// container. The backend runs on the host and crosses only this fixed command.
+func readContainerInfo(name string) (containerInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	output, err := exec.CommandContext(
+		ctx,
+		"lxc", "exec", name, "--", "/usr/local/bin/hello-remote-info",
+	).CombinedOutput()
+	if err != nil {
+		if ctx.Err() != nil {
+			return containerInfo{}, ctx.Err()
+		}
+		return containerInfo{}, fmt.Errorf("lxc exec: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+
+	var info containerInfo
+	if err := json.Unmarshal(output, &info); err != nil {
+		return containerInfo{}, fmt.Errorf("decode container response: %w", err)
+	}
+	return info, nil
 }
 
 func (b *backend) readVisits(appplugin.Request) appplugin.Response {

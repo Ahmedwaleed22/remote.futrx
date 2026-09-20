@@ -16,6 +16,7 @@ func newTestBackend(t *testing.T, dataDir string, env map[string]string) *backen
 	t.Helper()
 	b := &backend{mux: appplugin.NewMux()}
 	b.mux.GET("hello", "", b.hello)
+	b.mux.GET("container", "", b.container)
 	b.mux.GET("visits", "", b.readVisits)
 	b.mux.POST("visits", "", b.countVisit)
 	if err := b.Init(appplugin.Instance{
@@ -25,6 +26,28 @@ func newTestBackend(t *testing.T, dataDir string, env map[string]string) *backen
 		t.Fatalf("init: %v", err)
 	}
 	return b
+}
+
+func TestContainerReportsTheInstalledContainer(t *testing.T) {
+	b := newTestBackend(t, t.TempDir(), nil)
+	b.instance.ContainerName = "futrx-app-test"
+	b.inspectContainer = func(name string) (containerInfo, error) {
+		if name != "futrx-app-test" {
+			t.Fatalf("container name = %q, want futrx-app-test", name)
+		}
+		return containerInfo{Hostname: "hello", OperatingSystem: "Ubuntu 24.04 LTS", CPUCount: 4}, nil
+	}
+
+	body := call(t, b, "GET", "container")
+	if got := body["name"]; got != "futrx-app-test" {
+		t.Errorf("name = %v, want futrx-app-test", got)
+	}
+	if got := body["operatingSystem"]; got != "Ubuntu 24.04 LTS" {
+		t.Errorf("operatingSystem = %v, want Ubuntu 24.04 LTS", got)
+	}
+	if got := body["cpuCount"]; got != float64(4) {
+		t.Errorf("cpuCount = %v, want 4", got)
+	}
 }
 
 func call(t *testing.T, b *backend, method, path string) map[string]any {

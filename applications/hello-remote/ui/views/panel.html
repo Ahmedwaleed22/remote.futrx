@@ -14,4 +14,23 @@
       greetings served: <strong data-hello-count>0</strong>
     </span>
   </div>
+  <div class="hello-remote__container">
+    <div class="hello-remote__container-heading">
+      <h5>LXD container</h5>
+      <button class="hello-remote__button" type="button" data-container-refresh>
+        Refresh
+      </button>
+    </div>
+    <p class="hello-remote__note" data-container-status>Inspecting the container…</p>
+    <dl class="hello-remote__facts" data-container-facts hidden>
+      <div><dt>Name</dt><dd data-container-name></dd></div>
+      <div><dt>Hostname</dt><dd data-container-hostname></dd></div>
+      <div><dt>Operating system</dt><dd data-container-os></dd></div>
+      <div><dt>Kernel</dt><dd data-container-kernel></dd></div>
+      <div><dt>Architecture</dt><dd data-container-architecture></dd></div>
+      <div><dt>CPUs</dt><dd data-container-cpus></dd></div>
+      <div><dt>Memory</dt><dd data-container-memory></dd></div>
+      <div><dt>Uptime</dt><dd data-container-uptime></dd></div>
+    </dl>
+  </div>
 </section>

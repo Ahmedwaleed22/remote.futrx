@@ -85,6 +85,9 @@ function renderPanel(host, remote, context) {
     const message = host.querySelector("[data-hello-message]");
     const count = host.querySelector("[data-hello-count]");
     const button = host.querySelector("[data-hello-greet]");
+    const refresh = host.querySelector("[data-container-refresh]");
+    const containerStatus = host.querySelector("[data-container-status]");
+    const containerFacts = host.querySelector("[data-container-facts]");
 
     const show = (reply) => {
       if (disposed) return;
@@ -106,10 +109,49 @@ function renderPanel(host, remote, context) {
           if (!disposed) button.disabled = false;
         });
     };
+
+    const setFact = (name, value) => {
+      host.querySelector(`[data-container-${name}]`).textContent = value;
+    };
+    const showContainer = (info) => {
+      if (disposed) return;
+      setFact("name", info.name);
+      setFact("hostname", info.hostname);
+      setFact("os", info.operatingSystem);
+      setFact("kernel", info.kernel);
+      setFact("architecture", info.architecture);
+      setFact("cpus", String(info.cpuCount));
+      setFact("memory", formatBytes(info.memoryTotalBytes));
+      setFact("uptime", formatDuration(info.uptimeSeconds));
+      containerStatus.hidden = true;
+      containerFacts.hidden = false;
+    };
+    const inspectContainer = () => {
+      refresh.disabled = true;
+      containerStatus.hidden = false;
+      containerStatus.textContent = "Inspecting the container…";
+      remote.backend
+        .call("container", target(context))
+        .then(showContainer)
+        .catch((error) => {
+          if (!disposed) {
+            containerFacts.hidden = true;
+            containerStatus.textContent = `Container inspection failed: ${error.message}`;
+          }
+        })
+        .finally(() => {
+          if (!disposed) refresh.disabled = false;
+        });
+    };
     button.addEventListener("click", onClick);
-    detach = () => button.removeEventListener("click", onClick);
+    refresh.addEventListener("click", inspectContainer);
+    detach = () => {
+      button.removeEventListener("click", onClick);
+      refresh.removeEventListener("click", inspectContainer);
+    };
 
     remote.backend.call("hello", target(context)).then(show).catch(fail);
+    inspectContainer();
   });
 
   // Anything a render function starts is its own to stop when the surface
@@ -119,4 +161,19 @@ function renderPanel(host, remote, context) {
     disposed = true;
     detach();
   };
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 0) return "Unknown";
+  const gibibytes = bytes / 1024 ** 3;
+  return `${gibibytes.toFixed(gibibytes >= 10 ? 0 : 1)} GiB`;
+}
+
+function formatDuration(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "Unknown";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  if (days > 0) return `${days}d ${hours}h`;
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${hours}h ${minutes}m`;
 }
