@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 )
 
 func TestPackContainerSourceIsDeterministicAndSynthesizesModule(t *testing.T) {
@@ -34,7 +36,7 @@ func TestPackContainerSourceIsDeterministicAndSynthesizesModule(t *testing.T) {
 	packed := unpackTestPayload(t, one.payload)
 	module := string(packed["infra/go.mod"])
 	if !strings.Contains(module, "module futrx.local/catalog/applications/example/backend/container") ||
-		!strings.Contains(module, "go "+containerGoVersion) {
+		!strings.Contains(module, "go "+configconstants.ApplicationContainerGoVersion) {
 		t.Fatalf("synthesized go.mod = %q", module)
 	}
 	if string(packed["infra/cmd/worker/main.go"]) == "" {

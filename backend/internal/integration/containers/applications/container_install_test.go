@@ -3,6 +3,8 @@ package applications
 import (
 	"strings"
 	"testing"
+
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 )
 
 func TestContainerBuildScriptBuildsCommandsAndUsesMarker(t *testing.T) {
@@ -13,7 +15,7 @@ func TestContainerBuildScriptBuildsCommandsAndUsesMarker(t *testing.T) {
 		"./cmd/worker",
 		"/usr/local/bin/agent",
 		"/usr/local/bin/worker",
-		"go" + containerGoVersion,
+		"go" + configconstants.ApplicationContainerGoVersion,
 	} {
 		if !strings.Contains(script, want) {
 			t.Errorf("generated script does not contain %q", want)

@@ -13,13 +13,9 @@ import (
 	"path"
 	"sort"
 	"strings"
-)
 
-// containerGoVersion is the Go toolchain the server installs into a container to
-// build backend/container/, and the version it writes into a synthesized module
-// file. It lives here, once, because it used to be copy-pasted into every
-// application's install script and drifted between them.
-const containerGoVersion = "1.24.7"
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
+)
 
 // containerSource is the packed result of an application's backend/container/
 // directory: the archive the installer stages inside the target container, and a
@@ -70,7 +66,7 @@ func packContainerSource(fsys fs.FS, root, applicationID string) (*containerSour
 	if _, ok := files["go.mod"]; !ok {
 		files["go.mod"] = []byte(fmt.Sprintf(
 			"module futrx.local/catalog/applications/%s/backend/container\n\ngo %s\n",
-			applicationID, containerGoVersion))
+			applicationID, configconstants.ApplicationContainerGoVersion))
 	}
 
 	names := make([]string, 0, len(files))
