@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  activateFrontendShowcase,
   backendSummary,
   contextSummary,
   installSummary,
   uploadSummary,
-} from "./showcase.js";
+} from "./showcaseExplorer.js";
+import { activateFrontendShowcase } from "./showcase.js";
 
 test("registers a control in every frontend extension slot", () => {
   const iconSlots = [];
