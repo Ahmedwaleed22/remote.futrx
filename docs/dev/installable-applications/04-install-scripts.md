@@ -5,6 +5,12 @@ Applications may provide one for custom container provisioning. A Go program in
 UI-only and host-backend-only applications need neither — see
 [03 — Application capabilities](03-application-capabilities.md).
 
+Hello Remote keeps a no-op `infra/install.sh` as a copyable template even
+though its own installation does not require one. A custom script is useful
+only when the application needs OS packages, configuration files, systemd
+units, mounts, or an application-specific readiness check. Do not add shell
+merely to rebuild or install `backend/container/`; Remote owns that shared work.
+
 ## The contract
 
 The script is piped into `bash -s` **as root inside the target container**:

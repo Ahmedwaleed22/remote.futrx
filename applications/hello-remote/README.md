@@ -17,6 +17,14 @@ is no LXD inside LXD. The host backend invokes the installed command with
 Raw LXD configuration and environment variables are deliberately not returned
 because they can contain secrets.
 
+`infra/install.sh` is included as a documented no-op template. Hello Remote
+does not technically need custom provisioning: Remote already builds and
+installs `backend/container/`. Keep an infra script only for work the generic
+installer cannot infer, such as OS packages, configuration files, systemd
+units, mounts, or application-specific readiness checks. UI-only extensions,
+host-only `backend/api` plugins, and container programs needing only the generic
+Go build do not need one.
+
 The backend runs on the Remote host, not inside LXD. The generic container
 capability supplies `ContainerName`, without application-specific packaging.
 
@@ -87,6 +95,7 @@ again.
 | `backend/api/container.go` | The bounded `lxc exec` call from the host into the installed command. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without plugin-owned shell. |
+| `infra/install.sh` | A deliberately no-op custom-install template, with comments explaining when to keep or remove it. |
 | `ui/scripts/main.js` | The entry module: activates the showcase, card action, applications panel, and cleanup. |
 | `ui/scripts/showcase.js` | Buttons in every extension slot plus a live explorer for the complete frontend API. |
 | `ui/views/panel.html`, `ui/style/hello.css` | The two conventions — views loaded by name, CSS written against the platform's theme tokens. |

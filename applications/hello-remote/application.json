@@ -3,7 +3,7 @@
   "name": "Hello Remote",
   "description": "Example app: explore every frontend extension slot and call its Go plugin and LXD container program.",
   "category": "development",
-  "version": "5",
+  "version": "6",
   "icon": "ui/assets/logo.svg",
   "scopes": ["global", "project"],
   "env": [

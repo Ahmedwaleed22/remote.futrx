@@ -103,6 +103,29 @@ func TestLoadApplicationPrependsContainerBuildToCustomInstall(t *testing.T) {
 	}
 }
 
+func TestHelloRemoteCarriesTheOptionalInfrastructureTemplate(t *testing.T) {
+	registry, err := NewRegistry(EmbeddedCatalog(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	application, ok := registry.Get("hello-remote")
+	if !ok {
+		t.Fatal("hello-remote is missing from the embedded catalog")
+	}
+	if application.Install != defaultInstallScriptPath {
+		t.Fatalf("install path = %q, want %q", application.Install, defaultInstallScriptPath)
+	}
+	script, ok := registry.Script(application.ID)
+	if !ok {
+		t.Fatal("hello-remote install program is missing")
+	}
+	generatedAt := bytes.Index(script, []byte("APP_BUILD_VERSION="))
+	templateAt := bytes.Index(script, []byte("no application-specific infrastructure setup required"))
+	if generatedAt < 0 || templateAt < 0 || generatedAt >= templateAt {
+		t.Fatalf("generated container build must run before the no-op infra template")
+	}
+}
+
 func TestLoadApplicationRejectsInvalidInfrastructureOverrides(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
