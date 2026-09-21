@@ -44,15 +44,6 @@ type Installer interface {
 	Expose(ctx context.Context, spec InstallSpec) error
 }
 
-// BackendSpec is everything BackendHost needs to run one instance's plugin.
-// It deliberately carries only the catalog identity Remote publishes on the
-// plugin's descriptor plus the plugin's initialization contract; other
-// presentation and persistence fields stay in the application service.
-type BackendSpec struct {
-	ApplicationID string
-	Instance      appplugin.Instance
-}
-
 // BackendHost compiles an application's backend/ source and runs it as a child
 // process, one per instance, forwarding calls to it. It owns everything
 // go-plugin-facing, so the service layer never launches a process itself.
@@ -65,11 +56,11 @@ type BackendHost interface {
 	// process for the instance, and returns what the plugin says about
 	// itself. It is idempotent: a call against an already-running instance
 	// returns the descriptor it reported at connect time.
-	Ensure(ctx context.Context, spec BackendSpec) (appplugin.Descriptor, error)
+	Ensure(ctx context.Context, instance appplugin.Instance) (appplugin.Descriptor, error)
 	// Call forwards one request, starting the plugin first if it is not
 	// running — which is what makes installed backends survive a server
 	// restart without a start sweep.
-	Call(ctx context.Context, spec BackendSpec, request appplugin.Request) (appplugin.Response, error)
+	Call(ctx context.Context, instance appplugin.Instance, request appplugin.Request) (appplugin.Response, error)
 	// Stop terminates the instance's plugin process, keeping its data
 	// directory so a later start resumes with it.
 	Stop(ctx context.Context, instanceID string) error

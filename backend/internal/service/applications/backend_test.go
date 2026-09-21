@@ -23,20 +23,20 @@ type recordingHost struct {
 	response  appplugin.Response
 }
 
-func (h *recordingHost) Ensure(_ context.Context, spec BackendSpec) (appplugin.Descriptor, error) {
-	h.ensured = append(h.ensured, spec.Instance.ID)
+func (h *recordingHost) Ensure(_ context.Context, instance appplugin.Instance) (appplugin.Descriptor, error) {
+	h.ensured = append(h.ensured, instance.ID)
 	if h.ensureErr != nil {
 		return appplugin.Descriptor{}, h.ensureErr
 	}
-	return appplugin.Descriptor{Name: spec.ApplicationID, APIVersion: appplugin.APIVersion}, nil
+	return appplugin.Descriptor{Name: instance.ApplicationID, APIVersion: appplugin.APIVersion}, nil
 }
 
 func (h *recordingHost) Call(
 	ctx context.Context,
-	spec BackendSpec,
+	instance appplugin.Instance,
 	request appplugin.Request,
 ) (appplugin.Response, error) {
-	h.ensured = append(h.ensured, spec.Instance.ID)
+	h.ensured = append(h.ensured, instance.ID)
 	h.requests = append(h.requests, request)
 	_, h.deadline = ctx.Deadline()
 	return h.response, nil
@@ -89,21 +89,21 @@ func anyCaller() appplugin.Caller {
 	return appplugin.Caller{Email: "user@example.com"}
 }
 
-func TestBackendSpecCarriesManifestMetadata(t *testing.T) {
+func TestPluginInstanceCarriesManifestMetadata(t *testing.T) {
 	application := backendImage(func(application *Application) {
 		application.Name = "Manifest Name"
 		application.Version = "3.2.1"
 		application.Service = "manifest.service"
 	})
-	spec := newBackendSpec(application, runningInstance())
-	if spec.Instance.ApplicationName != "Manifest Name" {
-		t.Fatalf("application name = %q, want Manifest Name", spec.Instance.ApplicationName)
+	instance := newPluginInstance(application, runningInstance())
+	if instance.ApplicationName != "Manifest Name" {
+		t.Fatalf("application name = %q, want Manifest Name", instance.ApplicationName)
 	}
-	if spec.Instance.ApplicationVersion != "3.2.1" {
-		t.Fatalf("application version = %q, want 3.2.1", spec.Instance.ApplicationVersion)
+	if instance.ApplicationVersion != "3.2.1" {
+		t.Fatalf("application version = %q, want 3.2.1", instance.ApplicationVersion)
 	}
-	if spec.Instance.Service != "manifest.service" {
-		t.Fatalf("service = %q, want manifest.service", spec.Instance.Service)
+	if instance.Service != "manifest.service" {
+		t.Fatalf("service = %q, want manifest.service", instance.Service)
 	}
 }
 

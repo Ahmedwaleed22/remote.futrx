@@ -125,18 +125,15 @@ func testGoToolOverride() string {
 	return os.Getenv("REMOTE_PLUGIN_GO")
 }
 
-func testSpec(applicationID, instanceID string) svc.BackendSpec {
-	return svc.BackendSpec{
-		ApplicationID: applicationID,
-		Instance: appplugin.Instance{
-			ID:                 instanceID,
-			ApplicationID:      applicationID,
-			ApplicationName:    "Test Application",
-			ApplicationVersion: "2.4.0",
-			Scope:              string(svc.ScopeProject),
-			ProjectID:          "project-1",
-			Env:                map[string]string{"TOKEN": "secret-value"},
-		},
+func testInstance(applicationID, instanceID string) appplugin.Instance {
+	return appplugin.Instance{
+		ID:                 instanceID,
+		ApplicationID:      applicationID,
+		ApplicationName:    "Test Application",
+		ApplicationVersion: "2.4.0",
+		Scope:              string(svc.ScopeProject),
+		ProjectID:          "project-1",
+		Env:                map[string]string{"TOKEN": "secret-value"},
 	}
 }
 
@@ -180,11 +177,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func call(t *testing.T, host *Host, spec svc.BackendSpec, request appplugin.Request) appplugin.Response {
+func call(t *testing.T, host *Host, instance appplugin.Instance, request appplugin.Request) appplugin.Response {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	response, err := host.Call(ctx, spec, request)
+	response, err := host.Call(ctx, instance, request)
 	if err != nil {
 		t.Fatalf("call %q: %v", request.Path, err)
 	}
@@ -193,7 +190,7 @@ func call(t *testing.T, host *Host, spec svc.BackendSpec, request appplugin.Requ
 
 func TestHostCompilesAndServesAPlugin(t *testing.T) {
 	host := newTestHost(t, fakeCatalog{"test-application": sourceFS(testPluginSource)})
-	spec := testSpec("test-application", "instance-1")
+	spec := testInstance("test-application", "instance-1")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -240,7 +237,7 @@ func TestHostCompilesAndServesAPlugin(t *testing.T) {
 // plugin keeps between requests is only meaningful if the process is the same.
 func TestHostReusesOneProcessPerInstance(t *testing.T) {
 	host := newTestHost(t, fakeCatalog{"test-application": sourceFS(testPluginSource)})
-	spec := testSpec("test-application", "instance-reuse")
+	spec := testInstance("test-application", "instance-reuse")
 
 	first := string(call(t, host, spec, appplugin.Request{Method: "GET", Path: "pid"}).Body)
 	second := string(call(t, host, spec, appplugin.Request{Method: "GET", Path: "pid"}).Body)
@@ -248,7 +245,7 @@ func TestHostReusesOneProcessPerInstance(t *testing.T) {
 		t.Errorf("two calls hit different processes:\n%s\n%s", first, second)
 	}
 
-	other := testSpec("test-application", "instance-other")
+	other := testInstance("test-application", "instance-other")
 	third := string(call(t, host, other, appplugin.Request{Method: "GET", Path: "pid"}).Body)
 	if third == first {
 		t.Error("two instances share one process; they must not")
@@ -257,10 +254,10 @@ func TestHostReusesOneProcessPerInstance(t *testing.T) {
 
 func TestHostStopEndsTheProcessAndCallRestartsIt(t *testing.T) {
 	host := newTestHost(t, fakeCatalog{"test-application": sourceFS(testPluginSource)})
-	spec := testSpec("test-application", "instance-restart")
+	spec := testInstance("test-application", "instance-restart")
 
 	before := string(call(t, host, spec, appplugin.Request{Method: "GET", Path: "pid"}).Body)
-	if err := host.Stop(context.Background(), spec.Instance.ID); err != nil {
+	if err := host.Stop(context.Background(), spec.ID); err != nil {
 		t.Fatalf("stop: %v", err)
 	}
 	// A call after a stop starts the plugin again rather than failing, which is
@@ -275,7 +272,7 @@ func TestHostStopEndsTheProcessAndCallRestartsIt(t *testing.T) {
 // makes stop and start safe to use freely on an app someone relies on.
 func TestStopKeepsPluginDataAndRemoveDiscardsIt(t *testing.T) {
 	host := newTestHost(t, fakeCatalog{"test-application": sourceFS(testPluginSource)})
-	spec := testSpec("test-application", "instance-data")
+	spec := testInstance("test-application", "instance-data")
 
 	written := call(t, host, spec, appplugin.Request{
 		Method: "POST", Path: "write", Body: []byte("durable"),
@@ -283,7 +280,7 @@ func TestStopKeepsPluginDataAndRemoveDiscardsIt(t *testing.T) {
 	if written.Status != 200 {
 		t.Fatalf("write: %s", written.Body)
 	}
-	if err := host.Stop(context.Background(), spec.Instance.ID); err != nil {
+	if err := host.Stop(context.Background(), spec.ID); err != nil {
 		t.Fatalf("stop: %v", err)
 	}
 	read := call(t, host, spec, appplugin.Request{Method: "GET", Path: "read"})
@@ -291,8 +288,8 @@ func TestStopKeepsPluginDataAndRemoveDiscardsIt(t *testing.T) {
 		t.Errorf("after stop, read = %q (%d)", read.Body, read.Status)
 	}
 
-	dataDir := host.dataDir(spec.Instance.ID)
-	if err := host.Remove(context.Background(), spec.Instance.ID); err != nil {
+	dataDir := host.dataDir(spec.ID)
+	if err := host.Remove(context.Background(), spec.ID); err != nil {
 		t.Fatalf("remove: %v", err)
 	}
 	if _, err := os.Stat(dataDir); !os.IsNotExist(err) {
@@ -308,7 +305,7 @@ func TestStopKeepsPluginDataAndRemoveDiscardsIt(t *testing.T) {
 // request in flight on that plugin depends on it.
 func TestPanickingRouteFailsOneCallAndKeepsTheProcess(t *testing.T) {
 	host := newTestHost(t, fakeCatalog{"test-application": sourceFS(testPluginSource)})
-	spec := testSpec("test-application", "instance-panic")
+	spec := testInstance("test-application", "instance-panic")
 
 	before := string(call(t, host, spec, appplugin.Request{Method: "GET", Path: "pid"}).Body)
 
@@ -330,7 +327,7 @@ func TestPanickingRouteFailsOneCallAndKeepsTheProcess(t *testing.T) {
 // deadline belongs to the host, since the transport has no notion of one.
 func TestCallRespectsTheCallerDeadline(t *testing.T) {
 	host := newTestHost(t, fakeCatalog{"test-application": sourceFS(testPluginSource)})
-	spec := testSpec("test-application", "instance-timeout")
+	spec := testInstance("test-application", "instance-timeout")
 
 	// Start the plugin first so the deadline covers only the call.
 	call(t, host, spec, appplugin.Request{Method: "GET", Path: "pid"})
@@ -352,7 +349,7 @@ func TestCallRespectsTheCallerDeadline(t *testing.T) {
 // the mismatch is one clear error instead of an unreadable failure later.
 func TestPluginWithAWrongContractVersionIsRefused(t *testing.T) {
 	host := newTestHost(t, fakeCatalog{"old-application": sourceFS(wrongVersionSource)})
-	spec := testSpec("old-application", "instance-old")
+	spec := testInstance("old-application", "instance-old")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -367,7 +364,7 @@ func TestPluginWithAWrongContractVersionIsRefused(t *testing.T) {
 
 func TestEnsureRejectsAnImageWithNoPluginSource(t *testing.T) {
 	host := newTestHost(t, fakeCatalog{})
-	_, err := host.Ensure(context.Background(), testSpec("missing", "instance-missing"))
+	_, err := host.Ensure(context.Background(), testInstance("missing", "instance-missing"))
 	if err == nil {
 		t.Fatal("an application with no plugin source was accepted")
 	}
@@ -436,7 +433,7 @@ func TestBuildReportsCompilerErrors(t *testing.T) {
 // another — the one failure here that would be worse than an outage.
 func TestConcurrentCallsDoNotCrossResponses(t *testing.T) {
 	host := newTestHost(t, fakeCatalog{"test-application": sourceFS(testPluginSource)})
-	spec := testSpec("test-application", "instance-concurrent")
+	spec := testInstance("test-application", "instance-concurrent")
 
 	// Start the plugin once so every goroutine below races on calling, not on
 	// launching.
@@ -503,7 +500,7 @@ func TestConcurrentCallsDoNotCrossResponses(t *testing.T) {
 // concurrent calls to one application through the builder's lock.
 func TestServingARequestDoesNotRebuild(t *testing.T) {
 	host := newTestHost(t, fakeCatalog{"test-application": sourceFS(testPluginSource)})
-	spec := testSpec("test-application", "instance-nobuild")
+	spec := testInstance("test-application", "instance-nobuild")
 
 	call(t, host, spec, appplugin.Request{Method: "GET", Path: "pid"})
 	afterLaunch := host.builder.calls.Load()
@@ -518,7 +515,7 @@ func TestServingARequestDoesNotRebuild(t *testing.T) {
 
 	// A crashed plugin must still be rebuilt-and-relaunched on the next call,
 	// so the fast path cannot be a blanket skip.
-	if err := host.Stop(context.Background(), spec.Instance.ID); err != nil {
+	if err := host.Stop(context.Background(), spec.ID); err != nil {
 		t.Fatalf("stop: %v", err)
 	}
 	call(t, host, spec, appplugin.Request{Method: "GET", Path: "pid"})

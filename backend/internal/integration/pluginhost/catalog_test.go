@@ -110,15 +110,12 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 
 	host := New(sharedRoot(t), registry, Options{GoTool: testGoToolOverride()})
 	t.Cleanup(host.Shutdown)
-	spec := svc.BackendSpec{
-		ApplicationID: application.ID,
-		Instance: appplugin.Instance{
-			ID:                 "catalog-e2e",
-			ApplicationID:      application.ID,
-			ApplicationName:    application.Name,
-			ApplicationVersion: application.Version,
-			Scope:              string(svc.ScopeGlobal),
-		},
+	spec := appplugin.Instance{
+		ID:                 "catalog-e2e",
+		ApplicationID:      application.ID,
+		ApplicationName:    application.Name,
+		ApplicationVersion: application.Version,
+		Scope:              string(svc.ScopeGlobal),
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -145,7 +142,7 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 	if health["ok"] != true || health["pid"] == nil {
 		t.Errorf("health = %v", health)
 	}
-	if health["instance"] != spec.Instance.ID {
+	if health["instance"] != spec.ID {
 		t.Errorf("instance = %v, want the one Init was given", health["instance"])
 	}
 
@@ -187,11 +184,11 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 	}
 }
 
-func decode(t *testing.T, host *Host, spec svc.BackendSpec, request appplugin.Request) map[string]any {
+func decode(t *testing.T, host *Host, instance appplugin.Instance, request appplugin.Request) map[string]any {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	response, err := host.Call(ctx, spec, request)
+	response, err := host.Call(ctx, instance, request)
 	if err != nil {
 		t.Fatalf("%s %s: %v", request.Method, request.Path, err)
 	}
@@ -253,15 +250,12 @@ func TestPluginWithTheAPILayoutCompilesAndServes(t *testing.T) {
 
 	host := New(sharedRoot(t), registry, Options{GoTool: testGoToolOverride()})
 	t.Cleanup(host.Shutdown)
-	spec := svc.BackendSpec{
-		ApplicationID: application.ID,
-		Instance: appplugin.Instance{
-			ID:                 "api-layout-e2e",
-			ApplicationID:      application.ID,
-			ApplicationName:    application.Name,
-			ApplicationVersion: application.Version,
-			Scope:              string(svc.ScopeGlobal),
-		},
+	spec := appplugin.Instance{
+		ID:                 "api-layout-e2e",
+		ApplicationID:      application.ID,
+		ApplicationName:    application.Name,
+		ApplicationVersion: application.Version,
+		Scope:              string(svc.ScopeGlobal),
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)

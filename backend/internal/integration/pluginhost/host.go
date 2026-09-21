@@ -71,8 +71,8 @@ const handshakeTimeout = 30 * time.Second
 
 // Ensure compiles the application's plugin if needed, starts a process for the
 // instance, and returns what the plugin reported about itself.
-func (h *Host) Ensure(ctx context.Context, spec svc.BackendSpec) (appplugin.Descriptor, error) {
-	current, err := h.ensure(ctx, spec)
+func (h *Host) Ensure(ctx context.Context, instance appplugin.Instance) (appplugin.Descriptor, error) {
+	current, err := h.ensure(ctx, instance)
 	if err != nil {
 		return appplugin.Descriptor{}, err
 	}
@@ -82,10 +82,10 @@ func (h *Host) Ensure(ctx context.Context, spec svc.BackendSpec) (appplugin.Desc
 // Call forwards one request, starting the plugin first if it is not running.
 func (h *Host) Call(
 	ctx context.Context,
-	spec svc.BackendSpec,
+	instance appplugin.Instance,
 	request appplugin.Request,
 ) (appplugin.Response, error) {
-	current, err := h.ensure(ctx, spec)
+	current, err := h.ensure(ctx, instance)
 	if err != nil {
 		return appplugin.Response{}, err
 	}
@@ -139,8 +139,9 @@ func (h *Host) Shutdown() {
 
 // ensure returns a live process for the instance, launching one if there is
 // none or if the previous one exited.
-func (h *Host) ensure(ctx context.Context, spec svc.BackendSpec) (*pluginProcess, error) {
-	instanceID := spec.Instance.ID
+func (h *Host) ensure(ctx context.Context, instance appplugin.Instance) (*pluginProcess, error) {
+	instanceID := instance.ID
+	applicationID := instance.ApplicationID
 
 	// A live process needs nothing else, and this is the path every request
 	// takes. An application's source changes only when an administrator uploads a
@@ -153,13 +154,13 @@ func (h *Host) ensure(ctx context.Context, spec svc.BackendSpec) (*pluginProcess
 		return current, nil
 	}
 
-	source, ok := h.catalog.BackendSource(spec.ApplicationID)
+	source, ok := h.catalog.BackendSource(applicationID)
 	if !ok {
-		return nil, fmt.Errorf("%w: %s ships no plugin source", svc.ErrNoBackend, spec.ApplicationID)
+		return nil, fmt.Errorf("%w: %s ships no plugin source", svc.ErrNoBackend, applicationID)
 	}
 	// Building stays outside the launch lock so two instances of the same
 	// application share one build instead of queueing behind each other's launches.
-	binary, err := h.builder.Build(ctx, spec.ApplicationID, source)
+	binary, err := h.builder.Build(ctx, applicationID, source)
 	if err != nil {
 		return nil, err
 	}
@@ -178,11 +179,12 @@ func (h *Host) ensure(ctx context.Context, spec svc.BackendSpec) (*pluginProcess
 		// next call.
 		h.kill(instanceID)
 	}
-	return h.launch(ctx, spec, binary)
+	return h.launch(ctx, instance, binary)
 }
 
-func (h *Host) launch(ctx context.Context, spec svc.BackendSpec, binary string) (*pluginProcess, error) {
-	instanceID := spec.Instance.ID
+func (h *Host) launch(ctx context.Context, instance appplugin.Instance, binary string) (*pluginProcess, error) {
+	instanceID := instance.ID
+	applicationID := instance.ApplicationID
 	dataDir := h.dataDir(instanceID)
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return nil, fmt.Errorf("create plugin data directory: %w", err)
@@ -192,11 +194,11 @@ func (h *Host) launch(ctx context.Context, spec svc.BackendSpec, binary string) 
 		HandshakeConfig: pluginHandshake,
 		Plugins:         goplugin.PluginSet{backendPluginName: &backendPlugin{}},
 		Cmd:             exec.Command(binary),
-		Logger:          h.logger.Named(spec.ApplicationID),
+		Logger:          h.logger.Named(applicationID),
 		StartTimeout:    handshakeTimeout,
 	})
 
-	started, err := h.connect(client, spec, dataDir)
+	started, err := h.connect(client, instance, dataDir)
 	if err != nil {
 		client.Kill()
 		return nil, err
@@ -212,45 +214,45 @@ func (h *Host) launch(ctx context.Context, spec svc.BackendSpec, binary string) 
 // connect completes the handshake, checks the contract version, and hands the
 // instance over. Every failure here kills the process rather than leaving a
 // half-initialized plugin reachable.
-func (h *Host) connect(client *goplugin.Client, spec svc.BackendSpec, dataDir string) (*pluginProcess, error) {
+func (h *Host) connect(client *goplugin.Client, instance appplugin.Instance, dataDir string) (*pluginProcess, error) {
+	applicationID := instance.ApplicationID
 	protocol, err := client.Client()
 	if err != nil {
-		return nil, fmt.Errorf("start plugin %s: %w", spec.ApplicationID, err)
+		return nil, fmt.Errorf("start plugin %s: %w", applicationID, err)
 	}
 	raw, err := protocol.Dispense(backendPluginName)
 	if err != nil {
-		return nil, fmt.Errorf("connect to plugin %s: %w", spec.ApplicationID, err)
+		return nil, fmt.Errorf("connect to plugin %s: %w", applicationID, err)
 	}
 	backend, ok := raw.(appplugin.Backend)
 	if !ok {
-		return nil, fmt.Errorf("plugin %s served an unexpected type %T", spec.ApplicationID, raw)
+		return nil, fmt.Errorf("plugin %s served an unexpected type %T", applicationID, raw)
 	}
 	descriptor, err := backend.Describe()
 	if err != nil {
-		return nil, fmt.Errorf("describe plugin %s: %w", spec.ApplicationID, err)
+		return nil, fmt.Errorf("describe plugin %s: %w", applicationID, err)
 	}
 	if descriptor.APIVersion != appplugin.APIVersion {
 		return nil, fmt.Errorf(
 			"plugin %s reports contract version %d, this server speaks %d",
-			spec.ApplicationID, descriptor.APIVersion, appplugin.APIVersion)
+			applicationID, descriptor.APIVersion, appplugin.APIVersion)
 	}
 	// application.json is the metadata source of truth for the package. A
 	// backend is one capability of that package, so making every plugin repeat
 	// the same name and version in Describe only creates values that can drift.
-	descriptor.Name = spec.Instance.ApplicationName
-	descriptor.Version = spec.Instance.ApplicationVersion
-	if err := backend.Init(instanceOf(spec, dataDir)); err != nil {
-		return nil, fmt.Errorf("initialize plugin %s: %w", spec.ApplicationID, err)
+	descriptor.Name = instance.ApplicationName
+	descriptor.Version = instance.ApplicationVersion
+	if err := backend.Init(instanceWithDataDir(instance, dataDir)); err != nil {
+		return nil, fmt.Errorf("initialize plugin %s: %w", applicationID, err)
 	}
 	return &pluginProcess{client: client, backend: backend, descriptor: descriptor}, nil
 }
 
-// instanceOf projects an installed instance into the view a plugin gets. It
-// carries the resolved environment, secrets included: a plugin runs on the
-// host on the application's behalf, and an application's plugin needs the password its own
-// install script generated.
-func instanceOf(spec svc.BackendSpec, dataDir string) appplugin.Instance {
-	instance := spec.Instance
+// instanceWithDataDir adds the host-owned directory to the instance before it
+// crosses the plugin boundary. It carries the resolved environment, secrets
+// included: an application's plugin needs the password its own install script
+// generated.
+func instanceWithDataDir(instance appplugin.Instance, dataDir string) appplugin.Instance {
 	instance.DataDir = dataDir
 	return instance
 }

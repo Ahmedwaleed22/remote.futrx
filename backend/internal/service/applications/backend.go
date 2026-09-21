@@ -24,20 +24,20 @@ var (
 // DescribeBackend starts the instance's plugin if needed and returns what it says
 // about itself, including the routes an extension may call.
 func (s *Service) DescribeBackend(ctx context.Context, id string, caller appplugin.Caller) (BackendDescriptor, error) {
-	spec, application, err := s.backendSpec(ctx, id, caller)
+	instance, application, err := s.backendInstance(ctx, id, caller)
 	if err != nil {
 		return BackendDescriptor{}, err
 	}
 	ctx, cancel := s.backendDeadline(ctx, application)
 	defer cancel()
 
-	descriptor, err := s.backends.Ensure(ctx, spec)
+	descriptor, err := s.backends.Ensure(ctx, instance)
 	if err != nil {
 		return BackendDescriptor{}, err
 	}
 	return BackendDescriptor{
-		InstanceID:    spec.Instance.ID,
-		ApplicationID: spec.ApplicationID,
+		InstanceID:    instance.ID,
+		ApplicationID: instance.ApplicationID,
 		Descriptor:    descriptor,
 		Access:        application.Audience(),
 		TimeoutMS:     application.Timeout(),
@@ -54,7 +54,7 @@ func (s *Service) CallBackend(
 	request appplugin.Request,
 	caller appplugin.Caller,
 ) (appplugin.Response, error) {
-	spec, application, err := s.backendSpec(ctx, id, caller)
+	instance, application, err := s.backendInstance(ctx, id, caller)
 	if err != nil {
 		return appplugin.Response{}, err
 	}
@@ -63,7 +63,7 @@ func (s *Service) CallBackend(
 	ctx, cancel := s.backendDeadline(ctx, application)
 	defer cancel()
 
-	response, err := s.backends.Call(ctx, spec, request)
+	response, err := s.backends.Call(ctx, instance, request)
 	if err != nil {
 		return appplugin.Response{}, err
 	}
@@ -73,31 +73,31 @@ func (s *Service) CallBackend(
 	return response, nil
 }
 
-// backendSpec resolves an instance to a runnable plugin, enforcing every
+// backendInstance resolves an instance to a runnable plugin, enforcing every
 // precondition a call has: the application ships one, the app is running, and the
 // caller is allowed to reach it.
-func (s *Service) backendSpec(
+func (s *Service) backendInstance(
 	ctx context.Context,
 	id string,
 	caller appplugin.Caller,
-) (BackendSpec, ApplicationBackend, error) {
+) (appplugin.Instance, ApplicationBackend, error) {
 	if s.backends == nil {
-		return BackendSpec{}, ApplicationBackend{}, ErrUnavailable
+		return appplugin.Instance{}, ApplicationBackend{}, ErrUnavailable
 	}
 	instance, application, err := s.load(ctx, id)
 	if err != nil {
-		return BackendSpec{}, ApplicationBackend{}, err
+		return appplugin.Instance{}, ApplicationBackend{}, err
 	}
 	if application.Backend == nil {
-		return BackendSpec{}, ApplicationBackend{}, fmt.Errorf("%w: %s", ErrNoBackend, application.ID)
+		return appplugin.Instance{}, ApplicationBackend{}, fmt.Errorf("%w: %s", ErrNoBackend, application.ID)
 	}
 	if instance.Status != StatusRunning {
-		return BackendSpec{}, ApplicationBackend{}, fmt.Errorf("%w: %s", ErrNotRunning, instance.ID)
+		return appplugin.Instance{}, ApplicationBackend{}, fmt.Errorf("%w: %s", ErrNotRunning, instance.ID)
 	}
 	if application.Backend.Audience() == BackendAccessAdmin && !caller.IsAdmin {
-		return BackendSpec{}, ApplicationBackend{}, fmt.Errorf("%w: %s", ErrBackendAccess, application.ID)
+		return appplugin.Instance{}, ApplicationBackend{}, fmt.Errorf("%w: %s", ErrBackendAccess, application.ID)
 	}
-	return newBackendSpec(application, instance), *application.Backend, nil
+	return newPluginInstance(application, instance), *application.Backend, nil
 }
 
 // backendDeadline bounds one plugin call. A plugin is a separate process the
@@ -118,7 +118,7 @@ func (s *Service) startBackend(ctx context.Context, application Application, ins
 	}
 	ctx, cancel := context.WithTimeout(ctx, backendStartTimeout)
 	defer cancel()
-	if _, err := s.backends.Ensure(ctx, newBackendSpec(application, instance)); err != nil {
+	if _, err := s.backends.Ensure(ctx, newPluginInstance(application, instance)); err != nil {
 		return fmt.Errorf("start backend: %w", err)
 	}
 	return nil
@@ -146,22 +146,19 @@ func (s *Service) removeBackend(ctx context.Context, application Application, in
 // later start hits the binary cache and takes milliseconds.
 const backendStartTimeout = 5 * time.Minute
 
-func newBackendSpec(application Application, instance Instance) BackendSpec {
-	return BackendSpec{
-		ApplicationID: application.ID,
-		Instance: appplugin.Instance{
-			ID:                 instance.ID,
-			ApplicationID:      instance.ApplicationID,
-			ApplicationName:    application.Name,
-			ApplicationVersion: application.Version,
-			Service:            application.Service,
-			Scope:              string(instance.Scope),
-			ProjectID:          instance.ProjectID,
-			ContainerName:      instance.ContainerName,
-			InternalPort:       instance.InternalPort,
-			ExternalPort:       instance.ExternalPort,
-			Env:                instance.Env,
-		},
+func newPluginInstance(application Application, instance Instance) appplugin.Instance {
+	return appplugin.Instance{
+		ID:                 instance.ID,
+		ApplicationID:      instance.ApplicationID,
+		ApplicationName:    application.Name,
+		ApplicationVersion: application.Version,
+		Service:            application.Service,
+		Scope:              string(instance.Scope),
+		ProjectID:          instance.ProjectID,
+		ContainerName:      instance.ContainerName,
+		InternalPort:       instance.InternalPort,
+		ExternalPort:       instance.ExternalPort,
+		Env:                instance.Env,
 	}
 }
 
