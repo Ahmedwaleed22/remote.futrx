@@ -56,8 +56,12 @@ type Caller struct {
 // One process serves one instance, so these values are fixed for its lifetime
 // and are handed over once through Backend.Init.
 type Instance struct {
-	ID            string `json:"id"`
-	ApplicationID string `json:"applicationId"`
+	ID                 string `json:"id"`
+	ApplicationID      string `json:"applicationId"`
+	ApplicationName    string `json:"applicationName"`
+	ApplicationVersion string `json:"applicationVersion"`
+	// Service is the systemd unit declared by application.json, if any.
+	Service string `json:"service,omitempty"`
 	// Scope is "global" or "project".
 	Scope string `json:"scope"`
 	// ProjectID is set only for project-scoped instances.

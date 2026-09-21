@@ -49,10 +49,8 @@ type Installer interface {
 // plugin's descriptor plus the plugin's initialization contract; other
 // presentation and persistence fields stay in the application service.
 type BackendSpec struct {
-	ApplicationID      string
-	ApplicationName    string
-	ApplicationVersion string
-	Instance           appplugin.Instance
+	ApplicationID string
+	Instance      appplugin.Instance
 }
 
 // BackendHost compiles an application's backend/ source and runs it as a child

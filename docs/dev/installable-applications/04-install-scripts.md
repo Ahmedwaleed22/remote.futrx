@@ -21,6 +21,10 @@ lxc exec <container> --env APP_INTERNAL_PORT=3306 --env … -- bash -s
 
 It receives:
 
+- `APP_APPLICATION_ID`, `APP_APPLICATION_NAME`, and
+  `APP_APPLICATION_VERSION` — package identity from `application.json`.
+- `APP_SERVICE` — the manifest's systemd unit name, or empty when it declares
+  none. Use this instead of repeating the unit name in the script.
 - `APP_INTERNAL_PORT` — the port the app must bind **inside** the container.
   Always `port.internal` from `application.json`. When no port is declared it
   is `0` and means nothing.

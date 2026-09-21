@@ -127,15 +127,15 @@ func testGoToolOverride() string {
 
 func testSpec(applicationID, instanceID string) svc.BackendSpec {
 	return svc.BackendSpec{
-		ApplicationID:      applicationID,
-		ApplicationName:    "Test Application",
-		ApplicationVersion: "2.4.0",
+		ApplicationID: applicationID,
 		Instance: appplugin.Instance{
-			ID:            instanceID,
-			ApplicationID: applicationID,
-			Scope:         string(svc.ScopeProject),
-			ProjectID:     "project-1",
-			Env:           map[string]string{"TOKEN": "secret-value"},
+			ID:                 instanceID,
+			ApplicationID:      applicationID,
+			ApplicationName:    "Test Application",
+			ApplicationVersion: "2.4.0",
+			Scope:              string(svc.ScopeProject),
+			ProjectID:          "project-1",
+			Env:                map[string]string{"TOKEN": "secret-value"},
 		},
 	}
 }

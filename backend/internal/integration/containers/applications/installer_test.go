@@ -107,6 +107,28 @@ func serviceSpec(scope svc.Scope, container string) svc.InstallSpec {
 	}
 }
 
+func TestInstallScriptEnvironmentCarriesManifestMetadata(t *testing.T) {
+	spec := serviceSpec(svc.ScopeProject, "my-project")
+	spec.Application.Version = "4.5.6"
+	spec.Instance.Env = map[string]string{
+		"CUSTOM":             "value",
+		"APP_APPLICATION_ID": "forged",
+	}
+	env := testInstaller(t, newFakeRunner()).scriptEnv(spec)
+	for key, want := range map[string]string{
+		"APP_APPLICATION_ID":      fixtureService,
+		"APP_APPLICATION_NAME":    "Fixture Service",
+		"APP_APPLICATION_VERSION": "4.5.6",
+		"APP_SERVICE":             "fixture",
+		"APP_INTERNAL_PORT":       "3306",
+		"CUSTOM":                  "value",
+	} {
+		if env[key] != want {
+			t.Errorf("%s = %q, want %q", key, env[key], want)
+		}
+	}
+}
+
 // A project-scope service installs into the project's own container. Launching
 // a second container for it would double the memory cost of every app and put
 // it off the project's filesystem, so this asserts no container is created.

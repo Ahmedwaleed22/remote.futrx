@@ -111,13 +111,13 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 	host := New(sharedRoot(t), registry, Options{GoTool: testGoToolOverride()})
 	t.Cleanup(host.Shutdown)
 	spec := svc.BackendSpec{
-		ApplicationID:      application.ID,
-		ApplicationName:    application.Name,
-		ApplicationVersion: application.Version,
+		ApplicationID: application.ID,
 		Instance: appplugin.Instance{
-			ID:            "catalog-e2e",
-			ApplicationID: application.ID,
-			Scope:         string(svc.ScopeGlobal),
+			ID:                 "catalog-e2e",
+			ApplicationID:      application.ID,
+			ApplicationName:    application.Name,
+			ApplicationVersion: application.Version,
+			Scope:              string(svc.ScopeGlobal),
 		},
 	}
 
@@ -254,13 +254,13 @@ func TestPluginWithTheAPILayoutCompilesAndServes(t *testing.T) {
 	host := New(sharedRoot(t), registry, Options{GoTool: testGoToolOverride()})
 	t.Cleanup(host.Shutdown)
 	spec := svc.BackendSpec{
-		ApplicationID:      application.ID,
-		ApplicationName:    application.Name,
-		ApplicationVersion: application.Version,
+		ApplicationID: application.ID,
 		Instance: appplugin.Instance{
-			ID:            "api-layout-e2e",
-			ApplicationID: application.ID,
-			Scope:         string(svc.ScopeGlobal),
+			ID:                 "api-layout-e2e",
+			ApplicationID:      application.ID,
+			ApplicationName:    application.Name,
+			ApplicationVersion: application.Version,
+			Scope:              string(svc.ScopeGlobal),
 		},
 	}
 

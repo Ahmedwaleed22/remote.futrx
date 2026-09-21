@@ -148,18 +148,19 @@ const backendStartTimeout = 5 * time.Minute
 
 func newBackendSpec(application Application, instance Instance) BackendSpec {
 	return BackendSpec{
-		ApplicationID:      application.ID,
-		ApplicationName:    application.Name,
-		ApplicationVersion: application.Version,
+		ApplicationID: application.ID,
 		Instance: appplugin.Instance{
-			ID:            instance.ID,
-			ApplicationID: instance.ApplicationID,
-			Scope:         string(instance.Scope),
-			ProjectID:     instance.ProjectID,
-			ContainerName: instance.ContainerName,
-			InternalPort:  instance.InternalPort,
-			ExternalPort:  instance.ExternalPort,
-			Env:           instance.Env,
+			ID:                 instance.ID,
+			ApplicationID:      instance.ApplicationID,
+			ApplicationName:    application.Name,
+			ApplicationVersion: application.Version,
+			Service:            application.Service,
+			Scope:              string(instance.Scope),
+			ProjectID:          instance.ProjectID,
+			ContainerName:      instance.ContainerName,
+			InternalPort:       instance.InternalPort,
+			ExternalPort:       instance.ExternalPort,
+			Env:                instance.Env,
 		},
 	}
 }

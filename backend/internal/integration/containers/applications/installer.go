@@ -307,10 +307,18 @@ func (in *Installer) runInstallScript(ctx context.Context, spec svc.InstallSpec)
 // healthcheck gets the same one as the install script, since a probe that has
 // to authenticate needs the password that script generated.
 func (in *Installer) scriptEnv(spec svc.InstallSpec) map[string]string {
-	env := map[string]string{"APP_INTERNAL_PORT": strconv.Itoa(spec.Instance.InternalPort)}
+	env := make(map[string]string, len(spec.Instance.Env)+5)
 	for k, v := range spec.Instance.Env {
 		env[k] = v
 	}
+	// Manifest-owned values are supplied by Remote so an application-specific
+	// provisioner never has to repeat them. Assign them after user inputs so an
+	// env[] declaration cannot impersonate platform metadata.
+	env["APP_APPLICATION_ID"] = spec.Application.ID
+	env["APP_APPLICATION_NAME"] = spec.Application.Name
+	env["APP_APPLICATION_VERSION"] = spec.Application.Version
+	env["APP_SERVICE"] = spec.Application.Service
+	env["APP_INTERNAL_PORT"] = strconv.Itoa(spec.Instance.InternalPort)
 	return env
 }
 

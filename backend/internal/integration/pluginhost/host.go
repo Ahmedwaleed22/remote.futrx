@@ -237,8 +237,8 @@ func (h *Host) connect(client *goplugin.Client, spec svc.BackendSpec, dataDir st
 	// application.json is the metadata source of truth for the package. A
 	// backend is one capability of that package, so making every plugin repeat
 	// the same name and version in Describe only creates values that can drift.
-	descriptor.Name = spec.ApplicationName
-	descriptor.Version = spec.ApplicationVersion
+	descriptor.Name = spec.Instance.ApplicationName
+	descriptor.Version = spec.Instance.ApplicationVersion
 	if err := backend.Init(instanceOf(spec, dataDir)); err != nil {
 		return nil, fmt.Errorf("initialize plugin %s: %w", spec.ApplicationID, err)
 	}

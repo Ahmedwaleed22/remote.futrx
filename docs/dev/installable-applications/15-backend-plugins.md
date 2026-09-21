@@ -131,6 +131,8 @@ What `Init` receives, fixed for the process's lifetime:
 | Field | Notes |
 |---|---|
 | `ID`, `ApplicationID` | the installed copy, and the application it came from |
+| `ApplicationName`, `ApplicationVersion` | manifest metadata; do not copy it into plugin constants |
+| `Service` | the systemd unit declared by the manifest, if any |
 | `Scope`, `ProjectID` | `"global"`, or `"project"` with the project |
 | `ContainerName`, `InternalPort`, `ExternalPort` | the container half, when the application has one |
 | `Env` | the install's resolved inputs, **including generated secrets** |
