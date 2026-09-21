@@ -45,11 +45,12 @@ type Installer interface {
 }
 
 // BackendSpec is everything BackendHost needs to run one instance's plugin.
-// It deliberately excludes catalog presentation and persistence-only fields;
-// the host receives only the source identity and the plugin's initialization
-// contract.
+// It deliberately carries only the catalog identity Remote publishes on the
+// plugin's descriptor plus the plugin's initialization contract; other
+// presentation and persistence fields stay in the application service.
 type BackendSpec struct {
 	ApplicationID      string
+	ApplicationName    string
 	ApplicationVersion string
 	Instance           appplugin.Instance
 }

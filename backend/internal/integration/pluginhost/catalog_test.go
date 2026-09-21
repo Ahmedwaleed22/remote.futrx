@@ -112,6 +112,7 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 	t.Cleanup(host.Shutdown)
 	spec := svc.BackendSpec{
 		ApplicationID:      application.ID,
+		ApplicationName:    application.Name,
 		ApplicationVersion: application.Version,
 		Instance: appplugin.Instance{
 			ID:            "catalog-e2e",
@@ -126,7 +127,7 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("start the catalog plugin: %v", err)
 	}
-	if descriptor.Version != application.Version || descriptor.APIVersion != appplugin.APIVersion {
+	if descriptor.Name != application.Name || descriptor.Version != application.Version || descriptor.APIVersion != appplugin.APIVersion {
 		t.Fatalf("descriptor = %+v", descriptor)
 	}
 	// Routes are discovery, so the SPA can only find what the plugin declares.
@@ -254,6 +255,7 @@ func TestPluginWithTheAPILayoutCompilesAndServes(t *testing.T) {
 	t.Cleanup(host.Shutdown)
 	spec := svc.BackendSpec{
 		ApplicationID:      application.ID,
+		ApplicationName:    application.Name,
 		ApplicationVersion: application.Version,
 		Instance: appplugin.Instance{
 			ID:            "api-layout-e2e",
@@ -268,7 +270,7 @@ func TestPluginWithTheAPILayoutCompilesAndServes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("start the api-layout plugin: %v", err)
 	}
-	if descriptor.Version != application.Version || descriptor.APIVersion != appplugin.APIVersion {
+	if descriptor.Name != application.Name || descriptor.Version != application.Version || descriptor.APIVersion != appplugin.APIVersion {
 		t.Fatalf("descriptor = %+v", descriptor)
 	}
 	health := decode(t, host, spec, appplugin.Request{

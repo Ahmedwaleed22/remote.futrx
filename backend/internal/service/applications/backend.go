@@ -149,6 +149,7 @@ const backendStartTimeout = 5 * time.Minute
 func newBackendSpec(application Application, instance Instance) BackendSpec {
 	return BackendSpec{
 		ApplicationID:      application.ID,
+		ApplicationName:    application.Name,
 		ApplicationVersion: application.Version,
 		Instance: appplugin.Instance{
 			ID:            instance.ID,

@@ -51,7 +51,6 @@ func main() {
 // remote.backend.describe() cannot drift from the one actually served.
 func (b *backend) Describe() (appplugin.Descriptor, error) {
 	return appplugin.Descriptor{
-		Name:       "Hello Remote",
 		APIVersion: appplugin.APIVersion,
 		Routes:     b.mux.Routes(),
 	}, nil
@@ -81,9 +80,6 @@ func (b *backend) hello(request appplugin.Request) appplugin.Response {
 	// Env carries the install's resolved inputs — here the greeting the user
 	// typed into the install dialog, declared as env[] in application.json.
 	greeting := b.instance.Env["HELLO_GREETING"]
-	if greeting == "" {
-		greeting = "Hello"
-	}
 	// Caller is stamped by the server from the session, never sent by the
 	// browser, so a plugin may trust it. The cookies that authenticated it are
 	// withheld: this plugin can tell who is asking, and cannot act as them.

@@ -89,11 +89,15 @@ func anyCaller() appplugin.Caller {
 	return appplugin.Caller{Email: "user@example.com"}
 }
 
-func TestBackendSpecCarriesTheManifestVersion(t *testing.T) {
+func TestBackendSpecCarriesManifestMetadata(t *testing.T) {
 	application := backendImage(func(application *Application) {
+		application.Name = "Manifest Name"
 		application.Version = "3.2.1"
 	})
 	spec := newBackendSpec(application, runningInstance())
+	if spec.ApplicationName != "Manifest Name" {
+		t.Fatalf("application name = %q, want Manifest Name", spec.ApplicationName)
+	}
 	if spec.ApplicationVersion != "3.2.1" {
 		t.Fatalf("application version = %q, want 3.2.1", spec.ApplicationVersion)
 	}

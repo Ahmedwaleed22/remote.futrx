@@ -17,4 +17,4 @@
 # plugin authors have the correct idempotent shape to copy when they do need it.
 set -euo pipefail
 
-echo "hello-remote: no application-specific infrastructure setup required"
+echo "install: no application-specific infrastructure setup required"
