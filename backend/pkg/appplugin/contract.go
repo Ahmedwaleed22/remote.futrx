@@ -1,8 +1,8 @@
 // Package appplugin is the contract an installable application's Go backend is
 // written against.
 //
-// An application ships a backend/ directory of Go source. The server compiles it and
-// runs it as a separate process, talking to it over hashicorp/go-plugin. The
+// An application ships backend/api/ Go source. The server compiles it and runs
+// it as a separate process, talking to it over hashicorp/go-plugin. The
 // plugin implements Backend; the SPA reaches it through
 // /api/applications/<instance>/backend/<path>, so a plugin author writes Go
 // and gets an HTTP endpoint their ui/ extension can call.
@@ -30,8 +30,9 @@ type Route struct {
 	Description string `json:"description,omitempty"`
 }
 
-// Descriptor is what a plugin says about itself when the host connects. It is
-// served to the SPA so an extension can discover the routes it may call.
+// Descriptor is the backend description served to the SPA. A plugin reports
+// the API version and routes; Remote adds manifest-owned identity after the
+// connection so an extension can discover one authoritative description.
 type Descriptor struct {
 	// Name is supplied by Remote from application.json. A plugin may leave it
 	// empty; any value it reports is replaced by the package name.
@@ -110,7 +111,8 @@ type Response struct {
 // stopped or uninstalled, so a plugin must not rely on a graceful shutdown for
 // anything it cannot afford to lose.
 type Backend interface {
-	// Describe reports the plugin's identity and routes.
+	// Describe reports the plugin API version and routes. Remote supplies
+	// manifest-owned identity to the descriptor clients receive.
 	Describe() (Descriptor, error)
 	// Init hands over the instance this process serves. It runs before any
 	// Handle call; returning an error fails the app's install or start.

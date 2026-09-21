@@ -52,7 +52,7 @@ type Service struct {
 // plugin applications, must still install and run everything else.
 type Option func(*Service)
 
-// WithBackendHost enables applications that ship a backend/ directory. Without it,
+// WithBackendHost enables applications that ship backend/api/. Without it,
 // their catalog entries still load and every backend call reports the feature
 // unavailable.
 func WithBackendHost(host BackendHost) Option {

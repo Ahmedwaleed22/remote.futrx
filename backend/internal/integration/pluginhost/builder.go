@@ -16,7 +16,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
 )
 
-// Builder turns an application's backend/ source into an executable, caching the
+// Builder turns an application's backend/api/ source into an executable, caching the
 // result by a fingerprint of everything that went into it.
 //
 // The catalog ships source rather than binaries because it is embedded in the
@@ -98,7 +98,7 @@ func (b *Builder) Build(ctx context.Context, applicationID string, source fs.FS)
 	if err != nil {
 		return "", err
 	}
-	// Only the application's own backend/ directory is read here; the SDK behind it is
+	// Only the application's own backend/api/ directory is read here; the SDK behind it is
 	// the same tree for every application and was hashed once.
 	files, err := collect(source)
 	if err != nil {

@@ -44,7 +44,7 @@ type Installer interface {
 	Expose(ctx context.Context, spec InstallSpec) error
 }
 
-// BackendHost compiles an application's backend/ source and runs it as a child
+// BackendHost compiles an application's backend/api/ source and runs it as a child
 // process, one per instance, forwarding calls to it. It owns everything
 // go-plugin-facing, so the service layer never launches a process itself.
 //
@@ -53,9 +53,9 @@ type Installer interface {
 // one.
 type BackendHost interface {
 	// Ensure builds the plugin if no current binary is cached, starts a
-	// process for the instance, and returns what the plugin says about
-	// itself. It is idempotent: a call against an already-running instance
-	// returns the descriptor it reported at connect time.
+	// process for the instance, and returns the manifest-enriched descriptor.
+	// It is idempotent: a call against an already-running instance returns the
+	// descriptor established at connect time.
 	Ensure(ctx context.Context, instance appplugin.Instance) (appplugin.Descriptor, error)
 	// Call forwards one request, starting the plugin first if it is not
 	// running — which is what makes installed backends survive a server

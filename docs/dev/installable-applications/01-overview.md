@@ -122,7 +122,7 @@ flowchart TB
     end
 
     subgraph Integration["integration/containers/applications — the catalog and lxc"]
-        I_Registry["registry.go<br/>validates the catalog, serves ui/ assets and backend/ source"]
+        I_Registry["registry.go<br/>validates the catalog, serves ui/ assets and backend/api/ source"]
         I_RegParts["registry_ui.go / registry_backend.go<br/>registry_packages.go / registry_skills.go"]
         I_Payload["infra_payload.go<br/>stages infra/payload.tar.gz into the install script"]
         I_Installer["installer.go<br/>lxc launch, infra/install.sh, systemd, proxy device"]
@@ -131,13 +131,13 @@ flowchart TB
     end
 
     subgraph Support["Supporting packages"]
-        P_PluginHost["integration/pluginhost<br/>compiles backend/, runs it over go-plugin"]
+        P_PluginHost["integration/pluginhost<br/>compiles backend/api/, runs it over go-plugin"]
         P_FileApps["stores/fileapplications<br/>global.json, projects/{id}.json"]
         P_HostTools["integration/containers/applications/hosttools<br/>checksum-pinned host binaries"]
     end
 
     subgraph Catalog["applications/ — embedded by go:embed"]
-        C_Hello["hello-remote/<br/>the worked example: backend/ + ui/"]
+        C_Hello["hello-remote/<br/>the worked example: backend/api/ + backend/container/ + ui/ + infra/"]
     end
 
     FE_Section --> FE_Catalog
@@ -171,7 +171,7 @@ flowchart TB
     I_Registry -. go:embed .-> C_Hello
     I_Installer --> P_HostTools
     I_Packages -. uploaded packages join the catalog .-> I_Registry
-    P_PluginHost -. reads backend/ source from .-> I_Registry
+    P_PluginHost -. reads backend/api/ source from .-> I_Registry
 ```
 
 Every arrow out of the service layer crosses an interface it declares itself:
@@ -183,9 +183,9 @@ is what keeps the domain testable without LXD, a Go toolchain, or a disk.
 
 | Layer | File | Responsibility |
 |---|---|---|
-| integration | `containers/applications/registry.go` | loads and validates the embedded catalog; serves `ui/` asset bytes and `backend/` source |
+| integration | `containers/applications/registry.go` | loads and validates the embedded catalog; serves `ui/` asset bytes and `backend/api/` source |
 | integration | `containers/applications/installer.go` | everything `lxc`-facing: containers, install scripts, proxy devices |
-| integration | `pluginhost/` | everything toolchain- and process-facing: compiling `backend/`, running it, forwarding calls |
+| integration | `pluginhost/` | everything toolchain- and process-facing: compiling `backend/api/`, running it, forwarding calls |
 | contract | `pkg/appplugin` | the types and interface a plugin is written against |
 | service | `service/applications/service.go` | policy: install, lifecycle, which extensions a caller may load |
 | service | `service/applications/backend.go` | policy: who may call a plugin, and when |

@@ -70,7 +70,7 @@ var _ svc.BackendHost = (*Host)(nil)
 const handshakeTimeout = 30 * time.Second
 
 // Ensure compiles the application's plugin if needed, starts a process for the
-// instance, and returns what the plugin reported about itself.
+// instance, and returns its manifest-enriched descriptor.
 func (h *Host) Ensure(ctx context.Context, instance appplugin.Instance) (appplugin.Descriptor, error) {
 	current, err := h.ensure(ctx, instance)
 	if err != nil {
