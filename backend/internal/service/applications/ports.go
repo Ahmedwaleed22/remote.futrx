@@ -49,8 +49,9 @@ type Installer interface {
 // the host receives only the source identity and the plugin's initialization
 // contract.
 type BackendSpec struct {
-	ApplicationID string
-	Instance      appplugin.Instance
+	ApplicationID      string
+	ApplicationVersion string
+	Instance           appplugin.Instance
 }
 
 // BackendHost compiles an application's backend/ source and runs it as a child

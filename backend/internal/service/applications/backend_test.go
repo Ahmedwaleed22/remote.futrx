@@ -89,6 +89,16 @@ func anyCaller() appplugin.Caller {
 	return appplugin.Caller{Email: "user@example.com"}
 }
 
+func TestBackendSpecCarriesTheManifestVersion(t *testing.T) {
+	application := backendImage(func(application *Application) {
+		application.Version = "3.2.1"
+	})
+	spec := newBackendSpec(application, runningInstance())
+	if spec.ApplicationVersion != "3.2.1" {
+		t.Fatalf("application version = %q, want 3.2.1", spec.ApplicationVersion)
+	}
+}
+
 // The caller a plugin sees is the one the transport resolved, never the one a
 // request claimed. A plugin authorizes against it, so it has to be unforgeable.
 func TestCallBackendStampsTheResolvedCaller(t *testing.T) {

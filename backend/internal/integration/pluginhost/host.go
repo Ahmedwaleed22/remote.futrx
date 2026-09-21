@@ -234,6 +234,10 @@ func (h *Host) connect(client *goplugin.Client, spec svc.BackendSpec, dataDir st
 			"plugin %s reports contract version %d, this server speaks %d",
 			spec.ApplicationID, descriptor.APIVersion, appplugin.APIVersion)
 	}
+	// application.json is the version source of truth for the package. A
+	// backend is one capability of that package, so making every plugin repeat
+	// the same version in Describe only creates a value that can drift.
+	descriptor.Version = spec.ApplicationVersion
 	if err := backend.Init(instanceOf(spec, dataDir)); err != nil {
 		return nil, fmt.Errorf("initialize plugin %s: %w", spec.ApplicationID, err)
 	}

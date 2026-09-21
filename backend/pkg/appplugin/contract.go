@@ -33,7 +33,9 @@ type Route struct {
 // Descriptor is what a plugin says about itself when the host connects. It is
 // served to the SPA so an extension can discover the routes it may call.
 type Descriptor struct {
-	Name    string `json:"name"`
+	Name string `json:"name"`
+	// Version is supplied by Remote from application.json. A plugin may leave
+	// it empty; any value it reports is replaced by the package version.
 	Version string `json:"version,omitempty"`
 	// APIVersion is the appplugin.APIVersion the plugin was compiled against.
 	APIVersion int     `json:"apiVersion"`

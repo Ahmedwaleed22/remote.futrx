@@ -127,7 +127,8 @@ func testGoToolOverride() string {
 
 func testSpec(applicationID, instanceID string) svc.BackendSpec {
 	return svc.BackendSpec{
-		ApplicationID: applicationID,
+		ApplicationID:      applicationID,
+		ApplicationVersion: "2.4.0",
 		Instance: appplugin.Instance{
 			ID:            instanceID,
 			ApplicationID: applicationID,
@@ -199,7 +200,7 @@ func TestHostCompilesAndServesAPlugin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
-	if descriptor.Name != "test" || descriptor.APIVersion != appplugin.APIVersion {
+	if descriptor.Name != "test" || descriptor.Version != "2.4.0" || descriptor.APIVersion != appplugin.APIVersion {
 		t.Fatalf("descriptor = %+v", descriptor)
 	}
 	if len(descriptor.Routes) != 1 || descriptor.Routes[0].Path != "pid" {

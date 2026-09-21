@@ -52,7 +52,6 @@ func main() {
 func (b *backend) Describe() (appplugin.Descriptor, error) {
 	return appplugin.Descriptor{
 		Name:       "My Plugin",
-		Version:    "1",
 		APIVersion: appplugin.APIVersion,
 		Routes:     b.mux.Routes(),
 	}, nil
@@ -104,6 +103,11 @@ the route table are conveniences rather than contract requirements.
 | `Handle(appplugin.Request) (appplugin.Response, error)` | `appplugin.Backend` interface | build failure |
 | `Descriptor.APIVersion: appplugin.APIVersion` | runtime handshake | host refuses the plugin |
 
+Do not repeat the package version in `Describe`. Remote fills
+`Descriptor.Version` from `application.json` after the handshake, making the
+manifest the single version source for the UI, upgrade policy, and backend
+descriptor.
+
 `backend/container/` is a separate, optional execution context. Programs under
 `backend/container/cmd/<binary>/` are copied into and built inside LXD. Their
 only required Go surface is `package main` and `func main()`; Remote owns their
@@ -117,7 +121,7 @@ plugin implements three methods.
 
 | Method | When | Notes |
 |---|---|---|
-| `Describe()` | once, on connect | Identity and route table. Must report `appplugin.APIVersion` or the host refuses the plugin. |
+| `Describe()` | once, on connect | Name and route table. Must report `appplugin.APIVersion`; Remote supplies the version from `application.json`. |
 | `Init(Instance)` | once, before the first request | The install this process serves. Returning an error fails the app's install or start. |
 | `Handle(Request)` | per request | May be called concurrently. |
 

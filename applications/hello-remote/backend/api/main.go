@@ -52,7 +52,6 @@ func main() {
 func (b *backend) Describe() (appplugin.Descriptor, error) {
 	return appplugin.Descriptor{
 		Name:       "Hello Remote",
-		Version:    "6",
 		APIVersion: appplugin.APIVersion,
 		Routes:     b.mux.Routes(),
 	}, nil
