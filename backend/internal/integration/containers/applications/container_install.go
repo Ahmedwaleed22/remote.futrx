@@ -7,17 +7,6 @@ import (
 	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 )
 
-// containerBuildMarkerDir holds one marker file per application, recording the
-// build its binaries came from.
-//
-// The marker is what makes installing idempotent, and it is deliberately not a
-// question asked of the binary. Doing that would oblige every container program
-// to implement a --version flag and carry a version variable for the build to
-// stamp — an unwritten contract that costs a full toolchain download and rebuild
-// on every install and start when an author does not know to satisfy it. A file
-// the server writes and reads needs nothing from the program at all.
-const containerBuildMarkerDir = "/usr/local/lib/remote"
-
 // containerBuildScript returns the provisioning program for an application's
 // backend/container/ source: fetch a Go toolchain for the container's own
 // architecture, build the application's commands, install them, and record the
@@ -28,7 +17,7 @@ const containerBuildMarkerDir = "/usr/local/lib/remote"
 // drifted between them. An application supplies Go source; the shell is the
 // server's to write.
 func containerBuildScript(applicationID, buildVersion string, commands []string) []byte {
-	marker := fmt.Sprintf("%s/%s.build", containerBuildMarkerDir, applicationID)
+	marker := fmt.Sprintf("%s/%s.build", configconstants.ApplicationContainerBuildMarkerDir, applicationID)
 
 	var out strings.Builder
 	out.WriteString("set -euo pipefail\n")
@@ -77,7 +66,7 @@ if [ "$(cat "$APP_BUILD_MARKER" 2>/dev/null || true)" != "$APP_BUILD_VERSION" ];
   mkdir -p %s
   printf '%%s\n' "$APP_BUILD_VERSION" >"$APP_BUILD_MARKER"
 fi
-`, shellQuote(containerBuildMarkerDir))
+`, shellQuote(configconstants.ApplicationContainerBuildMarkerDir))
 	return []byte(out.String())
 }
 
