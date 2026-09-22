@@ -51,7 +51,7 @@ func serviceApplicationAt(version string) Application {
 		Install: "infra/install.sh",
 		Scopes:  []Scope{ScopeGlobal, ScopeProject},
 		Port:    Port{Internal: 5432},
-		Service: "db",
+		Service: &ApplicationService{Name: "db", Command: []string{"/usr/local/bin/db"}},
 	}
 }
 
@@ -200,7 +200,7 @@ func TestUploadDoesNotReinstallApplicationsWithNoContainerSide(t *testing.T) {
 			application := serviceApplicationAt("2.0.0")
 			application.Install = ""
 			application.Port = Port{}
-			application.Service = ""
+			application.Service = nil
 			if capability == "ui" {
 				application.UI = &ApplicationUI{}
 			} else {

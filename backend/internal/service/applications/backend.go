@@ -152,7 +152,7 @@ func backendInstanceDetails(application Application, instance Instance) applicat
 		ApplicationID:      instance.ApplicationID,
 		ApplicationName:    application.Name,
 		ApplicationVersion: application.Version,
-		Service:            application.Service,
+		Service:            application.ServiceName(),
 		Scope:              string(instance.Scope),
 		ProjectID:          instance.ProjectID,
 		ContainerName:      instance.ContainerName,

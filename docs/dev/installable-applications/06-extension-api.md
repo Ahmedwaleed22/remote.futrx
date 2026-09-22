@@ -223,7 +223,7 @@ with a 404 — see [13 — Security model](13-security-model.md).
 The application's own application backend — the `backend/` directory beside your `ui/`. It is
 present on every extension; applications that ship no backend simply report
 `available: false`. The contract a backend implements is
-[15 — Backend backends](15-application-backends.md); this is the browser side of it.
+[15 — Application backends](15-application-backends.md); this is the browser side of it.
 
 ### `remote.backend.available`
 

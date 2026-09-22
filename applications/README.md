@@ -67,7 +67,7 @@ and nothing else. Start with
 | Add a button or panel to the UI | [Tutorial](../docs/dev/installable-applications/07-tutorial-build-an-application.md) |
 | Look up an `application.json` field | [application.json reference](../docs/dev/installable-applications/02-application-json.md) |
 | Look up an extension API method | [Extension API](../docs/dev/installable-applications/06-extension-api.md) |
-| Add a server-side feature in Go | [Backend backends](../docs/dev/installable-applications/15-application-backends.md) |
+| Add a server-side feature in Go | [Application backends](../docs/dev/installable-applications/15-application-backends.md) |
 | Know where I can render | [Slots](../docs/dev/installable-applications/05-slots.md) |
 | Know who sees my extension | [Scoping and visibility](../docs/dev/installable-applications/08-scoping-and-visibility.md) |
 | Match the app's look | [Styling and icons](../docs/dev/installable-applications/09-styling-and-icons.md) |
@@ -84,9 +84,10 @@ and nothing else. Start with
    `version` is required — changing it is what reprovisions copies
    people already installed. See
    [Versions and upgrades](../docs/dev/installable-applications/17-versions-and-upgrades.md).
-2. Add any capabilities the application needs. `infra/install.sh` performs custom
-   provisioning; `backend/container/` adds core-built container commands;
-   `port.internal` exposes it; `hostTools[]` installs checksum-pinned host
+2. Add any capabilities the application needs. `service` declares a standardized
+   systemd process; `infra/install.sh` performs only custom provisioning;
+   `backend/container/` adds core-built container commands; `port.internal`
+   exposes it; `hostTools[]` installs checksum-pinned host
    executables; `backend/api/` adds server behavior; `ui/` adds browser
    behavior; and `skills/` publishes project-agent workflows. These may be
    used independently or together where their validation rules allow it.
@@ -96,7 +97,7 @@ and nothing else. Start with
 4. Optionally add `backend/api/` for server-side work. `main.go` implements
    `applications.Backend`; the application's `ui/` reaches it through
    `remote.backend.call(...)`. See
-   [Backend backends](../docs/dev/installable-applications/15-application-backends.md).
+   [Application backends](../docs/dev/installable-applications/15-application-backends.md).
 5. Rebuild the backend. `NewRegistry()` validates every entry at startup, so a
    malformed application fails the build and the tests rather than 404ing in a
    browser.

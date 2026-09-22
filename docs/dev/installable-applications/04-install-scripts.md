@@ -5,12 +5,13 @@ Applications may provide one for custom container provisioning. A Go program in
 UI-only and host-backend-only applications need neither — see
 [03 — Application capabilities](03-application-capabilities.md).
 
-Hello Remote is the worked example: its `infra/install.sh` writes root-only
-configuration, creates and restarts a systemd unit, declares the daemon to the
-idle-workspace probe, and waits for its application-specific health command.
-A custom script is useful only for work like this—OS packages, configuration,
-systemd units, mounts, or readiness checks. Do not add shell merely to rebuild
-or install `backend/container/`; Remote owns that shared work.
+Hello Remote deliberately has no `infra/install.sh`: its Go programs are built
+from `backend/container/`, and its complete systemd service lives in
+`application.json`. A custom script is for work the manifest cannot express,
+such as OS packages, mounts, data migrations, or application-specific
+configuration. Do not add shell merely to build a container program, create a
+unit, manage workspace-idle declarations, or run a health check; Remote owns
+those shared operations.
 
 ## The contract
 
@@ -74,7 +75,9 @@ container, installs the matching Go toolchain, builds every `cmd/*`, and places
 the binaries in `/usr/local/bin`. It records a source-derived build marker, so
 idempotence does not require `--version`, a version variable, `package.sh`, or a
 committed archive. An optional `infra/install.sh` runs after these generated
-build steps when the application also needs systemd units or other setup.
+build steps when the application also needs custom provisioning. Remote
+materializes the manifest's `service` only after both have completed, so its
+command may safely reference a newly built or installed binary.
 
 Applications uploaded as ZIPs may ship their own `backend/container/go.mod` for
 dependencies. The built-in catalog's container source participates in the
@@ -131,20 +134,7 @@ port = ${APP_INTERNAL_PORT}
 listen = 0.0.0.0
 EOF
 
-# 3. Start it under systemd.
-systemctl enable myapp >/dev/null 2>&1 || true
-systemctl restart myapp
-
-# 4. Wait until it is actually accepting connections.
-for _ in $(seq 1 30); do
-  if (exec 3<>"/dev/tcp/127.0.0.1/${APP_INTERNAL_PORT}") 2>/dev/null; then
-    exec 3<&-
-    break
-  fi
-  sleep 1
-done
-
-echo "install: myapp ready on port ${APP_INTERNAL_PORT}"
+echo "install: myapp provisioned"
 ```
 
 ## Idempotency in practice
@@ -157,7 +147,6 @@ These are the patterns that make a re-run safe:
 | `cat > /etc/app/zz-futrx.conf` (a file you own) | `>> /etc/app/app.conf` (appends grow every run) |
 | `CREATE DATABASE IF NOT EXISTS` | `CREATE DATABASE` |
 | `CREATE USER IF NOT EXISTS` / `ALTER USER` | `CREATE USER` |
-| `systemctl restart` | `systemctl start` (a no-op if config changed) |
 | `useradd -r app 2>/dev/null || true` | `useradd -r app` |
 
 The MySQL application is a worked example of the harder case: on a fresh install root
@@ -181,29 +170,11 @@ The same applies to non-secret user input. `ui-playground` used to escape
 
 ## Infrastructure with no port to wait for
 
-A portless infrastructure script uses the same contract minus the port. A mount application is
-the worked example: it installs `fuse3`, puts the binary in place, writes its
-credentials to a root-only environment file, generates a systemd unit, and then
-**waits for `mountpoint -q` to succeed** before exiting. That wait is the whole
-readiness check.
-
-An application whose daemon runs for the life of the container should also declare
-itself to the idle-workspace probe, by writing its process name into
-`/etc/remote/workspace-idle.d/<name>`:
-
-```sh
-mkdir -p /etc/remote/workspace-idle.d
-printf '%s\n' "$UNIT" >"/etc/remote/workspace-idle.d/${UNIT}"
-```
-
-The probe treats any unrecognised process as someone working in the project, so
-without this an always-running daemon pins every workspace it is installed in
-and an idle project is never archived. Remote reads names from that directory
-and ships no list of its own — an application that leaves nothing running needs
-nothing here.
-
-Note what it does *not* do: it never echoes a secret, and it writes credentials
-to a `0600` file rather than into the unit, which is world-readable.
+A portless infrastructure script uses the same contract minus the port. A mount
+application may install `fuse3`, place its binary, and wait for `mountpoint -q`
+before exiting. A long-running process belongs in the manifest's `service`
+object. Remote then creates its root-owned `0600` environment file, unit, and
+workspace-idle declaration consistently; the custom script does none of that.
 
 ## Healthcheck
 
@@ -214,20 +185,21 @@ container. `{{internalPort}}` is substituted:
 "healthcheck": { "command": "mysqladmin ping -h 127.0.0.1 -P {{internalPort}} --silent" }
 ```
 
-It runs after the install script on an install, and after the service is started
-on a start, with the same environment the install script gets. It is retried
+It runs after the install script and manifest service have been installed on an
+install, and after the service is started on a start, with the same resolved
+environment. It is retried
 every two seconds for up to a minute; an app whose probe never passes is
 reported as failed rather than as running.
 
-It is a separate, cheap check — the install script should still wait for its
-own service to come up before exiting, as in the skeleton above. The probe is
-the margin around that wait, not a replacement for it.
+It is the platform-owned readiness gate. A custom install script should wait
+only for work that it owns itself, such as a mount or migration; it must not
+start or poll the manifest-owned service.
 
 ## Testing a script
 
 The install script only runs against a real container, so it needs a host with
-a working LXD. The catalog tests do **not** execute it; they only assert it
-exists and is readable.
+a working LXD. Catalog tests validate the declarative service and generated
+unit behavior without LXD; they do **not** execute a custom script.
 
 The fastest loop:
 

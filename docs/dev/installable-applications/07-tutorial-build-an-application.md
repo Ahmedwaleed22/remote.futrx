@@ -236,6 +236,6 @@ change here. See [13 — Security model](13-security-model.md).
 - Add an install script so the application also provisions something —
   [04 — Install scripts](04-install-scripts.md). No manifest discriminator changes.
 - Add a `backend/` directory so it can do work on the *server* and not only in
-  the browser — [15 — Backend applications](15-application-backends.md). That is the step
+  the browser — [15 — Application backends](15-application-backends.md). That is the step
   from "a button that calls an existing endpoint" to "a button that calls an
   endpoint this application brought with it".

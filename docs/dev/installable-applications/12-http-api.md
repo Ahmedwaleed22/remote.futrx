@@ -29,7 +29,10 @@ project UI uses the same catalog.
     "port": { "internal": 3306, "defaultExternal": 3306, "protocol": "tcp",
               "bindAddress": "127.0.0.1" },
     "env": [ … ],
-    "service": "mysql",
+    "service": {
+      "name": "mysql",
+      "command": ["/usr/sbin/mysqld", "--port", "{{internalPort}}"]
+    },
     "connection": { "user": "root", "passwordEnv": "MYSQL_ROOT_PASSWORD" },
     "install": "infra/install.sh",
     "ui": {

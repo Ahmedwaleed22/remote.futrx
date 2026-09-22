@@ -73,6 +73,39 @@ type Healthcheck struct {
 	Command string `json:"command,omitempty"`
 }
 
+// ApplicationService is a systemd service Remote owns inside the target
+// container. The manifest describes the service completely; application install
+// scripts only provision application-specific files and dependencies.
+type ApplicationService struct {
+	Name        string               `json:"name"`
+	Description string               `json:"description,omitempty"`
+	Command     []string             `json:"command"`
+	User        string               `json:"user,omitempty"`
+	Group       string               `json:"group,omitempty"`
+	Restart     string               `json:"restart,omitempty"`
+	RestartSec  int                  `json:"restartSec,omitempty"`
+	Environment []ServiceEnvironment `json:"environment,omitempty"`
+	Hardening   ServiceHardening     `json:"hardening,omitempty"`
+}
+
+// ServiceEnvironment maps one resolved install input into the service's
+// environment. Values are base64 encoded before they are written so secrets,
+// whitespace, and line breaks cannot change the environment-file syntax.
+type ServiceEnvironment struct {
+	Key      string `json:"key"`
+	FromEnv  string `json:"fromEnv"`
+	Encoding string `json:"encoding"`
+}
+
+// ServiceHardening maps the portable systemd isolation settings applications
+// may opt into without writing their own unit files.
+type ServiceHardening struct {
+	NoNewPrivileges bool   `json:"noNewPrivileges,omitempty"`
+	PrivateTmp      bool   `json:"privateTmp,omitempty"`
+	ProtectHome     bool   `json:"protectHome,omitempty"`
+	ProtectSystem   string `json:"protectSystem,omitempty"`
+}
+
 // Connection maps an application's env vars to the canonical fields a client needs
 // (user, password, database), so every server surfaces a uniform connection
 // panel regardless of how it names its variables.
@@ -176,9 +209,9 @@ type Application struct {
 	Scopes []Scope           `json:"scopes"`
 	Port   Port              `json:"port"`
 	Env    []EnvVar          `json:"env,omitempty"`
-	// Service is the systemd unit name inside the container used for
-	// start/stop/status.
-	Service string `json:"service,omitempty"`
+	// Service is the complete systemd service Remote realizes and controls in
+	// the target container.
+	Service *ApplicationService `json:"service,omitempty"`
 	// Install is the install-script filename relative to the application directory.
 	Install     string      `json:"install"`
 	Healthcheck Healthcheck `json:"healthcheck,omitempty"`
@@ -205,10 +238,19 @@ type Application struct {
 	Skills []string `json:"skills,omitempty"`
 }
 
-// NeedsContainer reports whether this application has custom infrastructure or
-// a core-built container program to provision.
+// NeedsContainer reports whether this application has a declarative service,
+// custom infrastructure, or a core-built container program to provision.
 func (application Application) NeedsContainer() bool {
-	return application.Install != "" || application.Container != nil
+	return application.Install != "" || application.Container != nil || application.Service != nil
+}
+
+// ServiceName returns the declared systemd unit name, or empty when the
+// application has no supervised service.
+func (application Application) ServiceName() string {
+	if application.Service == nil {
+		return ""
+	}
+	return application.Service.Name
 }
 
 // containerBuildVersion returns the identity of the core-built container

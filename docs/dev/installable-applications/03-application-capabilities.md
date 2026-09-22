@@ -6,7 +6,7 @@ application does from its files and manifest fields.
 
 | Capability | How it is detected | Effect when installed |
 |---|---|---|
-| Infrastructure | `infra/install.sh` exists, `install` names another script inside `infra/`, or `backend/container/` exists | Provisions the target container |
+| Infrastructure | `infra/install.sh` exists, `install` names another script inside `infra/`, `backend/container/` exists, or `service` is declared | Provisions the target container |
 | Network port | Infrastructure exists and `port.internal` is greater than zero | Allocates a host port and creates an LXD proxy device |
 | Backend | `backend/api/` exists (legacy flat `backend/` is accepted) | Compiles and runs the Go backend on the host |
 | UI | `ui/` exists | Loads the browser extension |
@@ -33,7 +33,7 @@ their UI and skills available.
 Start, stop, and uninstall operate on every capability an application has:
 
 - infrastructure is started or stopped through its target container and
-  optional systemd service;
+  optional manifest-owned systemd service;
 - the backend process starts and stops with the application;
 - the UI loads only while the installed instance is running;
 - a proxy device exists only when `port.internal` is declared.

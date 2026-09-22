@@ -3,8 +3,8 @@
 The catalog's kitchen-sink example. It combines every application capability:
 
 - **`hostTools[]`** — a checksum-pinned, compressed `restic` executable installed on the Remote host.
-- **`infra/install.sh` + manifest infrastructure fields** — an idempotent systemd
-  service, TCP proxy, health check, install inputs, and connection metadata.
+- **Manifest infrastructure fields** — a declarative systemd service, TCP
+  proxy, health check, install inputs, and connection metadata.
 - **`backend/container/`** — Go source Remote copies into and builds inside LXD;
   one command inspects the container and another serves HTTP.
 - **`backend/api/`** — Go source the server compiles and runs as a child process,
@@ -14,8 +14,8 @@ The catalog's kitchen-sink example. It combines every application capability:
 - **`skills/`** — an agent skill published into project workspaces.
 
 Its container source builds `hello-remote-info` and `hello-remote-service`. The
-install script supervises the latter as `hello-remote.service`, while the
-manifest exposes its internal port through a loopback-only host proxy. A project
+manifest supervises the latter as `hello-remote.service` and exposes its
+internal port through a loopback-only host proxy. A project
 installation uses the project's existing LXD container. A global installation
 uses a dedicated application container. Both are ordinary sibling containers on
 the host—there is no LXD inside LXD. The host backend invokes the inspection
@@ -23,11 +23,12 @@ command with `lxc exec` and reaches the service through the allocated proxy.
 Raw LXD configuration and environment variables are deliberately not returned
 because they can contain secrets.
 
-`infra/install.sh` demonstrates the work the generic installer cannot infer: it
-writes root-only configuration, creates a hardened systemd unit, declares its
-daemon to the idle-workspace probe, restarts it idempotently, and waits for the
-application-specific health command. Remote still owns the generic Go build,
-host-tool installation, proxy, and lifecycle around that script.
+Hello Remote needs no custom install script. Remote builds its container Go
+programs, writes the root-only encoded environment, creates the hardened
+systemd unit, declares its daemon to the idle-workspace probe, restarts it
+idempotently, waits for the manifest health check, installs the host tool, and
+owns the proxy and lifecycle. The example therefore shows the standardized
+path rather than reimplementing platform behavior in shell.
 
 The backend runs on the Remote host, not inside LXD. The generic container
 capability supplies `ContainerName`, without application-specific packaging.
@@ -111,7 +112,7 @@ Each has an independent **Refresh** action.
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
 | `backend/container/cmd/hello-remote-service/` | A supervised HTTP service with separate command dispatch, configuration decoding, serving, and health-probe owners. |
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without backend-owned shell. |
-| `infra/install.sh` | Idempotent configuration, systemd unit creation, idle-probe declaration, restart, and readiness wait. |
+| `application.json.service` | Command, environment mappings, process identity, restart policy, and systemd hardening. |
 | `skills/hello-remote-inspector/SKILL.md` | A project-scoped agent workflow that verifies the service without exposing its generated secret. |
 | `ui/scripts/main.js` | The entry module: activates the showcase, card action, applications panel, and cleanup. |
 | `ui/scripts/containerPanel.js`, `ui/scripts/servicePanel.js`, `ui/scripts/inspectionRefresh.js` | Container/service presentation with one disposal-safe refresh lifecycle. |

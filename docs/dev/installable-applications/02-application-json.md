@@ -42,7 +42,24 @@ An application using every infrastructure and presentation field:
       "default": "app"
     }
   ],
-  "service": "mysql",
+  "service": {
+    "name": "mysql",
+    "description": "MySQL database server",
+    "command": ["/usr/sbin/mysqld", "--port", "{{internalPort}}"],
+    "user": "mysql",
+    "group": "mysql",
+    "restart": "on-failure",
+    "restartSec": 1,
+    "environment": [
+      {"key": "MYSQL_ROOT_PASSWORD_B64", "fromEnv": "MYSQL_ROOT_PASSWORD", "encoding": "base64"}
+    ],
+    "hardening": {
+      "noNewPrivileges": true,
+      "privateTmp": true,
+      "protectHome": true,
+      "protectSystem": "full"
+    }
+  },
   "connection": {
     "user": "root",
     "passwordEnv": "MYSQL_ROOT_PASSWORD",
@@ -100,7 +117,10 @@ An application that provisions into a project's container without exposing a por
     { "key": "AWS_ACCESS_KEY_ID", "label": "Access key ID", "required": true, "secret": true },
     { "key": "AWS_SECRET_ACCESS_KEY", "label": "Secret access key", "required": true, "secret": true }
   ],
-  "service": "object-mount",
+  "service": {
+    "name": "object-mount",
+    "command": ["/usr/local/bin/object-mount"]
+  },
   "install": "infra/install.sh"
 }
 ```
@@ -132,13 +152,13 @@ An application with only a UI capability:
 | `name` | string | yes | Display name in the catalog and on installed rows. |
 | `description` | string | no | One line; the card truncates to two lines. |
 | `category` | string | no | Free text, e.g. `database`, `cache`, `development`. |
-| `version` | string | **yes** | A string, not a number — `"8.0"`, `"16"`, `"1.2.3-rc1"`. Shown next to the name, and the signal that re-runs `infra/install.sh` on an installed copy when it changes. See [17 — Versions and upgrades](17-versions-and-upgrades.md). |
+| `version` | string | **yes** | A string, not a number — `"8.0"`, `"16"`, `"1.2.3-rc1"`. Shown next to the name, and the signal that reconverges an installed copy's container programs, custom installer, and manifest service when it changes. See [17 — Versions and upgrades](17-versions-and-upgrades.md). |
 | `icon` | string | no | Built-in key or a path into this application's `ui/`. See [09 — Styling and icons](09-styling-and-icons.md). |
 | `scopes` | string[] | yes | Any of `global`, `project`. At least one. |
 | `base` | string | no | LXD image for a dedicated global infrastructure container. Default `ubuntu:24.04`. |
 | `port` | object | no | See below. Requires infrastructure; omit it when nothing is exposed. |
 | `env` | object[] | no | Install-time inputs. See below. |
-| `service` | string | no | systemd unit name inside the container. Requires infrastructure; it is what stop and uninstall act on. |
+| `service` | object | no | Complete systemd service declaration. It is itself a container capability; Remote creates and owns the unit. See below. |
 | `connection` | object | no | Maps env vars to user/password/database. See below. |
 | `install` | string | no | Override for the install-script path inside `infra/`. When omitted, `infra/install.sh` is detected automatically. |
 | `healthcheck` | object | no | `{ "command": "…" }` run inside the container. Requires `port.internal`. |
@@ -179,6 +199,29 @@ install script, and a field in the install dialog.
 
 Resolution order for a blank field: `generate`, then `default`, then reject if
 `required`.
+
+### `service`
+
+Declares a supervised container process without asking an install script to
+write systemd files. Remote writes the environment and unit, registers the
+daemon with workspace-idle detection, reloads systemd, enables and restarts the
+unit, and owns start/stop/uninstall lifecycle.
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | string | Unit name without `.service`. |
+| `description` | string | One-line systemd description; defaults to the application name. |
+| `command` | string[] | Absolute executable followed by arguments. `{{internalPort}}` is replaced with the instance's internal port. |
+| `user`, `group` | string | Optional service identity. Omit both to run as root. |
+| `restart` | string | One of systemd's standard restart policies: `no`, `on-success`, `on-failure`, `on-abnormal`, `on-watchdog`, `on-abort`, or `always`. |
+| `restartSec` | int | Non-negative restart delay in seconds. |
+| `environment` | object[] | Maps a declared `env[]` key into the service environment. Each entry is `{ "key", "fromEnv", "encoding": "base64" }`. |
+| `hardening` | object | Optional `noNewPrivileges`, `privateTmp`, `protectHome`, and `protectSystem` (`true`, `full`, or `strict`). |
+
+Environment mappings are deliberately base64 encoded. This preserves spaces,
+line breaks, quotes, and secrets without letting a value change systemd's
+environment-file syntax. The service decodes those values itself, as Hello
+Remote does for its `HELLO_*_B64` variables.
 
 ### `connection`
 
@@ -243,7 +286,10 @@ Enforced in `registry_validation.go:validateApplication` and
 - `version` must not be empty or whitespace.
 - `scopes` must be non-empty and contain only `global` / `project`.
 - An explicitly named `install` script must stay inside `infra/` and exist.
-- `port`, `service`, host tools, and `healthcheck` require infrastructure.
+- `port`, host tools, and `healthcheck` require a container capability. A
+  `service` declaration is itself such a capability.
+- A service requires a valid unit `name` and an absolute executable in
+  `command`; its environment mappings must reference declared `env[]` keys.
 - `defaultExternal` and `healthcheck` require `port.internal`.
 - At least one of `infra/`, `backend/`, `ui/`, or `skills/` must contribute a capability.
 - A declared `backend` block requires host backend source in `backend/api/` (or

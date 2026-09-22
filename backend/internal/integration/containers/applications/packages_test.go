@@ -161,7 +161,7 @@ func TestUploadedServiceCarriesItsInstallScript(t *testing.T) {
 			"version": "1.0.0",
 			"scopes": ["global"],
 			"port": {"internal": 6000},
-			"service": "uploaded"
+			"service": {"name": "uploaded", "command": ["/usr/local/bin/uploaded"]}
 		}`,
 		"infra/install.sh": "#!/usr/bin/env bash\necho uploaded\n",
 	})
@@ -432,7 +432,7 @@ func TestPackageFilesAreNotWrittenExecutable(t *testing.T) {
 			"version": "1.0.0",
 			"scopes": ["global"],
 			"port": {"internal": 6000},
-			"service": "uploaded"
+			"service": {"name": "uploaded", "command": ["/usr/local/bin/uploaded"]}
 		}`,
 		"infra/install.sh": "#!/usr/bin/env bash\n",
 	})

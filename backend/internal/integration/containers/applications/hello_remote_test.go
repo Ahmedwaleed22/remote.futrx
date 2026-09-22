@@ -2,6 +2,7 @@ package applications
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	svc "github.com/futrx-com/remote.futrx.com/internal/service/applications"
@@ -28,9 +29,15 @@ func TestHelloRemoteDemonstratesEveryApplicationCapability(t *testing.T) {
 	if !application.SupportsScope(svc.ScopeGlobal) || !application.SupportsScope(svc.ScopeProject) {
 		t.Fatalf("scopes = %v, want global and project", application.Scopes)
 	}
-	if !application.NeedsContainer() || !application.NeedsPort() || application.Service == "" ||
-		application.Install == "" || application.Healthcheck.Command == "" {
+	if !application.NeedsContainer() || !application.NeedsPort() || application.Service == nil ||
+		application.Healthcheck.Command == "" {
 		t.Fatalf("infrastructure fields are incomplete: %+v", application)
+	}
+	if application.Install != "" || len(application.Service.Command) == 0 ||
+		len(application.Service.Environment) != len(application.Env) ||
+		!application.Service.Hardening.NoNewPrivileges || !application.Service.Hardening.PrivateTmp ||
+		!application.Service.Hardening.ProtectHome || application.Service.Hardening.ProtectSystem != "strict" {
+		t.Fatalf("service must be fully manifest-owned: %+v", application.Service)
 	}
 	if application.Port.Internal == 0 || application.Port.DefaultExternal == 0 ||
 		application.Port.Protocol == "" || application.Port.BindAddress == "" {
@@ -72,7 +79,7 @@ func TestHelloRemoteDemonstratesEveryApplicationCapability(t *testing.T) {
 	if !slices.Contains(application.Skills, "hello-remote-inspector") {
 		t.Fatalf("skills = %v, want hello-remote-inspector", application.Skills)
 	}
-	if _, ok := registry.Script(application.ID); !ok {
-		t.Fatal("hello-remote install script is not available")
+	if script, ok := registry.Script(application.ID); !ok || !strings.Contains(string(script), "APP_BUILD_VERSION=") {
+		t.Fatal("hello-remote generated container build is not available")
 	}
 }

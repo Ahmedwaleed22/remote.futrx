@@ -26,6 +26,27 @@ export interface AppPort {
   bindAddress?: string;
 }
 
+export interface AppApplicationService {
+  name: string;
+  description?: string;
+  command: string[];
+  user?: string;
+  group?: string;
+  restart?: string;
+  restartSec?: number;
+  environment?: Array<{
+    key: string;
+    fromEnv: string;
+    encoding: "base64";
+  }>;
+  hardening?: {
+    noNewPrivileges?: boolean;
+    privateTmp?: boolean;
+    protectHome?: boolean;
+    protectSystem?: "true" | "full" | "strict";
+  };
+}
+
 /**
  * Browser-side extension an application ships in its `ui/` directory. Present only
  * when the application has one; paths are relative to `ui/` and already validated by
@@ -114,7 +135,7 @@ export interface AppApplication {
   scopes: AppScope[];
   port: AppPort;
   env?: AppEnvVar[];
-  service?: string;
+  service?: AppApplicationService;
   /** Set when the application ships a `ui/` extension. */
   ui?: AppApplicationUI;
   /** Set when the application ships a `backend/` Go backend. */

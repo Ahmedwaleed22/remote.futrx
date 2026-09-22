@@ -71,7 +71,7 @@ optional and independent:
 
 | Capability | Declared by | What Remote does |
 |---|---|---|
-| Infrastructure | `infra/install.sh`, an `install` path inside `infra/`, or `backend/container/` | Provisions software in a container |
+| Infrastructure | `infra/install.sh`, an `install` path inside `infra/`, `backend/container/`, or a manifest `service` | Provisions software in a container |
 | Network exposure | infrastructure plus `port.internal` | Allocates a host port and adds an LXD proxy device |
 | Backend | `backend/api/` | Compiles and runs the Go backend on the host |
 | UI | `ui/` | Loads the browser extension |
@@ -247,7 +247,7 @@ sequenceDiagram
         end
         Svc->>Store: persist as installing — a crash here stays recoverable
         Inst->>LXD: launch the dedicated container (global scope only)
-        Inst->>LXD: run infra/install.sh as root, then start the systemd unit
+        Inst->>LXD: build/provision, materialize the manifest service, then run its healthcheck
         opt port.internal is declared
             Inst->>LXD: add the proxy device that maps the host port
         end

@@ -93,7 +93,7 @@ func TestBackendInstanceCarriesManifestMetadata(t *testing.T) {
 	application := backendImage(func(application *Application) {
 		application.Name = "Manifest Name"
 		application.Version = "3.2.1"
-		application.Service = "manifest.service"
+		application.Service = &ApplicationService{Name: "manifest", Command: []string{"/usr/local/bin/manifest"}}
 	})
 	instance := backendInstanceDetails(application, runningInstance())
 	if instance.ApplicationName != "Manifest Name" {
@@ -102,8 +102,8 @@ func TestBackendInstanceCarriesManifestMetadata(t *testing.T) {
 	if instance.ApplicationVersion != "3.2.1" {
 		t.Fatalf("application version = %q, want 3.2.1", instance.ApplicationVersion)
 	}
-	if instance.Service != "manifest.service" {
-		t.Fatalf("service = %q, want manifest.service", instance.Service)
+	if instance.Service != "manifest" {
+		t.Fatalf("service = %q, want manifest", instance.Service)
 	}
 }
 

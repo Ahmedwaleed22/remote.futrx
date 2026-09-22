@@ -103,7 +103,7 @@ func TestLoadApplicationPrependsContainerBuildToCustomInstall(t *testing.T) {
 	}
 }
 
-func TestHelloRemoteBuildsContainerCommandsBeforeProvisioningItsService(t *testing.T) {
+func TestHelloRemoteBuildsContainerCommandsWithoutCustomServiceProvisioning(t *testing.T) {
 	registry, err := NewRegistry(EmbeddedCatalog(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -112,17 +112,17 @@ func TestHelloRemoteBuildsContainerCommandsBeforeProvisioningItsService(t *testi
 	if !ok {
 		t.Fatal("hello-remote is missing from the embedded catalog")
 	}
-	if application.Install != defaultInstallScriptPath {
-		t.Fatalf("install path = %q, want %q", application.Install, defaultInstallScriptPath)
+	if application.Install != "" {
+		t.Fatalf("install path = %q, want no custom installer", application.Install)
 	}
 	script, ok := registry.Script(application.ID)
 	if !ok {
 		t.Fatal("hello-remote install program is missing")
 	}
 	generatedAt := bytes.Index(script, []byte("APP_BUILD_VERSION="))
-	serviceAt := bytes.Index(script, []byte("systemctl daemon-reload"))
-	if generatedAt < 0 || serviceAt < 0 || generatedAt >= serviceAt {
-		t.Fatalf("generated container build must run before custom service provisioning")
+	serviceAt := bytes.Index(script, []byte("systemctl"))
+	if generatedAt < 0 || serviceAt >= 0 {
+		t.Fatalf("container build should not contain service provisioning")
 	}
 }
 
