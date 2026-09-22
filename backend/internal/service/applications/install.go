@@ -66,6 +66,7 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 			_ = s.saveStatus(ctx, &inst, StatusError, err.Error())
 			return View{}, err
 		}
+		s.publishApplicationInstalled(ctx, inst)
 		return s.view(inst), nil
 	}
 
@@ -112,6 +113,7 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 	if err := s.saveStatus(ctx, &inst, StatusRunning, ""); err != nil {
 		return View{}, err
 	}
+	s.publishApplicationInstalled(ctx, inst)
 	return s.view(inst), nil
 }
 

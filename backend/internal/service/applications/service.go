@@ -48,6 +48,7 @@ type Service struct {
 	ports     PortAllocator
 	backends  BackendHost
 	packages  PackageCatalog
+	lifecycle ApplicationLifecyclePublisher
 	now       Clock
 }
 
@@ -75,6 +76,17 @@ func WithPackageCatalog(packages PackageCatalog) Option {
 	return func(s *Service) {
 		if packages != nil {
 			s.packages = packages
+		}
+	}
+}
+
+// WithLifecyclePublisher reports successful catalog and installed-copy
+// transitions. It is optional so the applications service remains usable in
+// isolated tools and tests that have no process-wide lifecycle composition.
+func WithLifecyclePublisher(publisher ApplicationLifecyclePublisher) Option {
+	return func(s *Service) {
+		if publisher != nil {
+			s.lifecycle = publisher
 		}
 	}
 }

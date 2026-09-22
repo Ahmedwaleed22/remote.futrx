@@ -97,6 +97,19 @@ type PortAllocator interface {
 	Allocate(ctx context.Context, bindAddress string, preferred int, taken map[int]bool) (int, error)
 }
 
+// ApplicationLifecyclePublisher is the success-notification capability used
+// by this service. Its concrete publisher and subscriber registry live in
+// internal/lifecycle; the producer depends only on the facts it emits.
+type ApplicationLifecyclePublisher interface {
+	PublishApplicationAdded(context.Context, string)
+	PublishApplicationUpdated(context.Context, string)
+	PublishApplicationDeleted(context.Context, string)
+	PublishApplicationInstalled(context.Context, string, string, string, string)
+	PublishApplicationUninstalled(context.Context, string, string, string, string)
+	PublishApplicationStarted(context.Context, string, string, string, string)
+	PublishApplicationStopped(context.Context, string, string, string, string)
+}
+
 // PackageUpload is one archive submitted for installation into the catalog.
 type PackageUpload struct {
 	// Filename is the client's name for the archive. It is recorded, never
@@ -105,6 +118,14 @@ type PackageUpload struct {
 	Data     []byte
 	// Actor is the email of the administrator who uploaded it.
 	Actor string
+}
+
+// PackageMutation is the atomic result of writing one uploaded package.
+// Replaced distinguishes a first addition from replacing an existing package
+// without a racy list-before-write check in the service layer.
+type PackageMutation struct {
+	Package
+	Replaced bool
 }
 
 // PackageCatalog is the writable half of the catalog: the part backed by
@@ -121,7 +142,7 @@ type PackageCatalog interface {
 	// touches are judged against is the service's to work out. It returns
 	// ErrPackageInvalid for a malformed archive and ErrPackageReserved for one
 	// whose id belongs to a built-in application.
-	AddPackage(upload PackageUpload) (Package, error)
+	AddPackage(upload PackageUpload) (PackageMutation, error)
 	// RemovePackage deletes a stored package and its catalog entry.
 	RemovePackage(id string) error
 }

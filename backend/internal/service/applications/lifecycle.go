@@ -58,7 +58,11 @@ func (s *Service) Uninstall(ctx context.Context, id string) error {
 	if err := s.teardown(ctx, application, inst); err != nil {
 		return err
 	}
-	return s.store.Delete(ctx, id)
+	if err := s.store.Delete(ctx, id); err != nil {
+		return err
+	}
+	s.publishApplicationUninstalled(ctx, inst)
+	return nil
 }
 
 // teardown removes an instance's footprint: its container side, and its backend
@@ -90,6 +94,7 @@ func (s *Service) transition(ctx context.Context, id string, target InstanceStat
 	if inst.Status == StatusError || inst.Status == StatusInstalling {
 		return View{}, fmt.Errorf("%w: %s instances must be retried or uninstalled", ErrInvalidState, inst.Status)
 	}
+	previousStatus := inst.Status
 	// An application without infrastructure may be purely a record: stopped
 	// means the SPA no longer loads its extension. If it has a backend, the
 	// backend process and record move together.
@@ -101,6 +106,7 @@ func (s *Service) transition(ctx context.Context, id string, target InstanceStat
 		if err := s.saveStatus(ctx, &inst, target, ""); err != nil {
 			return View{}, err
 		}
+		s.publishApplicationTransition(ctx, inst, previousStatus, target)
 		return s.view(inst), nil
 	}
 	if s.installer == nil {
@@ -136,6 +142,7 @@ func (s *Service) transition(ctx context.Context, id string, target InstanceStat
 	if err := s.saveStatus(ctx, &inst, target, ""); err != nil {
 		return View{}, err
 	}
+	s.publishApplicationTransition(ctx, inst, previousStatus, target)
 	return s.view(inst), nil
 }
 

@@ -20,8 +20,10 @@ func (r *singleApplicationRegistry) UIAsset(string, string) ([]byte, bool) { ret
 // fakeStore is the shared in-memory store for application service tests. It
 // records writes and deletions while keeping reads consistent with them.
 type fakeStore struct {
-	global    []Instance
-	byProject map[string][]Instance
+	global     []Instance
+	byProject  map[string][]Instance
+	listAllErr error
+	deleteErr  error
 
 	puts    []Instance
 	deleted []string
@@ -37,6 +39,9 @@ func (f *fakeStore) ListProject(_ context.Context, projectID string) ([]Instance
 // application installed anywhere" gets the wrong answer from a fake that only knows
 // about global instances.
 func (f *fakeStore) ListAll(context.Context) ([]Instance, error) {
+	if f.listAllErr != nil {
+		return nil, f.listAllErr
+	}
 	all := append([]Instance(nil), f.global...)
 	for _, group := range projectInstanceGroups(f.byProject) {
 		all = append(all, group...)
@@ -81,6 +86,9 @@ func (f *fakeStore) Put(_ context.Context, instance Instance) error {
 }
 
 func (f *fakeStore) Delete(_ context.Context, id string) error {
+	if f.deleteErr != nil {
+		return f.deleteErr
+	}
 	f.deleted = append(f.deleted, id)
 	kept := f.global[:0]
 	for _, candidate := range f.global {

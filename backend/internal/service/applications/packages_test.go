@@ -26,17 +26,24 @@ type recordingCatalog struct {
 
 func (c *recordingCatalog) Packages() []PackageView { return c.stored }
 
-func (c *recordingCatalog) AddPackage(upload PackageUpload) (Package, error) {
+func (c *recordingCatalog) AddPackage(upload PackageUpload) (PackageMutation, error) {
 	c.uploads = append(c.uploads, upload)
 	if c.installErr != nil {
-		return Package{}, c.installErr
+		return PackageMutation{}, c.installErr
 	}
 	pkg := c.pkg
 	if pkg.ID == "" {
 		pkg = Package{ID: "uploaded-app", Name: "Uploaded App"}
 	}
+	replaced := false
+	for _, existing := range c.stored {
+		if existing.ID == pkg.ID {
+			replaced = true
+			break
+		}
+	}
 	c.stored = append(c.stored, PackageView{Package: pkg})
-	return pkg, nil
+	return PackageMutation{Package: pkg, Replaced: replaced}, nil
 }
 
 func (c *recordingCatalog) RemovePackage(id string) error {

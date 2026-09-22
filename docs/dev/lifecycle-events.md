@@ -5,10 +5,11 @@ constructed application services. It is deliberately smaller than a message
 bus: it has no discovery, persistence, buffering, retry, transport, or global
 registry.
 
-The current runtime has one event family, application self-updates, represented
-by `UpdatePublisher`. The publisher is injected into `selfupdate.Service`
-through a narrow producer-owned port. No production subscriber is currently
-registered.
+The current runtime has two domain publishers. `UpdatePublisher` reports Remote
+self-updates. `ApplicationPublisher` reports application-catalog mutations and
+installed-copy transitions through two precise subscriptions because those
+events have different payloads. Both are injected into their producers through
+narrow producer-owned ports. No production subscriber is currently registered.
 
 This guide explains how to:
 
@@ -22,10 +23,10 @@ Each part has one owner:
 
 | Part | Responsibility | Current example |
 | --- | --- | --- |
-| Event contract | Defines a small typed fact and its states | [`UpdateState` and `UpdateEvent`](../../backend/internal/lifecycle/update_publisher.go) |
-| Publisher | Owns subscriptions, snapshots, and synchronous dispatch | [`UpdatePublisher`](../../backend/internal/lifecycle/update_publisher.go) |
-| Producer port | Exposes only the publish methods one producer needs | [`selfupdate.UpdateLifecyclePublisher`](../../backend/internal/service/selfupdate/ports.go) |
-| Producer | Publishes at the workflow transition it owns | [`selfupdate.Service`](../../backend/internal/service/selfupdate/service.go) |
+| Event contract | Defines a small typed fact and its states | [`UpdateEvent`](../../backend/internal/lifecycle/update_publisher.go), [`ApplicationCatalogEvent` and `ApplicationInstanceEvent`](../../backend/internal/lifecycle/application_publisher.go) |
+| Publisher | Owns typed subscriptions and delegates shared delivery mechanics | [`UpdatePublisher`](../../backend/internal/lifecycle/update_publisher.go), [`ApplicationPublisher`](../../backend/internal/lifecycle/application_publisher.go) |
+| Producer port | Exposes only the publish methods one producer needs | [`selfupdate.UpdateLifecyclePublisher`](../../backend/internal/service/selfupdate/ports.go), [`applications.ApplicationLifecyclePublisher`](../../backend/internal/service/applications/ports.go) |
+| Producer | Publishes at the workflow transition it owns | [`selfupdate.Service`](../../backend/internal/service/selfupdate/service.go), [`applications.Service`](../../backend/internal/service/applications/service.go) |
 | Subscriber | Owns one reaction to the event; none exists in production today | `lifecycle.UpdateSubscriber` implementation |
 | Composition root | Constructs publishers, injects producer ports, and registers subscribers | [`cmd/remote/main.go`](../../backend/cmd/remote/main.go) |
 
@@ -85,6 +86,46 @@ application data.
 The named state constants are the event list for this family. There is no
 runtime `[]any` event catalog: one publish call dispatches one typed event
 value. Keep this table updated whenever that state list changes.
+
+### Application catalog events
+
+`ApplicationCatalogEvent` contains `State` and `ApplicationID`. It deliberately
+does not carry an uploaded archive, manifest configuration, or installed-copy
+details.
+
+| State | Publish method | Production emission point |
+| --- | --- | --- |
+| `ApplicationAdded` (`added`) | `PublishApplicationAdded` | A first uploaded package has been stored, validated, and loaded into the live catalog |
+| `ApplicationUpdated` (`updated`) | `PublishApplicationUpdated` | An existing uploaded package has been atomically replaced and loaded |
+| `ApplicationDeleted` (`deleted`) | `PublishApplicationDeleted` | Installed copies selected for cascade removal are gone and the uploaded package has left the live catalog |
+
+Built-in applications discovered at process start do not emit `added`; these
+states describe runtime catalog mutations, not catalog enumeration.
+
+### Installed-application events
+
+`ApplicationInstanceEvent` contains `State`, `ApplicationID`, `InstanceID`,
+`Scope`, and `ProjectID`. It excludes resolved environment variables,
+credentials, container addresses, and installer output.
+
+| State | Publish method | Production emission point |
+| --- | --- | --- |
+| `ApplicationInstalled` (`installed`) | `PublishApplicationInstalled` | Provisioning, backend startup, and the final running record have succeeded |
+| `ApplicationUninstalled` (`uninstalled`) | `PublishApplicationUninstalled` | Teardown and deletion of the instance record have succeeded |
+| `ApplicationStarted` (`started`) | `PublishApplicationStarted` | A stopped copy has reached and persisted running state |
+| `ApplicationStopped` (`stopped`) | `PublishApplicationStopped` | A running copy has reached and persisted stopped state |
+
+Install emits only `installed`, and uninstall emits only `uninstalled`.
+Same-state Start or Stop requests may reconverge runtime state but do not emit a
+duplicate transition. Automatic upgrades do not masquerade as installs or
+starts. Retry cleanup of a failed attempt stays silent; only the successful
+replacement install emits. Package cascade removal emits each committed
+`uninstalled` event before the final `deleted` event.
+
+All application events are in-memory only and are not replayed after a process
+restart. A crash after the durable mutation and before dispatch can therefore
+lose its notification. Use an outbox or another durable mechanism if a consumer
+must observe every mutation.
 
 ## Delivery contract
 
@@ -435,8 +476,9 @@ NewJobPublisher() *JobPublisher
 (*JobPublisher).PublishJobFinished(context.Context, string)
 ```
 
-Use `UpdatePublisher` as the implementation reference. Publishers in this
-package preserve these delivery mechanics:
+Use `UpdatePublisher` or `ApplicationPublisher` as the implementation
+reference. Publishers in this package preserve these delivery mechanics
+through the private `eventDispatcher`:
 
 - snapshot under a read lock and invoke callbacks after releasing it;
 - synchronous registration-order dispatch for one publish call;
@@ -444,11 +486,11 @@ package preserve these delivery mechanics:
 - idempotent unsubscribe; and
 - private subscription storage and raw dispatch.
 
-Some repeated syntax is cheaper than introducing a generic registry or an
-unproven abstraction. Extract shared publisher machinery only when several real
-publishers demonstrate the same stable contract. If a domain needs different
-delivery guarantees, use a mechanism designed for those guarantees instead of
-adding a special-case publisher here.
+`eventDispatcher` shares only subscription storage and dispatch. Event states,
+payloads, subscriber interfaces, and semantic publish methods stay on the
+domain publisher. Do not turn that helper into a string-keyed global registry.
+If a domain needs different delivery guarantees, use a mechanism designed for
+those guarantees instead of adding a special case here.
 
 ### 3. Give each producer a narrow port
 

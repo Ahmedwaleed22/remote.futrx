@@ -76,7 +76,10 @@ func upload(t *testing.T, r *Registry, files map[string]string) svc.Package {
 	if err != nil {
 		t.Fatalf("install package: %v", err)
 	}
-	return pkg
+	if pkg.Replaced {
+		t.Fatal("first upload was reported as a replacement")
+	}
+	return pkg.Package
 }
 
 func TestAddPackageJoinsTheCatalog(t *testing.T) {
@@ -279,7 +282,13 @@ func TestUploadingAgainReplacesTheStoredPackage(t *testing.T) {
 	next["application.json"] = strings.Replace(uploadedManifest, `"1.0.0"`, `"2.0.0"`, 1)
 	next["ui/scripts/main.js"] = "export default () => 2;\n"
 	delete(next, "ui/views/panel.html")
-	upload(t, registry, next)
+	mutation, err := registry.AddPackage(svc.PackageUpload{Data: zipOf(t, next)})
+	if err != nil {
+		t.Fatalf("replace package: %v", err)
+	}
+	if !mutation.Replaced {
+		t.Fatal("replacement was reported as a first addition")
+	}
 
 	application, _ := registry.Get("uploaded-app")
 	if application.Version != "2.0.0" {

@@ -119,9 +119,10 @@ func main() {
 	////////////////////////////////////////
 	maintenanceGuard := servicemaintenance.New(cfg.DataDir)
 
-	// The update publisher is process-wide. Producers receive only the
+	// Lifecycle publishers are process-wide. Producers receive only the
 	// publishing capability declared by their own service contract.
 	updateLifecycle := lifecycle.NewUpdatePublisher()
+	applicationLifecycle := lifecycle.NewApplicationPublisher()
 	selfUpdateService := serviceselfupdate.New(
 		version.Version,
 		cfg.InstallDir,
@@ -171,13 +172,14 @@ func main() {
 			MaxConcurrentRuns:  cfg.Schedule.MaxConcurrentRuns,
 			MaxTasksPerProject: cfg.Schedule.MaxTasksPerProject,
 		},
-		AppStore:        storeSet.Applications,
-		AppRegistry:     appRegistry,
-		AppInstaller:    containerStack.AppInstaller,
-		AppPorts:        containerStack.AppPorts,
-		AppBackends:     appBackends,
-		AppPackages:     appRegistry,
-		PromptStartGate: maintenanceGuard,
+		AppStore:             storeSet.Applications,
+		AppRegistry:          appRegistry,
+		AppInstaller:         containerStack.AppInstaller,
+		AppPorts:             containerStack.AppPorts,
+		AppBackends:          appBackends,
+		AppPackages:          appRegistry,
+		ApplicationLifecycle: applicationLifecycle,
+		PromptStartGate:      maintenanceGuard,
 	})
 	if err != nil {
 		log.Fatalf("init services: %v", err)

@@ -153,7 +153,12 @@ func (s *Service) UploadPackage(ctx context.Context, upload PackageUpload) (Pack
 	if err != nil {
 		return PackageView{}, err
 	}
-	pkg := PackageView{Package: stored}
+	if stored.Replaced {
+		s.publishApplicationUpdated(ctx, stored.ID)
+	} else {
+		s.publishApplicationAdded(ctx, stored.ID)
+	}
+	pkg := PackageView{Package: stored.Package}
 	// Re-provision the container side of every instance the new version made
 	// stale. This also stops each backend it touches, so those come back on the
 	// new source by itself.
@@ -220,7 +225,7 @@ func (s *Service) RemovePackage(ctx context.Context, req RemovePackageRequest) (
 		return nil, fmt.Errorf("%w: %s", ErrPackageInUse, describeInstalls(installs))
 	}
 	for i := range installs {
-		if err := s.uninstallForPackageRemoval(ctx, installs[i]); err != nil {
+		if err := s.uninstallForPackageRemoval(ctx, req.ID, installs[i]); err != nil {
 			// The list is what a caller reports on a removal that happened, so
 			// one that did not returns only the failure — which already names
 			// the copy that stopped it and why.
@@ -231,6 +236,7 @@ func (s *Service) RemovePackage(ctx context.Context, req RemovePackageRequest) (
 	if err := s.packages.RemovePackage(req.ID); err != nil {
 		return installs, err
 	}
+	s.publishApplicationDeleted(ctx, req.ID)
 	return installs, nil
 }
 
@@ -248,7 +254,11 @@ func (s *Service) RemovePackage(ctx context.Context, req RemovePackageRequest) (
 // rather than left running as a child of the server that nothing points at any
 // more. Only the container side — which needs the application to describe it — is
 // left, and is the operator's to clean up in LXD.
-func (s *Service) uninstallForPackageRemoval(ctx context.Context, install PackageInstall) error {
+func (s *Service) uninstallForPackageRemoval(
+	ctx context.Context,
+	applicationID string,
+	install PackageInstall,
+) error {
 	err := s.Uninstall(ctx, install.InstanceID)
 	switch {
 	case err == nil, errors.Is(err, ErrNotFound):
@@ -259,7 +269,16 @@ func (s *Service) uninstallForPackageRemoval(ctx context.Context, install Packag
 				return err
 			}
 		}
-		return s.store.Delete(ctx, install.InstanceID)
+		if err := s.store.Delete(ctx, install.InstanceID); err != nil {
+			return err
+		}
+		s.publishApplicationUninstalled(ctx, Instance{
+			ID:            install.InstanceID,
+			ApplicationID: applicationID,
+			Scope:         install.Scope,
+			ProjectID:     install.ProjectID,
+		})
+		return nil
 	default:
 		return err
 	}

@@ -97,6 +97,9 @@ type Dependencies struct {
 	// of packages an administrator uploaded. Nil leaves the catalog to whatever
 	// the binary was built with.
 	AppPackages serviceapplications.PackageCatalog
+	// ApplicationLifecycle receives successful application catalog and
+	// installed-copy transitions. Subscribers are wired at the process root.
+	ApplicationLifecycle serviceapplications.ApplicationLifecyclePublisher
 }
 
 // ScheduleLimits mirrors the deployment's scheduled-task guardrails without
@@ -328,6 +331,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			deps.AppPorts,
 			serviceapplications.WithBackendHost(deps.AppBackends),
 			serviceapplications.WithPackageCatalog(deps.AppPackages),
+			serviceapplications.WithLifecyclePublisher(deps.ApplicationLifecycle),
 		)
 	}
 
