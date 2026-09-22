@@ -114,7 +114,8 @@ Each has an independent **Refresh** action.
 | `infra/install.sh` | Idempotent configuration, systemd unit creation, idle-probe declaration, restart, and readiness wait. |
 | `skills/hello-remote-inspector/SKILL.md` | A project-scoped agent workflow that verifies the service without exposing its generated secret. |
 | `ui/scripts/main.js` | The entry module: activates the showcase, card action, applications panel, and cleanup. |
-| `ui/scripts/showcase.js` | Buttons in every extension slot plus a live explorer for the complete frontend API. |
+| `ui/scripts/showcase.js`, `ui/scripts/showcaseExplorer.js` | Slot registration and the live explorer for the complete frontend API. |
+| `ui/scripts/uploadTracker.js` | Cohesive upload observation and one-shot pass-through claim state. |
 | `ui/views/panel.html`, `ui/style/hello.css` | The two conventions — views loaded by name, CSS written against the platform's theme tokens. |
 
 Full documentation is in [`docs/dev/installable-applications/`](../../docs/dev/installable-applications/); the tutorial that builds an

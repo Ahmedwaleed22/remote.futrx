@@ -3,12 +3,12 @@ import test from "node:test";
 
 import {
   backendSummary,
-  claimUploadIfArmed,
   contextSummary,
   installSummary,
   uploadSummary,
 } from "./showcaseExplorer.js";
 import { activateFrontendShowcase } from "./showcase.js";
+import { createUploadTracker } from "./uploadTracker.js";
 
 test("registers a control in every frontend extension slot", () => {
   const iconSlots = [];
@@ -83,15 +83,22 @@ test("summarizes backend instances and observed uploads", () => {
 });
 
 test("an armed upload claim preserves the original attachment path", async () => {
-  const observedUploads = { claimNext: true, claimed: 0 };
+  const uploads = createUploadTracker();
+  uploads.armPassThroughClaim();
   let claimed;
-  const used = claimUploadIfArmed(observedUploads, {
+  const upload = {
     path: "/workspace/.uploads/demo.txt",
     claim: (work) => { claimed = work; },
-  });
+  };
+  const used = uploads.observe(upload);
 
   assert.equal(used, true);
-  assert.equal(observedUploads.claimNext, false);
+  assert.deepEqual(uploads.snapshot(), {
+    count: 1,
+    latest: upload,
+    claimNext: false,
+    claimed: 0,
+  });
   assert.equal(await claimed, "/workspace/.uploads/demo.txt");
-  assert.equal(observedUploads.claimed, 1);
+  assert.equal(uploads.snapshot().claimed, 1);
 });

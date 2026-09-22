@@ -6,10 +6,10 @@
 // the exact surface where their contribution is running.
 
 import {
-  claimUploadIfArmed,
   mountSettingsShowcase,
   openFrontendExplorer,
 } from "./showcaseExplorer.js";
+import { createUploadTracker } from "./uploadTracker.js";
 
 const SPARK_ICON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
@@ -29,14 +29,14 @@ const ACTION_SLOTS = [
 ];
 
 export function activateFrontendShowcase(remote) {
-  const observedUploads = { count: 0, latest: null, claimNext: false, claimed: 0 };
+  const uploads = createUploadTracker();
 
   for (const [slotName, surface] of ACTION_SLOTS) {
     remote.ui.addIconButton(remote.slots[slotName], {
       icon: SPARK_ICON,
       label: `Explore Hello Remote from ${surface}`,
       title: `Frontend API · ${surface}`,
-      onClick: (context) => openFrontendExplorer(remote, context, observedUploads),
+      onClick: (context) => openFrontendExplorer(remote, context, uploads),
     });
   }
 
@@ -48,12 +48,12 @@ export function activateFrontendShowcase(remote) {
     icon: SPARK_BUTTON_ICON,
     order: -9,
     when: (context) => context.instance?.applicationId === remote.application.id,
-    onClick: (context) => openFrontendExplorer(remote, context, observedUploads),
+    onClick: (context) => openFrontendExplorer(remote, context, uploads),
   });
 
   remote.ui.register(
     remote.slots.projectSettingsPanel,
-    (host, context) => mountSettingsShowcase(host, remote, context, observedUploads),
+    (host, context) => mountSettingsShowcase(host, remote, context, uploads),
     { order: -100 }
   );
 
@@ -61,9 +61,7 @@ export function activateFrontendShowcase(remote) {
   // claim in the explorer. That claim resolves to the original path: it shows
   // the synchronous claim contract without moving or deleting the attachment.
   remote.events.on("upload.completed", (upload) => {
-    observedUploads.count += 1;
-    observedUploads.latest = upload;
-    claimUploadIfArmed(observedUploads, upload);
+    uploads.observe(upload);
     remote.log("upload.completed", {
       chatId: upload.chatId,
       projectId: upload.projectId,

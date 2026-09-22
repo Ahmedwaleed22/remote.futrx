@@ -2,7 +2,7 @@
 // showcase composition module decides where this UI appears; this module owns
 // only its DOM lifecycle and the extension API calls it demonstrates.
 
-export function mountSettingsShowcase(host, remote, context, observedUploads) {
+export function mountSettingsShowcase(host, remote, context, uploads) {
   const panel = document.createElement("section");
   panel.className = "hello-remote hello-remote__showcase-card";
 
@@ -19,7 +19,7 @@ export function mountSettingsShowcase(host, remote, context, observedUploads) {
   button.type = "button";
   button.className = "hello-remote__button";
   button.textContent = "Explore API";
-  const open = () => openFrontendExplorer(remote, context, observedUploads);
+  const open = () => openFrontendExplorer(remote, context, uploads);
   button.addEventListener("click", open);
 
   panel.append(copy, button);
@@ -27,25 +27,25 @@ export function mountSettingsShowcase(host, remote, context, observedUploads) {
   return () => button.removeEventListener("click", open);
 }
 
-export function openFrontendExplorer(remote, context, observedUploads) {
+export function openFrontendExplorer(remote, context, uploads) {
   let popup;
   popup = remote.ui.openPopup({
     title: "Hello Remote · Frontend API",
     width: 720,
     html: explorerMarkup(),
-    mount: (body) => mountExplorer(body, remote, context, observedUploads, () => popup.close()),
+    mount: (body) => mountExplorer(body, remote, context, uploads, () => popup.close()),
   });
   // The returned handle exposes the live body as well as close(). Marking it
   // here makes that half of the popup API visible in browser inspection.
   popup.body.dataset.helloRemoteExplorer = "true";
 }
 
-function mountExplorer(body, remote, context, observedUploads, close) {
+function mountExplorer(body, remote, context, uploads, close) {
   const output = body.querySelector("[data-showcase-output]");
   const controls = new AbortController();
   const target = { projectId: context.projectId };
 
-  showExplorerFacts(body, remote, context, observedUploads);
+  showExplorerFacts(body, remote, context, uploads.snapshot());
 
   const logo = body.querySelector("[data-showcase-logo]");
   logo.src = remote.assets.url("assets/logo.svg");
@@ -58,7 +58,7 @@ function mountExplorer(body, remote, context, observedUploads, close) {
         context,
         target,
         output,
-        observedUploads,
+        uploads,
         controls.signal,
         close
       );
@@ -68,7 +68,7 @@ function mountExplorer(body, remote, context, observedUploads, close) {
   return () => controls.abort();
 }
 
-function showExplorerFacts(body, remote, context, observedUploads) {
+function showExplorerFacts(body, remote, context, uploadSnapshot) {
   setText(body, "api-version", String(remote.apiVersion));
   setText(body, "application", `${remote.application.name} ${remote.application.version ?? ""}`.trim());
   setText(body, "application-id", remote.application.id);
@@ -76,10 +76,10 @@ function showExplorerFacts(body, remote, context, observedUploads) {
   setText(body, "slot", context.slot);
   setText(body, "context", contextSummary(context));
   setText(body, "backend", backendSummary(remote.backend));
-  setText(body, "uploads", uploadSummary(observedUploads));
+  setText(body, "uploads", uploadSummary(uploadSnapshot));
 }
 
-function invokeExplorerAction(button, remote, context, target, output, observedUploads, signal, close) {
+function invokeExplorerAction(button, remote, context, target, output, uploads, signal, close) {
   switch (button.dataset.showcaseAction) {
     case "call":
       void showResult(button, output, () => remote.backend.call("echo", {
@@ -126,7 +126,7 @@ function invokeExplorerAction(button, remote, context, target, output, observedU
       output.textContent = "Context written through remote.log. Open the browser console to inspect it.";
       break;
     case "claim":
-      observedUploads.claimNext = true;
+      uploads.armPassThroughClaim();
       output.textContent =
         "The next upload in this tab will use event.claim() and resolve to its original path.";
       break;
@@ -222,17 +222,4 @@ export function uploadSummary(observedUploads) {
     return `${observedUploads.count} · upload.completed is being observed${claim}`;
   }
   return `${observedUploads.count} · latest: ${observedUploads.latest.fileName} (${observedUploads.latest.size} bytes)${claim}`;
-}
-
-// event.claim must be called synchronously inside the event handler. The
-// explorer arms that one moment; this helper consumes the flag and gives the
-// event a promise that deliberately preserves the original path.
-export function claimUploadIfArmed(observedUploads, upload) {
-  if (!observedUploads.claimNext) return false;
-  observedUploads.claimNext = false;
-  upload.claim(Promise.resolve(upload.path).then((path) => {
-    observedUploads.claimed += 1;
-    return path;
-  }));
-  return true;
 }
