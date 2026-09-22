@@ -29,7 +29,7 @@ applications/
   redis/
   ui-playground/       fixture: extension only, no container
   ui-sandbox/          fixture: extension only, no container
-  backend-playground/  fixture: Go plugin plus the UI that calls it
+  backend-playground/  fixture: Go backend plus the UI that calls it
 ```
 
 The only regular files at an application root are `README.md` and
@@ -90,7 +90,7 @@ discriminator to keep synchronized with the package layout.
 
 The layout supplies these capabilities directly — see
 [03 — Application capabilities](03-application-capabilities.md). `backend/` is covered in full by
-[15 — Backend plugins](15-backend-plugins.md).
+[15 — Application backends](15-application-backends.md).
 
 ## The moving parts
 
@@ -131,7 +131,7 @@ flowchart TB
     end
 
     subgraph Support["Supporting packages"]
-        P_PluginHost["integration/pluginhost<br/>compiles backend/api/, runs it over go-plugin"]
+        P_ApplicationHost["integration/applications<br/>compiles backend/api/, runs it over go-plugin"]
         P_FileApps["stores/fileapplications<br/>global.json, projects/{id}.json"]
         P_HostTools["integration/containers/applications/hosttools<br/>checksum-pinned host binaries"]
     end
@@ -163,7 +163,7 @@ flowchart TB
     S_Service --> I_Allocator
     S_Service --> P_FileApps
     S_UIExt --> I_Registry
-    S_Backend --> P_PluginHost
+    S_Backend --> P_ApplicationHost
     S_Packages --> I_Packages
 
     I_Registry --> I_RegParts
@@ -171,7 +171,7 @@ flowchart TB
     I_Registry -. go:embed .-> C_Hello
     I_Installer --> P_HostTools
     I_Packages -. uploaded packages join the catalog .-> I_Registry
-    P_PluginHost -. reads backend/api/ source from .-> I_Registry
+    P_ApplicationHost -. reads backend/api/ source from .-> I_Registry
 ```
 
 Every arrow out of the service layer crosses an interface it declares itself:
@@ -185,16 +185,16 @@ is what keeps the domain testable without LXD, a Go toolchain, or a disk.
 |---|---|---|
 | integration | `containers/applications/registry.go` | loads and validates the embedded catalog; serves `ui/` asset bytes and `backend/api/` source |
 | integration | `containers/applications/installer.go` | everything `lxc`-facing: containers, install scripts, proxy devices |
-| integration | `pluginhost/` | everything toolchain- and process-facing: compiling `backend/api/`, running it, forwarding calls |
-| contract | `pkg/appplugin` | the types and interface a plugin is written against |
+| integration | `applications/` | everything toolchain- and process-facing: compiling `backend/api/`, running it, forwarding calls |
+| contract | `pkg/applications` | the types and interface a backend is written against |
 | service | `service/applications/service.go` | policy: install, lifecycle, which extensions a caller may load |
-| service | `service/applications/backend.go` | policy: who may call a plugin, and when |
+| service | `service/applications/backend.go` | policy: who may call a backend, and when |
 | transport | `transport/http/handlers/applications_handler.go` | routes, authorization, JSON |
-| transport | `transport/http/handlers/applications_backend_handler.go` | forwarding a request to a plugin and its answer back |
+| transport | `transport/http/handlers/applications_backend_handler.go` | forwarding a request to a backend and its answer back |
 
 The layering is strict: transport → service → integration. A handler never
 runs `lxc` and never launches a process; the registry never decides who may see
-what. `pkg/appplugin` sits outside the layering on purpose: it is the public
+what. `pkg/applications` sits outside the layering on purpose: it is the public
 contract, so it depends on nothing but the standard library.
 
 ### Frontend
@@ -205,7 +205,7 @@ contract, so it depends on nothing but the standard library.
 | `app/extensions/extensionApi.ts` | builds the `remote` object handed to each extension |
 | `state/stores/extensions/extensionStore.ts` | owns registered contributions and install visibility |
 | `state/hooks/extensions/extensionContributionState.ts` | decides which contributions apply to a surface |
-| `app/extensions/extensionBackend.ts` | resolves which running plugin a call reaches, and calls it |
+| `app/extensions/extensionBackend.ts` | resolves which running backend a call reaches, and calls it |
 | `config/extensions.ts` | the closed set of slot names and their icon sizing |
 | `app/extensions/extensionPopup.ts` | the modal an extension can open |
 | `ui/primitives/ExtensionSlot.tsx` | renders a slot's contributions into plain DOM nodes |
@@ -224,7 +224,7 @@ sequenceDiagram
     participant Svc as service/applications
     participant Reg as applications.Registry
     participant Store as stores/fileapplications
-    participant Host as pluginhost
+    participant Host as applications
     participant Proj as project service
     participant Inst as applications.Installer
     participant LXD as LXD
@@ -288,7 +288,7 @@ sequenceDiagram
                                           |
 7. It calls its own backend      remote.backend.call("health")
                                  → /api/applications/<instance>/backend/health
-                                 → the application's compiled Go plugin
+                                 → the application's compiled Go backend
 ```
 
 Steps 2–6 repeat whenever the installed set changes — install, uninstall,

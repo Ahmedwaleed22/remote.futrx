@@ -5,17 +5,17 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
-// A plugin is ordinary Go in the repository's module, so it is tested like
+// A backend is ordinary Go in the repository's module, so it is tested like
 // ordinary Go: build the backend, hand it an Instance the way the host would,
-// and call Handle. Nothing here needs a server, a container, or the plugin
+// and call Handle. Nothing here needs a server, a container, or the backend
 // host.
-func newTestBackend(t *testing.T, dataDir string, env map[string]string) *backend {
+func newTestBackend(t *testing.T, dataDir string, env map[string]string) *api {
 	t.Helper()
-	b := newBackend()
-	if err := b.Init(appplugin.Instance{
+	b := handler()
+	if err := b.Init(applications.Instance{
 		ID: "test", ApplicationID: "hello-remote", Scope: "global",
 		DataDir: dataDir, Env: env,
 	}); err != nil {
@@ -80,12 +80,12 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 	}
 }
 
-func call(t *testing.T, b *backend, method, path string) map[string]any {
+func call(t *testing.T, b *api, method, path string) map[string]any {
 	t.Helper()
-	response, err := b.Handle(appplugin.Request{
+	response, err := b.Handle(applications.Request{
 		Method: method,
 		Path:   path,
-		Caller: appplugin.Caller{Email: "user@example.com"},
+		Caller: applications.Caller{Email: "user@example.com"},
 	})
 	if err != nil {
 		t.Fatalf("%s %s: %v", method, path, err)
@@ -110,7 +110,7 @@ func TestHelloUsesInstallGreetingAndCaller(t *testing.T) {
 
 func TestEchoShowsFrontendRequestOptions(t *testing.T) {
 	b := newTestBackend(t, t.TempDir(), nil)
-	response, err := b.Handle(appplugin.Request{
+	response, err := b.Handle(applications.Request{
 		Method:  http.MethodPost,
 		Path:    "echo",
 		Query:   map[string][]string{"source": {"frontend-showcase"}},

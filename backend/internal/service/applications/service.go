@@ -47,9 +47,9 @@ type Service struct {
 	now       Clock
 }
 
-// Option configures optional service dependencies. Backend plugin hosting is
+// Option configures optional service dependencies. Backend backend hosting is
 // optional because a server without a Go toolchain, or a build that ships no
-// plugin applications, must still install and run everything else.
+// backend applications, must still install and run everything else.
 type Option func(*Service)
 
 // WithBackendHost enables applications that ship backend/api/. Without it,

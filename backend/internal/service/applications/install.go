@@ -55,7 +55,7 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 	inst.Env = env
 	// An application with no infrastructure has no container side: installing it only
 	// records that the user turned it on, which is what makes its ui/ load and
-	// its plugin run. Everything below this branch — container, port, proxy
+	// its backend run. Everything below this branch — container, port, proxy
 	// device, install script — exists only for applications that provision software.
 	if !application.NeedsContainer() {
 		inst.Status = StatusRunning

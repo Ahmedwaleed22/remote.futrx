@@ -1,4 +1,4 @@
-package pluginhost
+package applications
 
 import (
 	"crypto/sha256"
@@ -58,32 +58,32 @@ func writeFile(name string, data []byte) error {
 	return nil
 }
 
-// fingerprintOf hashes everything that can change a plugin binary: its source,
+// fingerprintOf hashes everything that can change a backend binary: its source,
 // the SDK it links, the module files pinning their dependencies, and the Go
 // version. Anything left out here would be a stale binary someone has to
 // diagnose, so the inputs are hashed whole rather than by modification time.
 //
 // It is split in two because the second half is identical for every application: the
-// builder precomputes it once and pays only for the plugin's own source on each
+// builder precomputes it once and pays only for the backend's own source on each
 // build.
-func fingerprintOf(files, sdk []sourceFile, pluginModule, sdkModule, goVersion string) string {
-	return fingerprintWith(files, sharedFingerprintOf(sdk, pluginModule, sdkModule, goVersion))
+func fingerprintOf(files, sdk []sourceFile, backendModule, sdkModule, goVersion string) string {
+	return fingerprintWith(files, sharedFingerprintOf(sdk, backendModule, sdkModule, goVersion))
 }
 
 // sharedFingerprintOf hashes the inputs every application builds against.
-func sharedFingerprintOf(sdk []sourceFile, pluginModule, sdkModule, goVersion string) string {
+func sharedFingerprintOf(sdk []sourceFile, backendModule, sdkModule, goVersion string) string {
 	digest := sha256.New()
 	writeSection(digest, "sdk", sdk)
-	writeChunk(digest, []byte(pluginModule))
+	writeChunk(digest, []byte(backendModule))
 	writeChunk(digest, []byte(sdkModule))
 	writeChunk(digest, []byte(goVersion))
 	return hex.EncodeToString(digest.Sum(nil))
 }
 
-// fingerprintWith hashes one application's plugin source against the shared half.
+// fingerprintWith hashes one application's backend source against the shared half.
 func fingerprintWith(files []sourceFile, shared string) string {
 	digest := sha256.New()
-	writeSection(digest, "plugin", files)
+	writeSection(digest, "backend", files)
 	writeChunk(digest, []byte(shared))
 	return hex.EncodeToString(digest.Sum(nil))[:16]
 }

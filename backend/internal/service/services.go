@@ -89,7 +89,7 @@ type Dependencies struct {
 	AppRegistry  serviceapplications.Registry
 	AppInstaller serviceapplications.Installer
 	AppPorts     serviceapplications.PortAllocator
-	// AppBackends runs the Go plugins applications ship in their backend/ directory.
+	// AppBackends runs the application backends applications ship in their backend/ directory.
 	// Leaving it nil keeps every other application capability working and
 	// reports backend calls as unavailable.
 	AppBackends serviceapplications.BackendHost

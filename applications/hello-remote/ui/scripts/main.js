@@ -3,7 +3,7 @@
 // The default export runs once, after sign-in, with the extension API. It adds
 // controls across every extension slot plus the applications panel. Together
 // they expose the complete frontend API and call this application's own Go
-// plugin. That round trip — browser to a process the server compiled out of
+// backend. That round trip — browser to a process the server compiled out of
 // backend/api/ — is the center of the example.
 
 import { mountContainerPanel } from "./containerPanel.js";
@@ -22,7 +22,7 @@ export default function activate(remote) {
   // `when` is what keeps this button on this application's cards.
   remote.ui.addButton(remote.slots.applicationCardActions, {
     label: "Say hello",
-    title: "Call this install's Go plugin",
+    title: "Call this install's Go backend",
     icon: WAVE_ICON,
     variant: "solid",
     order: -10,
@@ -52,7 +52,7 @@ function sayHello(remote, context) {
     title: "Hello Remote",
     width: 420,
     mount: (body) => {
-      body.textContent = "Calling the plugin…";
+      body.textContent = "Calling the backend…";
       remote.backend
         .call("hello", target(context))
         .then((reply) => {
@@ -67,7 +67,7 @@ function sayHello(remote, context) {
           body.append(line, note);
         })
         .catch((error) => {
-          body.textContent = `The plugin did not answer: ${error.message}`;
+          body.textContent = `The backend did not answer: ${error.message}`;
         });
     },
   });
@@ -101,7 +101,7 @@ function renderPanel(host, remote, context) {
     };
     const fail = (error) => {
       if (disposed) return;
-      message.textContent = `The plugin did not answer: ${error.message}`;
+      message.textContent = `The backend did not answer: ${error.message}`;
     };
 
     const onClick = () => {

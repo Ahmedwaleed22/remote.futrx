@@ -18,7 +18,7 @@ import "context"
 // What is deliberately not re-run: nothing at all for a UI-only or host-
 // backend-only application, because neither provisions anything into a
 // container. Their new code is picked up by reloading the catalog and
-// restarting the plugin, which happens on every package replacement regardless
+// restarting the backend, which happens on every package replacement regardless
 // of version.
 
 // UpgradeOutcome is what happened to one instance when its application's version
@@ -107,7 +107,7 @@ func (s *Service) reinstall(ctx context.Context, application Application, inst *
 			return err
 		}
 	}
-	// The plugin is stopped first so the install script is not running
+	// The backend is stopped first so the install script is not running
 	// alongside a process holding the software it is replacing. It comes back
 	// on the next call to it, compiled from the source the new package shipped.
 	if err := s.stopBackend(ctx, application, *inst); err != nil {

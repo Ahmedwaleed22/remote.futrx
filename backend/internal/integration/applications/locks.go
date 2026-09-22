@@ -1,11 +1,11 @@
-package pluginhost
+package applications
 
 import "sync"
 
 // keyedLocks serializes work per key without serializing unrelated keys. Both
 // building an application and launching an instance are expensive and idempotent, so
 // concurrent callers should wait for one another rather than duplicate the
-// work — but a slow plugin must not hold up every other plugin.
+// work — but a slow backend must not hold up every other backend.
 type keyedLocks struct {
 	mu    sync.Mutex
 	locks map[string]*sync.Mutex

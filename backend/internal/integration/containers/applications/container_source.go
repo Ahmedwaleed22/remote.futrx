@@ -38,7 +38,7 @@ type containerSource struct {
 // land at $APP_PACKAGE_DIR/infra inside the container.
 //
 // This is what every application used to carry as its own infra/package.sh. It
-// runs here instead so a plugin ships Go source and no shell, and so the archive
+// runs here instead so a application ships Go source and no shell, and so the archive
 // cannot go stale against the source it was built from — there is no committed
 // artifact to forget to regenerate.
 //
@@ -60,7 +60,7 @@ func packContainerSource(fsys fs.FS, root, applicationID string) (*containerSour
 		return nil, fmt.Errorf("%s exists but carries no source", dir)
 	}
 
-	// A plugin that needs dependencies ships its own module file. One that does
+	// A application that needs dependencies ships its own module file. One that does
 	// not gets a synthesized one, so the common case is pure Go source with no
 	// module bookkeeping to maintain.
 	if _, ok := files["go.mod"]; !ok {

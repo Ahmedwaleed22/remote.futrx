@@ -32,7 +32,7 @@ Two things follow from "differs" rather than "is newer":
 |---|---|
 | `infra/install.sh` | Only when the version differs |
 | `ui/` assets | Every upload — they are served from the catalog, not a container |
-| `backend/` Go source | Every upload — the plugin process is stopped and rebuilt on its next call |
+| `backend/` Go source | Every upload — the backend process is stopped and rebuilt on its next call |
 | Catalog metadata (name, description, env fields, scopes) | Every upload |
 
 A `ui` or `backend` application reaches no container at all, so a version bump on one

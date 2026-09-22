@@ -64,10 +64,10 @@ and nothing else. Start with
 |---|---|
 | Understand the system | [Overview](../docs/dev/installable-applications/01-overview.md) |
 | Add a database or service | [Application capabilities](../docs/dev/installable-applications/03-application-capabilities.md), [Install scripts](../docs/dev/installable-applications/04-install-scripts.md) |
-| Add a button or panel to the UI | [Tutorial](../docs/dev/installable-applications/07-tutorial-build-a-plugin.md) |
+| Add a button or panel to the UI | [Tutorial](../docs/dev/installable-applications/07-tutorial-build-an-application.md) |
 | Look up an `application.json` field | [application.json reference](../docs/dev/installable-applications/02-application-json.md) |
 | Look up an extension API method | [Extension API](../docs/dev/installable-applications/06-extension-api.md) |
-| Add a server-side feature in Go | [Backend plugins](../docs/dev/installable-applications/15-backend-plugins.md) |
+| Add a server-side feature in Go | [Backend backends](../docs/dev/installable-applications/15-application-backends.md) |
 | Know where I can render | [Slots](../docs/dev/installable-applications/05-slots.md) |
 | Know who sees my extension | [Scoping and visibility](../docs/dev/installable-applications/08-scoping-and-visibility.md) |
 | Match the app's look | [Styling and icons](../docs/dev/installable-applications/09-styling-and-icons.md) |
@@ -94,9 +94,9 @@ and nothing else. Start with
    manifest: `scripts/main.js` is the entry, `style/*.css` are injected,
    `views/*.html` are loadable by name.
 4. Optionally add `backend/api/` for server-side work. `main.go` implements
-   `appplugin.Backend`; the application's `ui/` reaches it through
+   `applications.Backend`; the application's `ui/` reaches it through
    `remote.backend.call(...)`. See
-   [Backend plugins](../docs/dev/installable-applications/15-backend-plugins.md).
+   [Backend backends](../docs/dev/installable-applications/15-application-backends.md).
 5. Rebuild the backend. `NewRegistry()` validates every entry at startup, so a
    malformed application fails the build and the tests rather than 404ing in a
    browser.
@@ -127,7 +127,7 @@ pull request deserves the same review as any change under `frontend/src`. See
 **Backend code is server code.** A `backend/` directory is compiled and run as a
 child of the server process, with the server's privileges, and is handed the
 install's secrets. It deserves the same review as any change under
-`backend/internal/`. See [Security model](../docs/dev/installable-applications/13-security-model.md#backend-plugins).
+`backend/internal/`. See [Security model](../docs/dev/installable-applications/13-security-model.md#backend-backends).
 
 ## The example app
 

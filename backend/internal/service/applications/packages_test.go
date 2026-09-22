@@ -88,10 +88,10 @@ func TestUploadPackageRejectsAnEmptyArchive(t *testing.T) {
 	}
 }
 
-// Replacing a package leaves plugin processes running against the binary
+// Replacing a package leaves backend processes running against the binary
 // compiled from the previous version. Stopping them is what makes the upgrade
 // take effect on the next call.
-func TestUploadPackageRestartsPluginsOfTheReplacedApplication(t *testing.T) {
+func TestUploadPackageRestartsBackendsOfTheReplacedApplication(t *testing.T) {
 	store := &fakeStore{
 		global: []Instance{instance("uploaded-app", "", StatusRunning)},
 		byProject: map[string][]Instance{
@@ -289,11 +289,11 @@ func TestRemovePackageDropsCopiesOfAnUnloadableApplication(t *testing.T) {
 	if len(store.deleted) != 1 || store.deleted[0] != "broken-app-" {
 		t.Fatalf("the stranded record survived: %v", store.deleted)
 	}
-	// A plugin is addressed by instance id, so it can be cleaned up without the
+	// A backend is addressed by instance id, so it can be cleaned up without the
 	// application. Leaving it would keep a process running as a child of the server
 	// that no record points at any more.
 	if len(host.removed) != 1 || host.removed[0] != "broken-app-" {
-		t.Fatalf("the orphaned plugin was left running: %v", host.removed)
+		t.Fatalf("the orphaned backend was left running: %v", host.removed)
 	}
 	if len(catalog.removed) != 1 {
 		t.Fatalf("the package was not removed: %v", catalog.removed)

@@ -1,7 +1,7 @@
 # 06 — Extension API reference
 
 The `remote` object is what an application's entry module receives. It is the public
-surface a plugin author writes against, defined in
+surface a extension author writes against, defined in
 [`frontend/src/app/extensions/extensionApi.ts`](../../../frontend/src/app/extensions/extensionApi.ts).
 
 ## The entry module
@@ -95,7 +95,7 @@ The general form. `render` draws into a plain DOM element:
 const dispose = remote.ui.register(
   remote.slots.applicationsPanel,
   (host, context) => {
-    host.innerHTML = "<p>Hello from my plugin</p>";
+    host.innerHTML = "<p>Hello from my backend</p>";
     const timer = setInterval(() => {}, 1000);
     return () => clearInterval(timer);
   },
@@ -220,10 +220,10 @@ with a 404 — see [13 — Security model](13-security-model.md).
 
 ## `remote.backend`
 
-The application's own Go plugin — the `backend/` directory beside your `ui/`. It is
-present on every extension; applications that ship no plugin simply report
-`available: false`. The contract a plugin implements is
-[15 — Backend plugins](15-backend-plugins.md); this is the browser side of it.
+The application's own application backend — the `backend/` directory beside your `ui/`. It is
+present on every extension; applications that ship no backend simply report
+`available: false`. The contract a backend implements is
+[15 — Backend backends](15-application-backends.md); this is the browser side of it.
 
 ### `remote.backend.available`
 
@@ -239,7 +239,7 @@ if (!remote.backend.available) {
 
 ### `remote.backend.instances`
 
-`[{ instanceId, scope, projectId }]` — the running plugins this extension may
+`[{ instanceId, scope, projectId }]` — the running backends this extension may
 call. An application installed globally **and** in two projects runs three processes,
 which is why a call has to resolve to one of them.
 
@@ -260,14 +260,14 @@ user is on, exactly as the extension's own visibility does.
 ```js
 remote.ui.register(remote.slots.applicationsPanel, async (host, context) => {
   const health = await remote.backend.call("health", { projectId: context.projectId });
-  host.textContent = `plugin pid ${health.pid}`;
+  host.textContent = `backend pid ${health.pid}`;
 });
 ```
 
 ### `remote.backend.call(path, options?)`
 
-Calls a route and resolves its parsed JSON body. Rejects with the plugin's own
-error message when the plugin answers with a non-2xx status.
+Calls a route and resolves its parsed JSON body. Rejects with the backend's own
+error message when the backend answers with a non-2xx status.
 
 ```js
 const written = await remote.backend.call("kv/greeting", {
@@ -281,7 +281,7 @@ const written = await remote.backend.call("kv/greeting", {
 ```
 
 `path` is relative to the instance's `/backend/` prefix and matches the route
-the plugin declared — `"health"`, `"kv/greeting"`. Separators survive
+the backend declared — `"health"`, `"kv/greeting"`. Separators survive
 encoding; segments are escaped.
 
 ### `remote.backend.fetch(path, options?)`
@@ -291,8 +291,8 @@ stream, or when you want the status rather than an exception.
 
 ### `remote.backend.describe(target?)`
 
-What the plugin says about itself, including the routes it serves — useful for
-building UI from the plugin rather than duplicating its route list:
+What the backend says about itself, including the routes it serves — useful for
+building UI from the backend rather than duplicating its route list:
 
 ```js
 const { descriptor, access, timeoutMs } = await remote.backend.describe();
@@ -306,12 +306,12 @@ for (const route of descriptor.routes ?? []) {
 The URL a call would use, for an `<iframe>`, a download link, or your own
 `fetch`. Throws if no install can be resolved.
 
-### What the plugin sees
+### What the backend sees
 
 Not what you send. The server stamps the signed-in caller onto every request
-and **withholds your cookies** from the plugin, so a plugin can authorize a
+and **withholds your cookies** from the backend, so a backend can authorize a
 caller but cannot act as them. See
-[13 — Security model](13-security-model.md#backend-plugins).
+[13 — Security model](13-security-model.md#backend-backends).
 
 ## `remote.events.on(name, handler)`
 
@@ -380,7 +380,7 @@ example.
 
 ```js
 remote.log("activated", remote.install.global ? "globally" : "per project");
-// [extension:my-plugin] activated globally
+// [extension:my-backend] activated globally
 ```
 
 ---
@@ -411,7 +411,7 @@ Nothing an extension does can take down the SPA — but note this is about
 - **Replacing or reordering existing UI.** Slots add; they do not substitute.
 - **A browser-side storage API.** Use `localStorage` under a key prefixed with
   your application id, the project secrets API through `fetch`, or — for anything
-  that should live on the server — your application's own plugin, which is given a
+  that should live on the server — your application's own backend, which is given a
   private directory on the host.
 - **Cross-extension messaging.** Two extensions share the page and can find
   each other through the DOM, but nothing is provided or supported.

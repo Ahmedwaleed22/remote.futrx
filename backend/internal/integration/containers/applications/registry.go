@@ -21,7 +21,7 @@ import (
 // Registry is an in-memory, validated view of an application catalog.
 //
 // It is a live view rather than a snapshot taken at boot: uploading or
-// removing a package reloads it in place, so the installer, the plugin host
+// removing a package reloads it in place, so the installer, the application backend host
 // and the HTTP handlers all see the new catalog without being rebuilt. Every
 // read is therefore taken under a lock.
 type Registry struct {
@@ -46,7 +46,7 @@ type Registry struct {
 type catalogView struct {
 	byID map[string]svc.Application
 	// sources maps application ID -> the filesystem it was loaded from, so assets
-	// and plugin source are read from the right catalog once more than one is
+	// and backend source are read from the right catalog once more than one is
 	// in play.
 	sources map[string]fs.FS
 	// scripts maps application ID -> install script bytes, including payload staging

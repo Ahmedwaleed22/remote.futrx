@@ -13,7 +13,7 @@ import (
 
 // backendDir is the fixed directory an application ships its Go backend in. Like
 // ui/, the directory is the opt-in: application.json's backend block only overrides
-// defaults, so a plugin cannot be declared without shipping one.
+// defaults, so a application cannot be declared without shipping one.
 const backendDir = "backend"
 
 // An application's backend/ holds Go for two different machines, and the
@@ -118,7 +118,7 @@ func rejectStrayBackendRoot(fsys fs.FS, root string) error {
 		name := entry.Name()
 		if name == "go.mod" || name == "go.sum" {
 			return fmt.Errorf(
-				"%s/%s is not supported: the server generates the plugin module", root, name)
+				"%s/%s is not supported: the server generates the backend module", root, name)
 		}
 		if strings.HasSuffix(name, ".go") {
 			return fmt.Errorf(
@@ -145,7 +145,7 @@ func validateBackendSource(fsys fs.FS, root string) error {
 		}
 		if name == "go.mod" || name == "go.sum" {
 			return fmt.Errorf(
-				"%s/%s is not supported: the server generates the plugin module", root, name)
+				"%s/%s is not supported: the server generates the backend module", root, name)
 		}
 		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
 			continue
@@ -177,7 +177,7 @@ func packageName(fsys fs.FS, name string) (string, error) {
 	return file.Name.Name, nil
 }
 
-// BackendSource returns the Go source the plugin host compiles, rooted at the
+// BackendSource returns the Go source the application backend host compiles, rooted at the
 // directory that holds it — backend/api/ in the current layout, backend/ itself
 // in the flat one. Unlike ui/ assets these bytes are never served, so there is
 // no path-traversal surface here: a caller gets the whole subtree or nothing.

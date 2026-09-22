@@ -1,4 +1,4 @@
-package appplugin
+package applications
 
 import (
 	"io/fs"
@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// The embedded SDK is what plugins compile against. A new file that is not in
+// The embedded SDK is what backends compile against. A new file that is not in
 // the embed list would compile in this repository and fail on the server, so
 // the completeness of that list is the invariant worth pinning.
 func TestSourceCoversEveryFile(t *testing.T) {

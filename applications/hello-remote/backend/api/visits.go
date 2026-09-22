@@ -7,23 +7,23 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
 // visitsFile is where the greeting counter lives inside the instance's
-// DataDir. That directory is the only storage a plugin can rely on: the
+// DataDir. That directory is the only storage a backend can rely on: the
 // process is killed on stop, uninstall, and server restart, and restarted
 // lazily by the next call, so anything kept in memory is gone by then. The
 // counter surviving a restart is the whole point of the example.
 const visitsFile = "visits.json"
 
-func (b *backend) readVisits(appplugin.Request) appplugin.Response {
+func (b *api) readVisits(applications.Request) applications.Response {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	return appplugin.JSON(http.StatusOK, map[string]int{"visits": b.visits})
+	return applications.JSON(http.StatusOK, map[string]int{"visits": b.visits})
 }
 
-func (b *backend) countVisit(appplugin.Request) appplugin.Response {
+func (b *api) countVisit(applications.Request) applications.Response {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -31,13 +31,13 @@ func (b *backend) countVisit(appplugin.Request) appplugin.Response {
 	if err := writeVisits(b.instance.DataDir, b.visits); err != nil {
 		// The count is still correct in memory, so the call succeeds and the
 		// browser sees it; only its survival across a restart is lost. A
-		// plugin's errors are its own to grade — the host only forwards them.
-		return appplugin.JSON(http.StatusOK, map[string]any{
+		// backend's errors are its own to grade — the host only forwards them.
+		return applications.JSON(http.StatusOK, map[string]any{
 			"visits":  b.visits,
 			"warning": fmt.Sprintf("not persisted: %v", err),
 		})
 	}
-	return appplugin.JSON(http.StatusOK, map[string]int{"visits": b.visits})
+	return applications.JSON(http.StatusOK, map[string]int{"visits": b.visits})
 }
 
 // readVisits tolerates every kind of missing: no DataDir, no file, or a file

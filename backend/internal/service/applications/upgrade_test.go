@@ -163,10 +163,10 @@ func TestUploadDoesNotReinstallWhenTheVersionIsUnchanged(t *testing.T) {
 	if len(pkg.Upgraded) != 0 {
 		t.Fatalf("upgrade outcomes = %+v, want none", pkg.Upgraded)
 	}
-	// The plugin is still refreshed: its source may have changed even when the
+	// The backend is still refreshed: its source may have changed even when the
 	// container side did not, and restarting it costs nothing.
 	if len(host.stopped) != 1 || host.stopped[0] != "g1" {
-		t.Fatalf("plugin was not refreshed: %v", host.stopped)
+		t.Fatalf("backend was not refreshed: %v", host.stopped)
 	}
 }
 

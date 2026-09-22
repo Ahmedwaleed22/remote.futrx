@@ -1,4 +1,4 @@
-package pluginhost
+package applications
 
 import (
 	"context"
@@ -7,37 +7,37 @@ import (
 
 	goplugin "github.com/hashicorp/go-plugin"
 
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
-// pluginProcess is one live plugin. Its fields are fixed after launch and the
+// backendProcess is one live backend. Its fields are fixed after launch and the
 // host publishes the process only after the handshake and initialization have
 // completed.
-type pluginProcess struct {
+type backendProcess struct {
 	binary     string
 	client     *goplugin.Client
-	backend    appplugin.Backend
-	descriptor appplugin.Descriptor
+	backend    applications.Backend
+	descriptor applications.Descriptor
 }
 
-func (p *pluginProcess) running() bool {
+func (p *backendProcess) running() bool {
 	return !p.client.Exited()
 }
 
-func (p *pluginProcess) stop() {
+func (p *backendProcess) stop() {
 	p.client.Kill()
 }
 
 // call enforces the service's timeout on a transport that has no notion of
 // one. net/rpc calls cannot be cancelled, so a timed-out call is abandoned
-// rather than interrupted; the plugin keeps running and the next request
+// rather than interrupted; the backend keeps running and the next request
 // finds it healthy.
-func (p *pluginProcess) call(
+func (p *backendProcess) call(
 	ctx context.Context,
-	request appplugin.Request,
-) (appplugin.Response, error) {
+	request applications.Request,
+) (applications.Response, error) {
 	type result struct {
-		response appplugin.Response
+		response applications.Response
 		err      error
 	}
 	done := make(chan result, 1)
@@ -49,13 +49,13 @@ func (p *pluginProcess) call(
 	select {
 	case outcome := <-done:
 		if outcome.err != nil {
-			return appplugin.Response{}, fmt.Errorf("plugin call failed: %w", outcome.err)
+			return applications.Response{}, fmt.Errorf("backend call failed: %w", outcome.err)
 		}
 		return outcome.response, nil
 	case <-ctx.Done():
 		if !p.running() {
-			return appplugin.Response{}, errors.New("plugin exited while handling the request")
+			return applications.Response{}, errors.New("backend exited while handling the request")
 		}
-		return appplugin.Response{}, fmt.Errorf("plugin call timed out: %w", ctx.Err())
+		return applications.Response{}, fmt.Errorf("backend call timed out: %w", ctx.Err())
 	}
 }

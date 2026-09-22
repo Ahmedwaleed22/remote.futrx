@@ -56,8 +56,8 @@ export function instanceSummary(
   }
   if (application?.backend) {
     return running
-      ? "Backend extension — a Go plugin runs on the server, not in a container."
-      : "Backend extension — stopped. Start it to run its Go plugin.";
+      ? "Backend extension — a Go backend runs on the server, not in a container."
+      : "Backend extension — stopped. Start it to run its Go backend.";
   }
   return running
     ? "Interface extension — nothing runs in a container. Its UI is loaded."
@@ -87,7 +87,7 @@ export function uninstallConsequence(
   application: AppApplication | undefined,
 ): string {
   if (!hasContainer(application)) {
-    return `“${instance.name}” stops contributing to the interface, and any plugin it runs is stopped and its data deleted. Nothing is removed from any container.`;
+    return `“${instance.name}” stops contributing to the interface, and any backend it runs is stopped and its data deleted. Nothing is removed from any container.`;
   }
   // Infrastructure without a port has no host port to release; saying otherwise
   // would promise the user something the uninstall does not do.

@@ -1,7 +1,7 @@
 # 03 — Application capabilities
 
 Every package is an application. There is no `type` field and no distinction
-between service, tool, UI, or backend plugins. Remote discovers what an
+between service, tool, UI, or application backends. Remote discovers what an
 application does from its files and manifest fields.
 
 | Capability | How it is detected | Effect when installed |

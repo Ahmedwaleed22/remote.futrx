@@ -1,4 +1,4 @@
-package appplugin
+package applications
 
 import (
 	"embed"
@@ -6,27 +6,27 @@ import (
 )
 
 // ModulePath is the Go module the SDK belongs to, and ImportPath is where this
-// package sits inside it. A plugin's source imports it by that canonical path,
-// so plugin code under applications/<id>/backend/api/ compiles in an editor
+// package sits inside it. A backend's source imports it by that canonical path,
+// so backend code under applications/<id>/backend/api/ compiles in an editor
 // against the repository as well as it does inside the server's build directory.
 const (
 	ModulePath = "github.com/futrx-com/remote.futrx.com"
-	ImportPath = ModulePath + "/pkg/appplugin"
+	ImportPath = ModulePath + "/pkg/applications"
 	// PackageDir is where Source's files belong relative to a module root.
-	PackageDir = "pkg/appplugin"
+	PackageDir = "pkg/applications"
 )
 
 // The SDK is embedded in the server binary because that is the only way a
-// plugin's source can be compiled on a host that has no checkout of this
+// backend's source can be compiled on a host that has no checkout of this
 // repository. The catalog ships source, not binaries; the server materializes
 // this package beside an application's backend/api/ source and builds the two together.
 //
 // The list is explicit rather than a *.go glob so that test files stay out of
-// what a plugin compiles against. TestSourceCoversEveryFile keeps it complete.
+// what a backend compiles against. TestSourceCoversEveryFile keeps it complete.
 //
-//go:embed contract.go router.go request.go response.go source.go pluginrpc/client.go pluginrpc/pluginrpc.go pluginrpc/server.go pluginrpc/wire.go
+//go:embed contract.go router.go request.go response.go source.go rpc/client.go rpc/rpc.go rpc/server.go rpc/wire.go
 var sdkSource embed.FS
 
 // Source returns the SDK's own Go source, rooted at this package's directory:
-// "contract.go", "pluginrpc/pluginrpc.go", and so on.
+// "contract.go", "rpc/rpc.go", and so on.
 func Source() fs.FS { return sdkSource }

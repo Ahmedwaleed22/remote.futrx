@@ -1,4 +1,4 @@
-package pluginhost
+package applications
 
 import (
 	"context"
@@ -11,81 +11,81 @@ import (
 
 	containerapplications "github.com/futrx-com/remote.futrx.com/internal/integration/containers/applications"
 	svc "github.com/futrx-com/remote.futrx.com/internal/service/applications"
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
-// catalogPluginMain is a whole installable application's backend, written against the
-// public appplugin contract exactly as a distributed plugin package is. It is
+// catalogBackendMain is a whole installable application's backend, written against the
+// public applications contract exactly as a distributed backend package is. It is
 // deliberately not one of the applications this repository ships: installable applications
 // are separately distributed packages, so the seam that has to keep working is
 // "a catalog entry, whatever it is, compiles and serves" — not "this particular
-// plugin still exists".
-const catalogPluginMain = `package main
+// backend still exists".
+const catalogBackendMain = `package main
 
 import (
 	"encoding/json"
 	"net/http"
 	"os"
 
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin/pluginrpc"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications/rpc"
 )
 
 type backend struct {
-	router   *appplugin.Router
-	instance appplugin.Instance
+	router   *applications.Router
+	instance applications.Instance
 }
 
 func main() {
-	b := &backend{router: appplugin.NewRouter()}
+	b := &backend{router: applications.NewRouter()}
 	b.router.GET("health", "Liveness and process identity", b.health)
 	b.router.GET("admin", "Admin-only route", b.admin)
 	b.router.GET("boom", "Deliberate panic", b.boom)
 	b.router.POST("echo", "Round-trip a value through the process", b.echo)
-	pluginrpc.Serve(b)
+	rpc.Serve(b)
 }
 
-func (b *backend) Describe() (appplugin.Descriptor, error) {
-	return appplugin.Descriptor{Name: "catalog-fixture", Version: "1", APIVersion: appplugin.APIVersion, Routes: b.router.Routes()}, nil
+func (b *backend) Describe() (applications.Descriptor, error) {
+	return applications.Descriptor{Name: "catalog-fixture", Version: "1", APIVersion: applications.APIVersion, Routes: b.router.Routes()}, nil
 }
-func (b *backend) Init(instance appplugin.Instance) error { b.instance = instance; return nil }
-func (b *backend) Handle(r appplugin.Request) (appplugin.Response, error) {
+func (b *backend) Init(instance applications.Instance) error { b.instance = instance; return nil }
+func (b *backend) Handle(r applications.Request) (applications.Response, error) {
 	return b.router.Serve(r), nil
 }
 
-func (b *backend) health(appplugin.Request) appplugin.Response {
-	return appplugin.JSON(http.StatusOK, map[string]any{"ok": true, "pid": os.Getpid(), "instance": b.instance.ID})
+func (b *backend) health(applications.Request) applications.Response {
+	return applications.JSON(http.StatusOK, map[string]any{"ok": true, "pid": os.Getpid(), "instance": b.instance.ID})
 }
 
-// The plugin authorizes its own callers; the host only decided that the caller
-// may reach the plugin at all.
-func (b *backend) admin(r appplugin.Request) appplugin.Response {
+// The backend authorizes its own callers; the host only decided that the caller
+// may reach the backend at all.
+func (b *backend) admin(r applications.Request) applications.Response {
 	if !r.Caller.IsAdmin {
-		return appplugin.Errorf(http.StatusForbidden, "admins only")
+		return applications.Errorf(http.StatusForbidden, "admins only")
 	}
-	return appplugin.JSON(http.StatusOK, map[string]any{"ok": true})
+	return applications.JSON(http.StatusOK, map[string]any{"ok": true})
 }
 
-func (b *backend) boom(appplugin.Request) appplugin.Response { panic("deliberate") }
+func (b *backend) boom(applications.Request) applications.Response { panic("deliberate") }
 
-func (b *backend) echo(r appplugin.Request) appplugin.Response {
+func (b *backend) echo(r applications.Request) applications.Response {
 	var body struct {
 		Value string ` + "`json:\"value\"`" + `
 	}
 	if err := json.Unmarshal(r.Body, &body); err != nil {
-		return appplugin.Errorf(http.StatusBadRequest, "invalid body")
+		return applications.Errorf(http.StatusBadRequest, "invalid body")
 	}
-	return appplugin.JSON(http.StatusOK, map[string]any{"value": body.Value})
+	return applications.JSON(http.StatusOK, map[string]any{"value": body.Value})
 }
 `
 
 // This is the end-to-end proof: an application read through the real catalog loader,
 // compiled and run by the host the server uses, answering on the routes it
 // advertises. The synthetic catalogs elsewhere in this package hand the host a
-// plugin source directly; this one makes it go through the registry first.
-func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
+// backend source directly; this one makes it go through the registry first.
+func TestBackendFromTheImageCatalogCompilesAndServes(t *testing.T) {
 	if testing.Short() {
-		t.Skip("compiles a plugin with the Go toolchain")
+		t.Skip("compiles a backend with the Go toolchain")
 	}
 	if _, err := findGoTool(testGoToolOverride()); err != nil {
 		t.Skipf("no Go toolchain available: %v", err)
@@ -98,7 +98,7 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 			"scopes": ["global", "project"],
 			"backend": {"access": "registered", "timeoutMs": 10000}
 		}`),
-		"applications/catalog-fixture/backend/api/main.go": file(catalogPluginMain),
+		"applications/catalog-fixture/backend/api/main.go": file(catalogBackendMain),
 	}, nil)
 	if err != nil {
 		t.Fatalf("load catalog: %v", err)
@@ -110,7 +110,7 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 
 	host := New(sharedRoot(t), registry, Options{GoTool: testGoToolOverride()})
 	t.Cleanup(host.Shutdown)
-	spec := appplugin.Instance{
+	spec := applications.Instance{
 		ID:                 "catalog-e2e",
 		ApplicationID:      application.ID,
 		ApplicationName:    application.Name,
@@ -122,20 +122,20 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 	defer cancel()
 	descriptor, err := host.Ensure(ctx, spec)
 	if err != nil {
-		t.Fatalf("start the catalog plugin: %v", err)
+		t.Fatalf("start the catalog backend: %v", err)
 	}
-	if descriptor.Name != application.Name || descriptor.Version != application.Version || descriptor.APIVersion != appplugin.APIVersion {
+	if descriptor.Name != application.Name || descriptor.Version != application.Version || descriptor.APIVersion != applications.APIVersion {
 		t.Fatalf("descriptor = %+v", descriptor)
 	}
-	// Routes are discovery, so the SPA can only find what the plugin declares.
+	// Routes are discovery, so the SPA can only find what the backend declares.
 	if len(descriptor.Routes) != 4 {
 		t.Errorf("%d routes advertised: %+v", len(descriptor.Routes), descriptor.Routes)
 	}
 
-	admin := appplugin.Caller{Email: "admin@example.com", IsAdmin: true}
+	admin := applications.Caller{Email: "admin@example.com", IsAdmin: true}
 	get := func(path string) map[string]any {
 		t.Helper()
-		return decode(t, host, spec, appplugin.Request{Method: "GET", Path: path, Caller: admin})
+		return decode(t, host, spec, applications.Request{Method: "GET", Path: path, Caller: admin})
 	}
 
 	health := get("health")
@@ -150,29 +150,29 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if echoed := decode(t, host, spec, appplugin.Request{
+	if echoed := decode(t, host, spec, applications.Request{
 		Method: "POST", Path: "echo", Body: body, Caller: admin,
 	}); echoed["value"] != "kept" {
 		t.Errorf("round-trip returned %v", echoed)
 	}
 
 	// A panicking route is reported as a failed call, not a dead host.
-	if _, err := host.Call(ctx, spec, appplugin.Request{
+	if _, err := host.Call(ctx, spec, applications.Request{
 		Method: "GET", Path: "boom", Caller: admin,
 	}); err == nil || !strings.Contains(err.Error(), "panic") {
 		t.Errorf("the panicking route reported %v", err)
 	}
-	unknown, err := host.Call(ctx, spec, appplugin.Request{
+	unknown, err := host.Call(ctx, spec, applications.Request{
 		Method: "GET", Path: "no/such/route", Caller: admin,
 	})
 	if err != nil || unknown.Status != 404 {
 		t.Errorf("unknown route = %d, %v", unknown.Status, err)
 	}
 
-	// The plugin authorizes its own callers; the platform only gated access to
-	// the plugin as a whole.
-	refused, err := host.Call(ctx, spec, appplugin.Request{
-		Method: "GET", Path: "admin", Caller: appplugin.Caller{Email: "user@example.com"},
+	// The backend authorizes its own callers; the platform only gated access to
+	// the backend as a whole.
+	refused, err := host.Call(ctx, spec, applications.Request{
+		Method: "GET", Path: "admin", Caller: applications.Caller{Email: "user@example.com"},
 	})
 	if err != nil || refused.Status != 403 {
 		t.Errorf("admin route for an ordinary caller = %d, %v", refused.Status, err)
@@ -180,11 +180,11 @@ func TestPluginFromTheImageCatalogCompilesAndServes(t *testing.T) {
 
 	// The process survived every one of those.
 	if after := get("health"); after["pid"] != health["pid"] {
-		t.Errorf("the plugin restarted during the run: %v then %v", health["pid"], after["pid"])
+		t.Errorf("the backend restarted during the run: %v then %v", health["pid"], after["pid"])
 	}
 }
 
-func decode(t *testing.T, host *Host, instance appplugin.Instance, request appplugin.Request) map[string]any {
+func decode(t *testing.T, host *Host, instance applications.Instance, request applications.Request) map[string]any {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -206,9 +206,9 @@ func decode(t *testing.T, host *Host, instance appplugin.Instance, request apppl
 // compiled root to backend/api/, and backend/container/ — source meant for the
 // target container, which is not package main and would not compile here — is
 // kept out of what the host is handed rather than breaking the build.
-func TestPluginWithTheAPILayoutCompilesAndServes(t *testing.T) {
+func TestBackendWithTheAPILayoutCompilesAndServes(t *testing.T) {
 	if testing.Short() {
-		t.Skip("compiles a plugin with the Go toolchain")
+		t.Skip("compiles a backend with the Go toolchain")
 	}
 	if _, err := findGoTool(testGoToolOverride()); err != nil {
 		t.Skipf("no Go toolchain available: %v", err)
@@ -221,7 +221,7 @@ func TestPluginWithTheAPILayoutCompilesAndServes(t *testing.T) {
 			"scopes": ["global", "project"],
 			"backend": {"access": "registered", "timeoutMs": 10000}
 		}`),
-		"applications/api-fixture/backend/api/main.go": file(catalogPluginMain),
+		"applications/api-fixture/backend/api/main.go": file(catalogBackendMain),
 		// Not package main, and referencing nothing the host build provides.
 		// Reaching the compiler at all would fail this test.
 		"applications/api-fixture/backend/container/cmd/agent/main.go": file(
@@ -250,7 +250,7 @@ func TestPluginWithTheAPILayoutCompilesAndServes(t *testing.T) {
 
 	host := New(sharedRoot(t), registry, Options{GoTool: testGoToolOverride()})
 	t.Cleanup(host.Shutdown)
-	spec := appplugin.Instance{
+	spec := applications.Instance{
 		ID:                 "api-layout-e2e",
 		ApplicationID:      application.ID,
 		ApplicationName:    application.Name,
@@ -262,14 +262,14 @@ func TestPluginWithTheAPILayoutCompilesAndServes(t *testing.T) {
 	defer cancel()
 	descriptor, err := host.Ensure(ctx, spec)
 	if err != nil {
-		t.Fatalf("start the api-layout plugin: %v", err)
+		t.Fatalf("start the api-layout backend: %v", err)
 	}
-	if descriptor.Name != application.Name || descriptor.Version != application.Version || descriptor.APIVersion != appplugin.APIVersion {
+	if descriptor.Name != application.Name || descriptor.Version != application.Version || descriptor.APIVersion != applications.APIVersion {
 		t.Fatalf("descriptor = %+v", descriptor)
 	}
-	health := decode(t, host, spec, appplugin.Request{
+	health := decode(t, host, spec, applications.Request{
 		Method: "GET", Path: "health",
-		Caller: appplugin.Caller{Email: "admin@example.com", IsAdmin: true},
+		Caller: applications.Caller{Email: "admin@example.com", IsAdmin: true},
 	})
 	if health["ok"] != true {
 		t.Errorf("health = %v", health)

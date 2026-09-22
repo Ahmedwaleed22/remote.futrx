@@ -1,4 +1,4 @@
-package pluginhost
+package applications
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
 // Builder turns an application's backend/api/ source into an executable, caching the
@@ -48,26 +48,26 @@ const buildTimeout = 10 * time.Minute
 // binary and the pins are read at startup — so they are collected once and
 // their contribution to the fingerprint is precomputed.
 type sharedInputs struct {
-	sdkFiles     []sourceFile
-	pluginModule string
-	sdkModule    string
-	fingerprint  string
+	sdkFiles      []sourceFile
+	backendModule string
+	sdkModule     string
+	fingerprint   string
 }
 
 func (b *Builder) sharedInputs() (sharedInputs, error) {
 	b.sharedOnce.Do(func() {
-		sdk, err := collect(appplugin.Source())
+		sdk, err := collect(applications.Source())
 		if err != nil {
-			b.sharedErr = fmt.Errorf("read plugin sdk: %w", err)
+			b.sharedErr = fmt.Errorf("read backend sdk: %w", err)
 			return
 		}
-		pluginModule := b.pluginModuleFile()
+		backendModule := b.backendModuleFile()
 		sdkModule := b.sdkModuleFile()
 		b.shared = sharedInputs{
-			sdkFiles:     sdk,
-			pluginModule: pluginModule,
-			sdkModule:    sdkModule,
-			fingerprint:  sharedFingerprintOf(sdk, pluginModule, sdkModule, b.pins.goVersion),
+			sdkFiles:      sdk,
+			backendModule: backendModule,
+			sdkModule:     sdkModule,
+			fingerprint:   sharedFingerprintOf(sdk, backendModule, sdkModule, b.pins.goVersion),
 		}
 	})
 	return b.shared, b.sharedErr
@@ -84,7 +84,7 @@ func NewBuilder(root, goTool string) *Builder {
 	}
 }
 
-// binaryDir and buildDir hold compiled plugins and the generated modules they
+// binaryDir and buildDir hold compiled backends and the generated modules they
 // were compiled from.
 func (b *Builder) binaryDir() string { return filepath.Join(b.root, "bin") }
 func (b *Builder) buildDir() string  { return filepath.Join(b.root, "build") }
@@ -102,7 +102,7 @@ func (b *Builder) Build(ctx context.Context, applicationID string, source fs.FS)
 	// the same tree for every application and was hashed once.
 	files, err := collect(source)
 	if err != nil {
-		return "", fmt.Errorf("read plugin source: %w", err)
+		return "", fmt.Errorf("read backend source: %w", err)
 	}
 
 	fingerprint := fingerprintWith(files, shared.fingerprint)
@@ -111,16 +111,16 @@ func (b *Builder) Build(ctx context.Context, applicationID string, source fs.FS)
 		applicationID: applicationID,
 		fingerprint:   fingerprint,
 		binary:        binary,
-		pluginFiles:   files,
+		backendFiles:  files,
 		sdkFiles:      shared.sdkFiles,
-		pluginModule:  shared.pluginModule,
+		backendModule: shared.backendModule,
 		sdkModule:     shared.sdkModule,
 	}
 
 	unlock := b.locks.lock(applicationID)
 	defer unlock()
 
-	// Re-check inside the lock: the plugin that waited here may have been
+	// Re-check inside the lock: the backend that waited here may have been
 	// waiting for exactly this binary.
 	if info, err := os.Stat(binary); err == nil && !info.IsDir() {
 		return binary, nil
@@ -139,9 +139,9 @@ type buildPlan struct {
 	applicationID string
 	fingerprint   string
 	binary        string
-	pluginFiles   []sourceFile
+	backendFiles  []sourceFile
 	sdkFiles      []sourceFile
-	pluginModule  string
+	backendModule string
 	sdkModule     string
 }
 
@@ -167,13 +167,13 @@ func (b *Builder) compile(ctx context.Context, plan buildPlan) error {
 	source := filepath.Join(work, "src")
 	sdkRoot := filepath.Join(work, "sdk")
 
-	if err := writeAll(source, plan.pluginFiles); err != nil {
+	if err := writeAll(source, plan.backendFiles); err != nil {
 		return err
 	}
-	if err := writeAll(filepath.Join(sdkRoot, appplugin.PackageDir), plan.sdkFiles); err != nil {
+	if err := writeAll(filepath.Join(sdkRoot, applications.PackageDir), plan.sdkFiles); err != nil {
 		return err
 	}
-	if err := writeFile(filepath.Join(source, "go.mod"), []byte(plan.pluginModule)); err != nil {
+	if err := writeFile(filepath.Join(source, "go.mod"), []byte(plan.backendModule)); err != nil {
 		return err
 	}
 	if err := writeFile(filepath.Join(sdkRoot, "go.mod"), []byte(plan.sdkModule)); err != nil {
@@ -189,31 +189,31 @@ func (b *Builder) compile(ctx context.Context, plan buildPlan) error {
 	// -buildvcs=false because this tree is generated, never checked out: there
 	// is no revision to stamp. Left on, the toolchain probes for a repository
 	// anyway and fails the whole build on a host where that probe errors
-	// instead of reporting "no repository" — which would make every plugin
-	// uninstallable for a reason that has nothing to do with the plugin.
+	// instead of reporting "no repository" — which would make every backend
+	// uninstallable for a reason that has nothing to do with the backend.
 	arguments := []string{"build", "-trimpath", "-buildvcs=false", "-o", plan.binary + ".tmp", "."}
 	offlineOutput, offlineErr := runGo(ctx, goTool, source, goEnv(b.root, true), arguments)
 	if offlineErr != nil {
 		// Falling back to the network covers the case the offline path cannot:
-		// a plugin that needs a module the server itself does not link, and a
+		// a backend that needs a module the server itself does not link, and a
 		// module cache that has been pruned.
 		output, err := runGo(ctx, goTool, source, goEnv(b.root, false), arguments)
 		if err != nil {
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 				return fmt.Errorf(
-					"compile plugin %q: gave up after %s\n%s",
+					"compile backend %q: gave up after %s\n%s",
 					plan.applicationID, buildTimeout, strings.TrimSpace(output))
 			}
 			return fmt.Errorf(
-				"compile plugin %q:\n%s\n(offline attempt: %s)",
+				"compile backend %q:\n%s\n(offline attempt: %s)",
 				plan.applicationID, strings.TrimSpace(output), strings.TrimSpace(offlineOutput))
 		}
 	}
 	if err := os.Rename(plan.binary+".tmp", plan.binary); err != nil {
-		return fmt.Errorf("install plugin binary: %w", err)
+		return fmt.Errorf("install backend binary: %w", err)
 	}
 	if err := os.Chmod(plan.binary, 0o755); err != nil {
-		return fmt.Errorf("mark plugin binary executable: %w", err)
+		return fmt.Errorf("mark backend binary executable: %w", err)
 	}
 	_ = os.RemoveAll(work)
 	return nil
@@ -228,7 +228,7 @@ func runGo(ctx context.Context, goTool, dir string, env, arguments []string) (st
 }
 
 // pruneStale removes binaries this application left behind under other
-// fingerprints, so editing a plugin does not accumulate copies of it.
+// fingerprints, so editing a backend does not accumulate copies of it.
 //
 // A binary is named "<applicationID>-<fingerprint>", and an application id may itself
 // contain a dash: matching on the "<applicationID>-" prefix alone would let application

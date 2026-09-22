@@ -1,4 +1,4 @@
-package appplugin
+package applications
 
 import (
 	"net/http"
@@ -48,7 +48,7 @@ func TestRouterRouting(t *testing.T) {
 }
 
 // An exact route and a prefix route can both match; the exact one has to win,
-// or a plugin could never special-case one key of a wildcard collection.
+// or a backend could never special-case one key of a wildcard collection.
 func TestRouterPrefersExactOverPrefixAndLongerPrefix(t *testing.T) {
 	router := NewRouter()
 	router.GET("kv/*", "", func(Request) Response { return Text(200, "short") })
@@ -112,7 +112,7 @@ func TestRequestHelpers(t *testing.T) {
 	}
 }
 
-// A bare "*" is the catch-all a plugin registers as its fallback: it is a
+// A bare "*" is the catch-all a backend registers as its fallback: it is a
 // prefix route whose prefix is empty, and reading an empty prefix as "no
 // prefix" turned it into a pattern that matched nothing at all.
 func TestRouterCatchAllPatternMatchesEveryPath(t *testing.T) {

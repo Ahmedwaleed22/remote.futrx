@@ -1,6 +1,6 @@
-# 07 — Tutorial: build a plugin
+# 07 — Tutorial: build a application
 
-We will build a plugin end to end: an application that adds an "Open in Cursor"
+We will build a application end to end: an application that adds an "Open in Cursor"
 button to the chat header, opening the current workspace in the Cursor editor.
 It installs nothing in a container because it has no `infra/install.sh`.
 
@@ -90,7 +90,7 @@ function open(remote, context) {
 JS
 ```
 
-That is a working plugin. Everything below is refinement.
+That is a working application. Everything below is refinement.
 
 ## 5. Add a confirmation popup
 
@@ -217,7 +217,7 @@ If that is not what you see, [14 — Troubleshooting](14-troubleshooting.md).
 
 ```bash
 git add applications/open-in-cursor
-git commit -s -m "feat(applications): add open-in-cursor UI plugin"
+git commit -s -m "feat(applications): add open-in-cursor UI application"
 ```
 
 Follow the repository's [CONTRIBUTING](../../../CONTRIBUTING.md)
@@ -233,9 +233,9 @@ change here. See [13 — Security model](13-security-model.md).
 - Read installed apps or project data — [12 — HTTP API](12-http-api.md).
 - Compare against a fixture that exercises everything —
   [10 — Fixtures](10-fixtures.md).
-- Add an install script so the plugin also provisions something —
+- Add an install script so the application also provisions something —
   [04 — Install scripts](04-install-scripts.md). No manifest discriminator changes.
 - Add a `backend/` directory so it can do work on the *server* and not only in
-  the browser — [15 — Backend plugins](15-backend-plugins.md). That is the step
+  the browser — [15 — Backend applications](15-application-backends.md). That is the step
   from "a button that calls an existing endpoint" to "a button that calls an
   endpoint this application brought with it".

@@ -21,12 +21,12 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	"github.com/futrx-com/remote.futrx.com/internal/config"
 	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
+	applicationbackends "github.com/futrx-com/remote.futrx.com/internal/integration/applications"
 	containerapplications "github.com/futrx-com/remote.futrx.com/internal/integration/containers/applications"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/gitcli"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostfs"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostinfo"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/lxc"
-	"github.com/futrx-com/remote.futrx.com/internal/integration/pluginhost"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/tmuxcli"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/updatecli"
 	"github.com/futrx-com/remote.futrx.com/internal/lifecycle"
@@ -86,13 +86,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("load application catalog: %v", err)
 	}
-	// Backend plugins are compiled from the catalog's embedded Go source and
+	// Application backends are compiled from the catalog's embedded Go source and
 	// run as child processes. Their binaries and per-instance data live beside
 	// the rest of the server's state so an uninstall leaves nothing behind.
-	appBackends := pluginhost.New(
-		filepath.Join(cfg.DataDir, "plugins"),
+	appBackends := applicationbackends.New(
+		filepath.Join(cfg.DataDir, "applications"),
 		appRegistry,
-		pluginhost.Options{GoTool: cfg.Plugins.GoTool},
+		applicationbackends.Options{GoTool: cfg.Applications.GoTool},
 	)
 	defer appBackends.Shutdown()
 

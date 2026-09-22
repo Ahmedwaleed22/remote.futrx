@@ -133,7 +133,7 @@ func (s *Service) installsByApplication(ctx context.Context) (map[string][]Packa
 // earlier upload of the same id.
 //
 // Replacing a package refreshes what the catalog serves from it — its
-// metadata, its browser extension, and the source its plugin is compiled from
+// metadata, its browser extension, and the source its backend is compiled from
 // — for every installed copy, because none of that lives in a container.
 //
 // The container side is different: re-running an install script provisions
@@ -155,7 +155,7 @@ func (s *Service) UploadPackage(ctx context.Context, upload PackageUpload) (Pack
 	}
 	pkg := PackageView{Package: stored}
 	// Re-provision the container side of every instance the new version made
-	// stale. This also stops each plugin it touches, so those come back on the
+	// stale. This also stops each backend it touches, so those come back on the
 	// new source by itself.
 	instances, err := s.store.ListAll(ctx)
 	if err != nil {
@@ -163,7 +163,7 @@ func (s *Service) UploadPackage(ctx context.Context, upload PackageUpload) (Pack
 	}
 	pkg.Upgraded = s.upgradeInstances(ctx, pkg.ID, instances)
 
-	// Every other instance of the application still holds a plugin process running
+	// Every other instance of the application still holds a backend process running
 	// the binary compiled from the previous upload. Stopping it is what makes
 	// the new code take effect: the next call rebuilds and starts fresh.
 	s.stopBackendsForApplication(ctx, pkg.ID, instances, upgradedIDs(pkg.Upgraded))
@@ -171,7 +171,7 @@ func (s *Service) UploadPackage(ctx context.Context, upload PackageUpload) (Pack
 }
 
 // upgradedIDs collects the instances upgradeInstances already handled, so the
-// plugin sweep below does not stop the same process twice.
+// backend sweep below does not stop the same process twice.
 func upgradedIDs(outcomes []UpgradeOutcome) map[string]bool {
 	handled := make(map[string]bool, len(outcomes))
 	for _, outcome := range outcomes {
@@ -243,7 +243,7 @@ func (s *Service) RemovePackage(ctx context.Context, req RemovePackageRequest) (
 // the only move that does not strand the operator with a package they can
 // neither repair nor remove.
 //
-// The half that does not need the application is still cleaned up: a plugin process
+// The half that does not need the application is still cleaned up: a backend process
 // is addressed by instance id alone, so it is stopped and its data deleted
 // rather than left running as a child of the server that nothing points at any
 // more. Only the container side — which needs the application to describe it — is
@@ -289,7 +289,7 @@ func describeInstall(install PackageInstall) string {
 	return "globally"
 }
 
-// stopBackendsForApplication terminates the plugin process of every instance created
+// stopBackendsForApplication terminates the backend process of every instance created
 // from the application. Each one restarts on its next call, so this is a refresh
 // rather than a shutdown; a failure to stop one is not worth failing an upload
 // that already succeeded, so it is left to the caller's next request to retry.

@@ -10,7 +10,7 @@ The catalog's kitchen-sink example. It combines every application capability:
 - **`backend/api/`** — Go source the server compiles and runs as a child process,
   reachable at `/api/applications/<instance>/backend/<path>`.
 - **`ui/`** — assets the SPA loads for users who installed the application, which
-  call that plugin through `remote.backend.call(...)`.
+  call that backend through `remote.backend.call(...)`.
 - **`skills/`** — an agent skill published into project workspaces.
 
 Its container source builds `hello-remote-info` and `hello-remote-service`. The
@@ -42,7 +42,7 @@ capability supplies `ContainerName`, without application-specific packaging.
 The install dialog shows a defaulted greeting, defaulted connection user, generated
 secret password, and defaulted database. Together they demonstrate every
 `env[]` option. The same values drive the uniform connection panel, the
-container service, and the host plugin's `Instance.Env`; the service reports
+container service, and the host backend's `Instance.Env`; the service reports
 only whether its password is configured and never returns the secret itself.
 
 The preferred host port is `4780`, bound to `127.0.0.1`; Remote automatically
@@ -55,7 +55,7 @@ Install it at both scopes to compare a dedicated global application container
 with an existing project container. Each installation has a separate backend
 process, `DataDir`, and counter.
 
-**A server that runs an application backend needs a Go toolchain**, because plugin
+**A server that runs an application backend needs a Go toolchain**, because backend
 source is compiled on the host. Without one, the install reports that on the
 instance instead of failing the server. See
 [14 — Troubleshooting](../../docs/dev/installable-applications/14-troubleshooting.md).
@@ -87,9 +87,9 @@ without moving or deleting the user's attachment.
 The greeting comes back as `"<greeting>, <your email>."`. The email is proof
 of something worth seeing: the browser never sent it. The server stamps the
 signed-in caller onto every forwarded request and withholds the cookies that
-authenticated it, so a plugin can tell who is asking and cannot act as them.
+authenticated it, so a backend can tell who is asking and cannot act as them.
 
-The counter is proof of the other half. The plugin process is killed on stop,
+The counter is proof of the other half. The backend process is killed on stop,
 on uninstall, and on server restart, and is started again lazily by the next
 call — so a count that survives is a count that reached `DataDir`. Restart the
 server, open the panel, and the number is still there.
@@ -110,7 +110,7 @@ Each has an independent **Refresh** action.
 | `backend/api/container.go`, `backend/api/service.go` | Bounded host calls into the installed inspection command and the proxied HTTP service. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
 | `backend/container/cmd/hello-remote-service/` | A supervised HTTP service with separate command dispatch, configuration decoding, serving, and health-probe owners. |
-| `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without plugin-owned shell. |
+| `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without backend-owned shell. |
 | `infra/install.sh` | Idempotent configuration, systemd unit creation, idle-probe declaration, restart, and readiness wait. |
 | `skills/hello-remote-inspector/SKILL.md` | A project-scoped agent workflow that verifies the service without exposing its generated secret. |
 | `ui/scripts/main.js` | The entry module: activates the showcase, card action, applications panel, and cleanup. |
@@ -121,7 +121,7 @@ Each has an independent **Refresh** action.
 
 Full documentation is in [`docs/dev/installable-applications/`](../../docs/dev/installable-applications/); the tutorial that builds an
 application from nothing is
-[07 — Tutorial](../../docs/dev/installable-applications/07-tutorial-build-a-plugin.md).
+[07 — Tutorial](../../docs/dev/installable-applications/07-tutorial-build-a-backend.md).
 
 ## Editing it
 

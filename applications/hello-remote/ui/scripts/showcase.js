@@ -2,7 +2,7 @@
 //
 // Every compact action slot receives the same discoverable icon. The larger
 // project settings surface receives a small explanatory panel. Both open one
-// explorer so plugin authors can inspect the slot context and try the API from
+// explorer so backend authors can inspect the slot context and try the API from
 // the exact surface where their contribution is running.
 
 import {

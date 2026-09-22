@@ -1,7 +1,7 @@
 {
   "id": "hello-remote",
   "name": "Hello Remote",
-  "description": "Kitchen-sink example: service, port, host tool, skill, container commands, Go plugin, and every frontend extension slot.",
+  "description": "Kitchen-sink example: service, port, host tool, skill, container commands, Go backend, and every frontend extension slot.",
   "category": "development",
   "version": "7",
   "icon": "ui/assets/logo.svg",

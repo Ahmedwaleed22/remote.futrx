@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
 const serviceInspectionTimeout = 5 * time.Second
@@ -34,7 +34,7 @@ type serviceInfo struct {
 
 // readServiceHealth crosses the LXD proxy that Remote created from the declared
 // port. It proves the manifest, guest service, host port, and backend can work
-// together without teaching the plugin how Remote controls LXD.
+// together without teaching the backend how Remote controls LXD.
 func readServiceHealth(externalPort int) (serviceHealth, error) {
 	client := http.Client{Timeout: serviceInspectionTimeout}
 	response, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/health", externalPort))
@@ -52,7 +52,7 @@ func readServiceHealth(externalPort int) (serviceHealth, error) {
 	return health, nil
 }
 
-func (b *backend) service(appplugin.Request) appplugin.Response {
+func (b *api) service(applications.Request) applications.Response {
 	b.mu.Lock()
 	service := b.instance.Service
 	internalPort := b.instance.InternalPort
@@ -61,17 +61,17 @@ func (b *backend) service(appplugin.Request) appplugin.Response {
 	b.mu.Unlock()
 
 	if externalPort == 0 {
-		return appplugin.JSON(http.StatusConflict, map[string]string{
+		return applications.JSON(http.StatusConflict, map[string]string{
 			"error": "this install has no exposed service port",
 		})
 	}
 	health, err := inspect(externalPort)
 	if err != nil {
-		return appplugin.JSON(http.StatusBadGateway, map[string]string{
+		return applications.JSON(http.StatusBadGateway, map[string]string{
 			"error": fmt.Sprintf("could not reach the container service: %v", err),
 		})
 	}
-	return appplugin.JSON(http.StatusOK, serviceInfo{
+	return applications.JSON(http.StatusOK, serviceInfo{
 		Status:             health.Status,
 		Message:            health.Message,
 		Version:            health.Version,

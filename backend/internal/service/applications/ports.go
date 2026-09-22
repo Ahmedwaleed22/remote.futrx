@@ -3,7 +3,7 @@ package applications
 import (
 	"context"
 
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
 // Registry provides the installable catalog loaded from embedded application
@@ -52,19 +52,19 @@ type Installer interface {
 // checks that before calling, but a host that is asked anyway must not create
 // one.
 type BackendHost interface {
-	// Ensure builds the plugin if no current binary is cached, starts a
+	// Ensure builds the backend if no current binary is cached, starts a
 	// process for the instance, and returns the manifest-enriched descriptor.
 	// It is idempotent: a call against an already-running instance returns the
 	// descriptor established at connect time.
-	Ensure(ctx context.Context, instance appplugin.Instance) (appplugin.Descriptor, error)
-	// Call forwards one request, starting the plugin first if it is not
+	Ensure(ctx context.Context, instance applications.Instance) (applications.Descriptor, error)
+	// Call forwards one request, starting the backend first if it is not
 	// running — which is what makes installed backends survive a server
 	// restart without a start sweep.
-	Call(ctx context.Context, instance appplugin.Instance, request appplugin.Request) (appplugin.Response, error)
-	// Stop terminates the instance's plugin process, keeping its data
+	Call(ctx context.Context, instance applications.Instance, request applications.Request) (applications.Response, error)
+	// Stop terminates the instance's backend process, keeping its data
 	// directory so a later start resumes with it.
 	Stop(ctx context.Context, instanceID string) error
-	// Remove stops the plugin and deletes the instance's data directory.
+	// Remove stops the backend and deletes the instance's data directory.
 	Remove(ctx context.Context, instanceID string) error
 }
 

@@ -1,17 +1,17 @@
-package pluginrpc
+package rpc
 
 import (
 	"fmt"
 
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
 type server struct {
-	impl appplugin.Backend
+	impl applications.Backend
 }
 
 func (s *server) Describe(_ DescribeArgs, reply *DescribeReply) error {
-	descriptor, err := recovered(func() (appplugin.Descriptor, error) {
+	descriptor, err := recovered(func() (applications.Descriptor, error) {
 		return s.impl.Describe()
 	})
 	reply.Descriptor = descriptor
@@ -28,7 +28,7 @@ func (s *server) Init(args InitArgs, reply *InitReply) error {
 }
 
 func (s *server) Handle(args HandleArgs, reply *HandleReply) error {
-	response, err := recovered(func() (appplugin.Response, error) {
+	response, err := recovered(func() (applications.Response, error) {
 		return s.impl.Handle(args.Request)
 	})
 	reply.Response = response
@@ -36,7 +36,7 @@ func (s *server) Handle(args HandleArgs, reply *HandleReply) error {
 	return nil
 }
 
-// recovered turns a panicking plugin method into an ordinary error. A plugin
+// recovered turns a panicking backend method into an ordinary error. A backend
 // that panics costs its caller one failed request, not the process and every
 // other request in flight on it.
 func recovered[T any](call func() (T, error)) (result T, err error) {
@@ -44,7 +44,7 @@ func recovered[T any](call func() (T, error)) (result T, err error) {
 		if recovery := recover(); recovery != nil {
 			var zero T
 			result = zero
-			err = fmt.Errorf("plugin panicked: %v", recovery)
+			err = fmt.Errorf("backend panicked: %v", recovery)
 		}
 	}()
 	return call()

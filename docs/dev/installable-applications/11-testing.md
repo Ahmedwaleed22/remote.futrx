@@ -16,7 +16,7 @@ This catches: a mismatched `id`, a missing `name`, an invalid capability layout 
 exist, an empty `ui/` directory, and a `backend/` that is not a `package main`
 program or that carries its own `go.mod`.
 
-Plugin source is also compiled by the repository's own build, because a
+Backend source is also compiled by the repository's own build, because a
 `backend/` directory is an ordinary package inside the catalog module at the
 repository root:
 
@@ -24,7 +24,7 @@ repository root:
 go build ./... && go vet ./...
 ```
 
-A plugin that does not compile fails there, not on someone's server.
+A backend that does not compile fails there, not on someone's server.
 
 A malformed application fails the build — it never reaches a browser as a 404.
 
@@ -34,8 +34,8 @@ A malformed application fails the build — it never reaches a browser as a 404.
 cd backend
 go test ./internal/integration/containers/applications/   # catalog + installer
 go test ./internal/service/applications/                  # scoping + policy
-go test ./internal/integration/pluginhost/                # compiling and running plugins
-go test ./pkg/appplugin/...                               # the plugin SDK
+go test ./internal/integration/applications/                # compiling and running backends
+go test ./pkg/applications/...                               # the backend SDK
 go build ./... && go vet ./...
 ```
 
@@ -45,18 +45,18 @@ go build ./... && go vet ./...
 | `registry_backend_test.go` | `backend/` discovery and every layout the registry refuses |
 | `installer_test.go` | which `lxc` commands each scope issues — and, crucially, which it must **not** |
 | `service/applications/ui_extensions_test.go` | which extensions a caller may load, and their install scope |
-| `service/applications/backend_test.go` | who may call a plugin, when, and what lifecycle does to its process |
-| `pluginhost/host_test.go` | compiling, launching, one process per instance, restart, timeout, panic isolation, data retention |
-| `pluginhost/builder_test.go` | fingerprinting and the generated module files |
-| `pluginhost/catalog_test.go` | the shipped `backend-playground`, compiled and called end to end |
-| `pkg/appplugin/mux_test.go` | route matching, method fallbacks, request helpers |
+| `service/applications/backend_test.go` | who may call a backend, when, and what lifecycle does to its process |
+| `applications/host_test.go` | compiling, launching, one process per instance, restart, timeout, panic isolation, data retention |
+| `applications/builder_test.go` | fingerprinting and the generated module files |
+| `applications/catalog_test.go` | the shipped `backend-playground`, compiled and called end to end |
+| `pkg/applications/mux_test.go` | route matching, method fallbacks, request helpers |
 | `handlers/applications_backend_handler_test.go` | which headers cross the boundary in each direction |
 
-`pluginhost` tests compile real plugins with the Go toolchain, so they take
+`applications` tests compile real backends with the Go toolchain, so they take
 tens of seconds on a cold cache. `-short` skips exactly those:
 
 ```bash
-go test -short ./internal/integration/pluginhost/
+go test -short ./internal/integration/applications/
 ```
 
 They also skip themselves on a host with no Go toolchain rather than failing.
@@ -79,7 +79,7 @@ npm run build     # tsc -b + vite; type errors fail here
 |---|---|
 | `state/stores/extensions/extensionStore.test.ts` | ordering, unknown slots, `when` predicates, disposal, `removeImage`, and all the scoping rules |
 | `config/extensions.test.ts` | slot names are unique, and every slot declares an icon appearance |
-| `app/extensions/extensionBackend.test.ts` | which running plugin a call resolves to, and the URL it builds |
+| `app/extensions/extensionBackend.test.ts` | which running backend a call resolves to, and the URL it builds |
 
 Run one file directly while iterating:
 
@@ -105,8 +105,8 @@ checks, pass/fail each. This is the cheapest regression check after changing
 object rather than a test double.
 
 `backend-playground` ships the same thing for the other half: fourteen checks
-against a real plugin process, over the real route. Run it after changing
-`pkg/appplugin`, `pluginhost`, or the backend handler.
+against a real backend process, over the real route. Run it after changing
+`pkg/applications`, `applications`, or the backend handler.
 
 See [10 — Fixtures](10-fixtures.md).
 
@@ -138,8 +138,8 @@ or start, because the build fingerprint changed.
 | Lifecycle | Stop / start / uninstall, without reloading |
 | Failure isolation | Make an extension throw; confirm the surface still renders |
 | Theming | Toggle light/dark; confirm your CSS follows |
-| A plugin is a process | Watch `backend-playground`'s pid across stop and start |
-| A plugin survives a panic | Click **panic (survivable)**, then check the pid |
+| A backend is a process | Watch `backend-playground`'s pid across stop and start |
+| A backend survives a panic | Click **panic (survivable)**, then check the pid |
 
 ## Testing an install script
 
@@ -156,7 +156,7 @@ therefore also proves idempotency. (**Start** does not re-run the script.) See
 Be aware of the gaps rather than assuming coverage:
 
 - **Install scripts are never executed** by any test.
-- **A plugin's own behaviour is only as tested as the plugin.** The platform
+- **A backend's own behaviour is only as tested as the backend.** The platform
   tests the contract and the host; what an application's `backend/` actually does is
   covered by whatever tests that application ships.
 - **The HTTP handlers have no request-level tests** for the applications
@@ -174,7 +174,7 @@ cd backend  && gofmt -l ./internal ./cmd && go vet ./... && go test ./...
 cd frontend && npm run build && npm test
 ```
 
-Then, if you touched the extension surface or the plugin contract, install
+Then, if you touched the extension surface or the backend contract, install
 [`hello-remote`](../../../applications/hello-remote/README.md) at both scopes and confirm its
 panel still greets you, reaches the supervised service, inspects the container,
 and keeps its counter across a server restart. In a project install, also

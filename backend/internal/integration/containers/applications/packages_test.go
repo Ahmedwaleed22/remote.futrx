@@ -148,7 +148,7 @@ func TestUploadedBackendSourceComesFromThePackage(t *testing.T) {
 	}
 	data, err := fs.ReadFile(source, "main.go")
 	if err != nil || !strings.Contains(string(data), "package main") {
-		t.Fatalf("plugin source = %q, %v", data, err)
+		t.Fatalf("backend source = %q, %v", data, err)
 	}
 }
 

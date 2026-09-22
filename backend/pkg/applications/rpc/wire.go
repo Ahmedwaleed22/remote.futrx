@@ -1,20 +1,20 @@
-package pluginrpc
+package rpc
 
-import "github.com/futrx-com/remote.futrx.com/pkg/appplugin"
+import "github.com/futrx-com/remote.futrx.com/pkg/applications"
 
 // net/rpc requires exported argument and reply types, and carries an error
 // only as a string. Each reply therefore has its own Error field, which keeps
-// "the plugin returned an error" distinct from "the call did not arrive".
+// "the backend returned an error" distinct from "the call did not arrive".
 
 type DescribeArgs struct{}
 
 type DescribeReply struct {
-	Descriptor appplugin.Descriptor
+	Descriptor applications.Descriptor
 	Error      string
 }
 
 type InitArgs struct {
-	Instance appplugin.Instance
+	Instance applications.Instance
 }
 
 type InitReply struct {
@@ -22,10 +22,10 @@ type InitReply struct {
 }
 
 type HandleArgs struct {
-	Request appplugin.Request
+	Request applications.Request
 }
 
 type HandleReply struct {
-	Response appplugin.Response
+	Response applications.Response
 	Error    string
 }

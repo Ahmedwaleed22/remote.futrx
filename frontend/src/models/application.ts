@@ -40,11 +40,11 @@ export interface AppApplicationUI {
   views?: Record<string, string>;
 }
 
-/** Who the server lets reach an application's plugin. */
+/** Who the server lets reach an application's backend. */
 export type AppBackendAccess = "registered" | "admin";
 
 /**
- * Go plugin an application ships in its `backend/` directory. Present only when the
+ * Go backend an application ships in its `backend/` directory. Present only when the
  * application has one; the SPA never sees the source, only that it exists and how it
  * may be called.
  */
@@ -53,14 +53,14 @@ export interface AppApplicationBackend {
   timeoutMs?: number;
 }
 
-/** One endpoint a running plugin advertises. */
+/** One endpoint a running backend advertises. */
 export interface AppBackendRoute {
   method: string;
   path: string;
   description?: string;
 }
 
-/** What a running plugin reports about itself. */
+/** What a running backend reports about itself. */
 export interface AppBackendDescriptor {
   instanceId: string;
   applicationId: string;
@@ -75,7 +75,7 @@ export interface AppBackendDescriptor {
 }
 
 /**
- * One running plugin an extension may call. An application installed both globally
+ * One running backend an extension may call. An application installed both globally
  * and in a project runs one process per install, so an extension addresses an
  * instance rather than an application.
  */
@@ -130,7 +130,7 @@ export interface AppUIExtension {
   application: AppApplication;
   global: boolean;
   projectIds?: string[];
-  /** Running instances of this application whose plugin the extension may call. */
+  /** Running instances of this application whose backend the extension may call. */
   backends?: AppBackendInstance[];
 }
 

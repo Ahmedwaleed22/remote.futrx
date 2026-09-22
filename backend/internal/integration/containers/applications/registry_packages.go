@@ -9,7 +9,7 @@ import (
 
 // The registry is what joins an uploaded package to the running catalog: the
 // store owns the bytes on disk, and every write to it is followed by a reload
-// so the installer, the plugin host and the HTTP handlers see the new entry
+// so the installer, the application backend host and the HTTP handlers see the new entry
 // without anything being rebuilt or restarted.
 
 var _ svc.PackageCatalog = (*Registry)(nil)

@@ -22,7 +22,7 @@ func TestContainerBuildScriptBuildsCommandsAndUsesMarker(t *testing.T) {
 		}
 	}
 	if strings.Contains(script, `agent --version`) || strings.Contains(script, `worker --version`) {
-		t.Fatal("generated script requires a plugin-defined --version command")
+		t.Fatal("generated script requires a application-defined --version command")
 	}
 }
 

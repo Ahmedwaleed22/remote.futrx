@@ -9,7 +9,7 @@ import (
 	svc "github.com/futrx-com/remote.futrx.com/internal/service/applications"
 )
 
-const validPluginMain = `package main
+const validBackendMain = `package main
 
 func main() {}
 `
@@ -36,7 +36,7 @@ func TestLoadApplicationBackendIsOptional(t *testing.T) {
 
 func TestLoadApplicationBackendIsOptionalForContainerOnlySource(t *testing.T) {
 	backend, err := loadApplicationBackend(backendTree(map[string]string{
-		"backend/container/main.go": validPluginMain,
+		"backend/container/main.go": validBackendMain,
 	}), "backend", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -48,7 +48,7 @@ func TestLoadApplicationBackendIsOptionalForContainerOnlySource(t *testing.T) {
 
 func TestLoadApplicationBackendDefaultsAreApplied(t *testing.T) {
 	backend, err := loadApplicationBackend(
-		backendTree(map[string]string{"backend/main.go": validPluginMain}), "backend", nil)
+		backendTree(map[string]string{"backend/main.go": validBackendMain}), "backend", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestLoadApplicationBackendDefaultsAreApplied(t *testing.T) {
 func TestLoadApplicationBackendKeepsDeclaredOverrides(t *testing.T) {
 	declared := &svc.ApplicationBackend{Access: svc.BackendAccessAdmin, TimeoutMS: 500}
 	backend, err := loadApplicationBackend(
-		backendTree(map[string]string{"backend/main.go": validPluginMain}), "backend", declared)
+		backendTree(map[string]string{"backend/main.go": validBackendMain}), "backend", declared)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -103,10 +103,10 @@ func TestLoadApplicationBackendRejectsBrokenLayouts(t *testing.T) {
 		{
 			name: "its own module file",
 			files: map[string]string{
-				"backend/main.go": validPluginMain,
+				"backend/main.go": validBackendMain,
 				"backend/go.mod":  "module example.com/backend\n",
 			},
-			contains: "generates the plugin module",
+			contains: "generates the backend module",
 		},
 		{
 			name:     "unparseable source",
@@ -115,39 +115,39 @@ func TestLoadApplicationBackendRejectsBrokenLayouts(t *testing.T) {
 		},
 		{
 			name:     "an unknown access level",
-			files:    map[string]string{"backend/main.go": validPluginMain},
+			files:    map[string]string{"backend/main.go": validBackendMain},
 			declared: &svc.ApplicationBackend{Access: "everyone"},
 			contains: "invalid access",
 		},
 		{
 			name:     "a negative timeout",
-			files:    map[string]string{"backend/main.go": validPluginMain},
+			files:    map[string]string{"backend/main.go": validBackendMain},
 			declared: &svc.ApplicationBackend{TimeoutMS: -1},
 			contains: "negative",
 		},
 		{
 			name: "host source left beside backend/api",
 			files: map[string]string{
-				"backend/api/main.go": validPluginMain,
-				"backend/main.go":     validPluginMain,
+				"backend/api/main.go": validBackendMain,
+				"backend/main.go":     validBackendMain,
 			},
 			contains: "move host source into backend/api",
 		},
 		{
 			name: "a module file beside backend/api",
 			files: map[string]string{
-				"backend/api/main.go": validPluginMain,
+				"backend/api/main.go": validBackendMain,
 				"backend/go.mod":      "module example.com/backend\n",
 			},
-			contains: "generates the plugin module",
+			contains: "generates the backend module",
 		},
 		{
 			name: "backend/api carrying its own module file",
 			files: map[string]string{
-				"backend/api/main.go": validPluginMain,
+				"backend/api/main.go": validBackendMain,
 				"backend/api/go.mod":  "module example.com/backend\n",
 			},
-			contains: "generates the plugin module",
+			contains: "generates the backend module",
 		},
 		{
 			name: "backend/api holding a library rather than a program",
@@ -176,12 +176,12 @@ func TestLoadApplicationBackendRejectsBrokenLayouts(t *testing.T) {
 	}
 }
 
-// Test files are the one kind of Go source a plugin may ship that is not
+// Test files are the one kind of Go source a application may ship that is not
 // package main: they never reach the generated build's package clause check
-// through the compiler's eyes, and rejecting them would ban plugin tests.
+// through the compiler's eyes, and rejecting them would ban backend tests.
 func TestLoadApplicationBackendAllowsTestFilesAndAssets(t *testing.T) {
 	_, err := loadApplicationBackend(backendTree(map[string]string{
-		"backend/main.go":           validPluginMain,
+		"backend/main.go":           validBackendMain,
 		"backend/main_test.go":      "package main\n",
 		"backend/assets/schema.sql": "select 1;",
 	}), "backend", nil)
@@ -190,7 +190,7 @@ func TestLoadApplicationBackendAllowsTestFilesAndAssets(t *testing.T) {
 	}
 }
 
-// Plugin source is compiled, never served. The registry hands out the whole
+// Backend source is compiled, never served. The registry hands out the whole
 // subtree or nothing, and only for applications that actually declare a backend.
 func TestRegistryBackendSource(t *testing.T) {
 	r := testRegistry(t)
@@ -213,9 +213,9 @@ func TestRegistryBackendSource(t *testing.T) {
 // what the host is handed — it is built inside the target container instead.
 func TestLoadApplicationBackendAcceptsTheAPILayout(t *testing.T) {
 	_, err := loadApplicationBackend(backendTree(map[string]string{
-		"backend/api/main.go":                    validPluginMain,
+		"backend/api/main.go":                    validBackendMain,
 		"backend/api/main_test.go":               "package main\n",
-		"backend/container/cmd/agent/main.go":    validPluginMain,
+		"backend/container/cmd/agent/main.go":    validBackendMain,
 		"backend/container/internal/x/helper.go": "package x\n",
 	}), "backend", nil)
 	if err != nil {
@@ -227,11 +227,11 @@ func TestLoadApplicationBackendAcceptsTheAPILayout(t *testing.T) {
 // Resolving the compiled root to backend/api/ is what keeps them out of the
 // package-clause check rather than having to special-case them inside it.
 func TestResolveBackendSourceResolvesTheCompiledRoot(t *testing.T) {
-	api := backendTree(map[string]string{"backend/api/main.go": validPluginMain})
+	api := backendTree(map[string]string{"backend/api/main.go": validBackendMain})
 	if got, ok := resolveBackendSource(api, "backend"); !ok || got != "backend/api" {
 		t.Errorf("resolveBackendSource = %q, %t; want backend/api, true", got, ok)
 	}
-	flat := backendTree(map[string]string{"backend/main.go": validPluginMain})
+	flat := backendTree(map[string]string{"backend/main.go": validBackendMain})
 	if got, ok := resolveBackendSource(flat, "backend"); !ok || got != "backend" {
 		t.Errorf("resolveBackendSource = %q, %t; want backend, true", got, ok)
 	}

@@ -36,35 +36,35 @@ session.
 | Global app management is admin-only | `requireAdmin` | Server-wide infrastructure |
 | A project member cannot touch another project's app | `ensureProject` | Ownership re-checked per request |
 | Secrets are not echoed to the UI | `View` / `envPublic` | Secret env values are redacted outside the credentials route |
-| Only catalog source becomes a plugin | `//go:embed` + `registry_backend.go` | No runtime plugin upload; `backend/` must be `package main` and carry no module file |
-| A plugin cannot act as its caller | `applications_backend_handler.go:forwardableHeaders` | `Cookie` and `Authorization` are withheld; the caller is supplied separately |
-| A plugin's caller cannot be forged | `service/applications/backend.go:CallBackend` | `Request.Caller` is overwritten with the session's identity |
-| A stopped app's plugin is unreachable | `Service.backendSpec` | `409` rather than a silent start |
-| An admin-only plugin stays admin-only | `ApplicationBackend.Audience` + the service | Enforced before the process is reached |
-| A plugin cannot write the session | `writeBackendResponse` | `Set-Cookie` is dropped; every response is `nosniff` |
+| Only catalog source becomes a backend | `//go:embed` + `registry_backend.go` | No runtime backend upload; `backend/` must be `package main` and carry no module file |
+| A backend cannot act as its caller | `applications_backend_handler.go:forwardableHeaders` | `Cookie` and `Authorization` are withheld; the caller is supplied separately |
+| A backend's caller cannot be forged | `service/applications/backend.go:CallBackend` | `Request.Caller` is overwritten with the session's identity |
+| A stopped app's backend is unreachable | `Service.backendSpec` | `409` rather than a silent start |
+| An admin-only backend stays admin-only | `ApplicationBackend.Audience` + the service | Enforced before the process is reached |
+| A backend cannot write the session | `writeBackendResponse` | `Set-Cookie` is dropped; every response is `nosniff` |
 
-## Backend plugins
+## Application backends
 
-A plugin is Go source from the catalog, compiled by the server and run as a
+A backend is Go source from the catalog, compiled by the server and run as a
 **child of the server process**. That is a bigger capability than a `ui/`
 directory, and it is worth being explicit about it.
 
-### What a plugin can do
+### What a backend can do
 
 - Everything the server process can: the filesystem, the network, `exec`.
-  On a normal installation the server runs as root, so a plugin does too.
+  On a normal installation the server runs as root, so a backend does too.
 - Read the instance's resolved environment, **including the secrets its own
-  install script generated** — a database plugin needs the password.
+  install script generated** — a database backend needs the password.
 - Keep state, in memory and in the per-instance `DataDir` the host gives it.
 
-There is no sandbox around it, and none is implied. A plugin is not
+There is no sandbox around it, and none is implied. A backend is not
 less-trusted code running under supervision; it is server code with a process
 boundary, and the boundary exists for *robustness* — a panicking or hanging
-plugin costs one call — not for containment.
+backend costs one call — not for containment.
 
 ### What stops it
 
-The same thing that stops a malicious `ui/`: **the build**. Plugin source is
+The same thing that stops a malicious `ui/`: **the build**. Backend source is
 embedded with `//go:embed`, so it arrives only through a commit. There is no
 upload endpoint and no runtime backend directory.
 
@@ -72,24 +72,24 @@ upload endpoint and no runtime backend directory.
 `internal/`.** It is not "an app's config", it is server code that will run
 with the server's privileges. Reviewing an application's `infra/install.sh` carefully while
 skimming its `backend/` gets the risk backwards twice over: the script runs in a
-disposable container, the extension runs in the user's session, and the plugin
+disposable container, the extension runs in the user's session, and the backend
 runs on the host.
 
 ### What the platform does enforce
 
-Between a browser and a plugin, the platform guarantees three things:
+Between a browser and a backend, the platform guarantees three things:
 
 | Guarantee | Why it matters |
 |---|---|
-| `Request.Caller` is the session's identity, overwritten server-side | A plugin can authorize callers, because the browser cannot lie about who it is |
-| `Cookie` and `Authorization` are never forwarded | A plugin is told who is asking without being handed the means to become them |
-| `access: "admin"` is checked before the process is reached | An application can keep its plugin off non-admin sessions without writing the check itself |
+| `Request.Caller` is the session's identity, overwritten server-side | A backend can authorize callers, because the browser cannot lie about who it is |
+| `Cookie` and `Authorization` are never forwarded | A backend is told who is asking without being handed the means to become them |
+| `access: "admin"` is checked before the process is reached | An application can keep its backend off non-admin sessions without writing the check itself |
 
-Everything finer — which caller may do which thing — is the plugin's own job.
-A plugin that ignores `Request.Caller` is as open as its `access` level, which
+Everything finer — which caller may do which thing — is the backend's own job.
+A backend that ignores `Request.Caller` is as open as its `access` level, which
 for the default `registered` means every signed-in user.
 
-### Reviewing a plugin
+### Reviewing a backend
 
 - **Does it authorize?** If any route does something not every signed-in user
   should be able to do, it must check `request.Caller` itself.
@@ -103,19 +103,19 @@ for the default `registered` means every signed-in user.
 - **Does it reach the network?** Same exfiltration surface as a `ui/`, with
   more to exfiltrate and no browser between it and the internet.
 
-### What a plugin does not get
+### What a backend does not get
 
-- **A capability model.** There is no per-plugin permission set; there is the
+- **A capability model.** There is no per-backend permission set; there is the
   build boundary and `access`.
-- **A resource limit.** No cgroup, no memory cap, no CPU share. A plugin that
+- **A resource limit.** No cgroup, no memory cap, no CPU share. A backend that
   allocates without bound affects the host.
-- **A supply chain.** Plugins may import only the standard library and this
+- **A supply chain.** Backends may import only the standard library and this
   SDK, pinned to the versions the server itself was built with. That is a
   deliberate limitation rather than a solved problem: adding third-party
-  modules to plugin builds would need an answer to provenance first.
+  modules to backend builds would need an answer to provenance first.
 
 If applications ever become runtime-installable, none of this is adequate — see
-below, and note that a runtime-installable *plugin* is a strictly harder
+below, and note that a runtime-installable *backend* is a strictly harder
 problem than a runtime-installable `ui/`.
 
 ## Path traversal
@@ -188,7 +188,7 @@ from *the build* to *the administrator*, and nowhere further:
 
 **Uploading a package is an act of trust identical to merging a directory into
 `applications/`.** Review one the same way — the checklist below applies unchanged,
-and `backend/` gets the [Backend plugins](#backend-plugins) checklist too.
+and `backend/` gets the [Application backends](#backend-backends) checklist too.
 
 What is still *not* there, and what it would take to let non-administrators
 install extensions or to accept packages from an untrusted registry:
@@ -220,10 +220,10 @@ A checklist for reviewing a `ui/` directory:
   them, not transmit them.
 - **Does it touch the app's DOM outside its host elements?** Unsupported, will
   break, and may be doing something it should not.
-- **Does the install scope match the intent?** A plugin meant for one project
+- **Does the install scope match the intent?** A backend meant for one project
   should not be documented as a global install.
 - **Does it ship a `backend/`?** Then review that too, against the checklist in
-  [Backend plugins](#backend-plugins) above — it is server code, not frontend
+  [Application backends](#backend-backends) above — it is server code, not frontend
   code.
 
 ## Related

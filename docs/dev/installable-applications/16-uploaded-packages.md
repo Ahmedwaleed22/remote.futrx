@@ -99,7 +99,7 @@ on every upload, because none of it lives in a container:
 
 - the catalog entry — name, version, env fields, scopes;
 - the `ui/` the browser loads;
-- the source the `backend/` is compiled from. Plugin processes for instances of
+- the source the `backend/` is compiled from. Backend processes for instances of
   that application are stopped, so the next call to one rebuilds and relaunches
   against the new source.
 

@@ -1,4 +1,4 @@
-package appplugin
+package applications
 
 import (
 	"net/http"
@@ -10,8 +10,8 @@ import (
 // Handler serves one request matched by a Router.
 type Handler func(Request) Response
 
-// Router is the small request router most plugins want instead of a switch statement. It
-// also builds the Routes half of a Descriptor, so a plugin's advertised
+// Router is the small request router most backends want instead of a switch statement. It
+// also builds the Routes half of a Descriptor, so a backend's advertised
 // surface cannot drift from the one it actually serves.
 //
 // Patterns are either exact ("health") or a prefix ending in "*" ("kv/*", which
@@ -29,7 +29,7 @@ type registeredRoute struct {
 	// prefix is what a wildcard pattern matches on; wildcard says whether the
 	// pattern had one at all. The two are separate because a bare "*" is a
 	// wildcard whose prefix is empty — reading an empty prefix as "not a
-	// wildcard" would make the catch-all every plugin's fallback route the one
+	// wildcard" would make the catch-all every backend's fallback route the one
 	// pattern that matches nothing.
 	prefix      string
 	wildcard    bool
@@ -41,7 +41,7 @@ type registeredRoute struct {
 func NewRouter() *Router { return &Router{} }
 
 // Handle registers a handler. Registering the same method and pattern twice
-// replaces the first, which keeps a plugin's route table honest when its
+// replaces the first, which keeps a backend's route table honest when its
 // registration is built from a loop.
 func (router *Router) Handle(method, pattern, description string, handler Handler) {
 	pattern = strings.TrimPrefix(strings.TrimSpace(pattern), "/")

@@ -74,7 +74,7 @@ describe("application presentation", () => {
   it("summarises a tool by where it runs, not by a UI it does not have", () => {
     assert.match(instanceSummary(application({ container: true }), true), /Infrastructure/);
     assert.match(instanceSummary(application({ container: true }), false), /Start it/);
-    assert.match(instanceSummary(application({ backend: true }), true), /Go plugin/);
+    assert.match(instanceSummary(application({ backend: true }), true), /Go backend/);
     assert.match(instanceSummary(application(), true), /Interface extension/);
   });
 

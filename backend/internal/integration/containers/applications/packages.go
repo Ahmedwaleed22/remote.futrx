@@ -256,7 +256,7 @@ func (s *PackageStore) clearStaging() {
 
 // writePackageFiles materializes the package under dir. Nothing is written
 // executable: an install script is piped into bash by the installer and a
-// plugin is compiled from source, so no file in a package is ever run
+// application is compiled from source, so no file in a package is ever run
 // directly, and granting the bit would only widen what an upload can do.
 func writePackageFiles(dir string, files map[string][]byte) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {

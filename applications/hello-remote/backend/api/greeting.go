@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
-func (b *backend) hello(request appplugin.Request) appplugin.Response {
+func (b *api) hello(request applications.Request) applications.Response {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -16,14 +16,14 @@ func (b *backend) hello(request appplugin.Request) appplugin.Response {
 	// typed into the install dialog, declared as env[] in application.json.
 	greeting := b.instance.Env["HELLO_GREETING"]
 	// Caller is stamped by the server from the session, never sent by the
-	// browser, so a plugin may trust it. The cookies that authenticated it are
-	// withheld: this plugin can tell who is asking, and cannot act as them.
+	// browser, so a backend may trust it. The cookies that authenticated it are
+	// withheld: this backend can tell who is asking, and cannot act as them.
 	who := request.Caller.Email
 	if who == "" {
 		who = "there"
 	}
 
-	return appplugin.JSON(http.StatusOK, map[string]any{
+	return applications.JSON(http.StatusOK, map[string]any{
 		"message": fmt.Sprintf("%s, %s.", greeting, who),
 		"scope":   b.instance.Scope,
 		"project": b.instance.ProjectID,
@@ -32,14 +32,14 @@ func (b *backend) hello(request appplugin.Request) appplugin.Response {
 	})
 }
 
-func (b *backend) echo(request appplugin.Request) appplugin.Response {
+func (b *api) echo(request applications.Request) applications.Response {
 	var body any
 	if len(request.Body) > 0 {
 		if err := json.Unmarshal(request.Body, &body); err != nil {
 			body = string(request.Body)
 		}
 	}
-	return appplugin.JSON(http.StatusOK, map[string]any{
+	return applications.JSON(http.StatusOK, map[string]any{
 		"method":  request.Method,
 		"query":   request.Query,
 		"headers": request.Headers,

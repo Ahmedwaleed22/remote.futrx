@@ -1,4 +1,4 @@
-package appplugin
+package applications
 
 import (
 	"encoding/json"
@@ -37,7 +37,7 @@ func (r Request) Header(name string) string {
 // DecodeJSON unmarshals the request body into target.
 func (r Request) DecodeJSON(target any) error {
 	if len(r.Body) == 0 {
-		return fmt.Errorf("appplugin: empty request body")
+		return fmt.Errorf("applications: empty request body")
 	}
 	return json.Unmarshal(r.Body, target)
 }

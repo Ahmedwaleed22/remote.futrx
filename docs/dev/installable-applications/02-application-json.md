@@ -66,7 +66,7 @@ An application with backend and UI capabilities:
 {
   "id": "backend-playground",
   "name": "Backend Playground",
-  "description": "Developer fixture: a Go plugin that exercises every part of the backend API.",
+  "description": "Developer fixture: a Go backend that exercises every part of the backend API.",
   "category": "development",
   "version": "1",
   "icon": "ui/assets/logo.svg",
@@ -143,7 +143,7 @@ An application with only a UI capability:
 | `install` | string | no | Override for the install-script path inside `infra/`. When omitted, `infra/install.sh` is detected automatically. |
 | `healthcheck` | object | no | `{ "command": "…" }` run inside the container. Requires `port.internal`. |
 | `ui` | object | no | Overrides what is loaded from `ui/`. See below. |
-| `backend` | object | no | Overrides the defaults for the Go plugin in `backend/`. See below. |
+| `backend` | object | no | Overrides the defaults for the Go backend in `backend/`. See below. |
 | `source` | string | — | **Server-set, not accepted from `application.json`.** `builtin` or `uploaded`; anything declared here is overwritten. |
 
 ### `port`
@@ -215,17 +215,17 @@ Every declared path must exist and must stay inside `ui/`. A typo fails
 
 Optional, and only meaningful when the application ships a `backend/` directory —
 which, exactly like `ui/`, is what opts the application in. There is nothing to name
-here because the layout is fixed: the plugin is `backend/`, and it is
+here because the layout is fixed: the backend is `backend/`, and it is
 `package main`.
 
 | Field | Type | Default | Notes |
 |---|---|---|---|
-| `access` | string | `registered` | `registered` — any signed-in user may call the plugin; `admin` — administrators only. |
-| `timeoutMs` | int | `15000` | Bounds one call. A plugin that has not answered by then fails that call and keeps running. |
+| `access` | string | `registered` | `registered` — any signed-in user may call the backend; `admin` — administrators only. |
+| `timeoutMs` | int | `15000` | Bounds one call. A backend that has not answered by then fails that call and keeps running. |
 
-`access` is the only capability control the platform enforces on a plugin's
-behalf. Anything finer is the plugin's own job, using `Request.Caller` — see
-[15 — Backend plugins](15-backend-plugins.md).
+`access` is the only capability control the platform enforces on a backend's
+behalf. Anything finer is the backend's own job, using `Request.Caller` — see
+[15 — Application backends](15-application-backends.md).
 
 An unknown backend `access` value or a negative `timeoutMs` fails `NewRegistry()`.
 
@@ -246,7 +246,7 @@ Enforced in `registry_validation.go:validateApplication` and
 - `port`, `service`, host tools, and `healthcheck` require infrastructure.
 - `defaultExternal` and `healthcheck` require `port.internal`.
 - At least one of `infra/`, `backend/`, `ui/`, or `skills/` must contribute a capability.
-- A declared `backend` block requires host plugin source in `backend/api/` (or
+- A declared `backend` block requires host backend source in `backend/api/` (or
   the legacy flat `backend/` layout). Backend, infrastructure, service, port,
   and health-check capabilities may coexist in one application.
 - Every path in the `ui` block must exist inside `ui/`.
