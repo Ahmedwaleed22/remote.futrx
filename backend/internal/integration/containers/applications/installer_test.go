@@ -433,6 +433,18 @@ func TestUninstallGlobalScopeDeletesTheDedicatedContainer(t *testing.T) {
 	}
 }
 
+func TestUninstallFailedGlobalInstallWithoutContainerIsANoop(t *testing.T) {
+	runner := newFakeRunner()
+	installer := testInstaller(t, runner)
+
+	if err := installer.Uninstall(context.Background(), serviceSpec(svc.ScopeGlobal, "")); err != nil {
+		t.Fatalf("uninstall: %v", err)
+	}
+	if len(runner.calls) != 0 {
+		t.Fatalf("empty container target reached LXD: %v", runner.commands())
+	}
+}
+
 // Starting an app is not installing it again. The install script provisions
 // software — on Ubuntu that is an apt-get — and paying for it every time
 // someone switches an app on makes a start take minutes and gives it a whole

@@ -202,6 +202,12 @@ func (in *Installer) Stop(ctx context.Context, spec svc.InstallSpec) error {
 func (in *Installer) Uninstall(ctx context.Context, spec svc.InstallSpec) error {
 	inst := spec.Instance
 	if inst.Scope == svc.ScopeGlobal {
+		// A failed legacy install may have been persisted before container target
+		// resolution completed. There is no container footprint to remove in that
+		// case, and passing an empty name to LXD turns Retry into a permanent error.
+		if inst.ContainerName == "" {
+			return nil
+		}
 		// Deleting the container also drops its proxy device.
 		if _, err := command.RunWithTimeout(ctx, in.runner, launchTimeout, "delete", "--force", inst.ContainerName); err != nil {
 			if !isMissing(err, "") {
