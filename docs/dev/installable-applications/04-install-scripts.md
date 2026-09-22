@@ -58,8 +58,26 @@ generous enough for an `apt-get install` on a cold container.
 
 ## Container-side Go programs
 
-Put container programs under `backend/container/cmd/<binary>/`. Each program
-must use `package main` and provide `func main()`:
+The capability path `backend/container/` is enforced: Remote discovers
+container Go source only there. Inside it, `cmd/` is optional. Remote supports
+two executable layouts:
+
+| Programs | Source layout | Installed binary |
+|---|---|---|
+| One | Root package in `backend/container/` | `/usr/local/bin/<application-id>` |
+| One or more explicitly named programs | `backend/container/cmd/<binary>/` | `/usr/local/bin/<binary>` for every immediate `cmd/` child |
+
+Each executable package must use `package main` and provide `func main()`. A
+single-program application can therefore be as small as:
+
+```text
+backend/
+  container/
+    main.go
+```
+
+Use the standard Go `cmd/` layout when the binary name should differ from the
+application ID or when the application installs multiple programs:
 
 ```text
 backend/
@@ -72,14 +90,25 @@ backend/
         state.go
 ```
 
+This choice is filesystem-driven; there is no manifest field for it. Other
+subdirectories may hold imported Go packages, but Remote does not install them
+as independent executables.
+
 Remote deterministically packs the source, stages it in the target LXD
-container, installs the matching Go toolchain, builds every `cmd/*`, and places
-the binaries in `/usr/local/bin`. It records a source-derived build marker, so
-idempotence does not require `--version`, a version variable, `package.sh`, or a
-committed archive. An optional `infra/install.sh` runs after these generated
-build steps when the application also needs custom provisioning. Remote
-materializes the manifest's `service` only after both have completed, so its
-command may safely reference a newly built or installed binary.
+container, installs the matching Go toolchain, and builds either the root
+package or every immediate `cmd/*` package. If any `cmd/*` program exists, the
+root package is not built as an executable. It may still contain importable
+library code, though `internal/` is the conventional home for implementation
+shared by the commands. Do not put a second `package main` at the root and
+expect Remote to install it alongside the `cmd/*` binaries.
+
+Remote places the resulting binaries in `/usr/local/bin`. It records a
+source-derived build marker, so idempotence does not require `--version`, a
+version variable, `package.sh`, or a committed archive. An optional
+`infra/install.sh` runs after these generated build steps when the application
+also needs custom provisioning. Remote materializes the manifest's `service`
+only after both have completed, so its command may safely reference a newly
+built or installed binary.
 
 Applications uploaded as ZIPs may ship their own `backend/container/go.mod` for
 dependencies. The built-in catalog's container source participates in the

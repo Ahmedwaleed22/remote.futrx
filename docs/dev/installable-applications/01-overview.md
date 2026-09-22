@@ -17,7 +17,8 @@ applications/
       api/                    Go backend, compiled and run on the host
         main.go
       container/              Go programs built inside the target container
-        cmd/my-agent/main.go
+        main.go                one program named after the application, or:
+        cmd/my-agent/main.go   an explicitly named program
     ui/                       browser extension
       scripts/main.js
       style/
@@ -38,7 +39,11 @@ capability: custom provisioning in `infra/`, host code in `backend/api/`,
 container code in `backend/container/`, browser code
 and assets in `ui/`, and project skills in `skills/`. These capability folders
 are optional; the tree above shows the complete layout rather than a list of
-required folders.
+required folders. The capability folder names and locations are enforced.
+Under `backend/container/`, however, `cmd/` is optional: use a root `main.go`
+for one binary named after the application ID, or `cmd/<binary>/` for
+explicitly named or multiple binaries. Once a `cmd/*` program exists, Remote
+builds the discovered command packages rather than the root as an executable.
 
 That directory is `applications/` at the repository root. The whole tree is compiled
 into the server binary with `//go:embed applications` in

@@ -107,10 +107,15 @@ and `Descriptor.Version` from `application.json` after the handshake, making
 the manifest the single source for the UI, upgrade policy, and backend
 descriptor. The backend owns only its API contract version and routes.
 
-`backend/container/` is a separate, optional execution context. Programs under
-`backend/container/cmd/<binary>/` are copied into and built inside LXD. Their
-only required Go surface is `package main` and `func main()`; Remote owns their
-module fallback, packaging, toolchain, installation, and build marker.
+`backend/container/` is a separate, optional execution context. A root main
+package there is built as one binary named after the application ID.
+Alternatively, each immediate `backend/container/cmd/<binary>/` package is
+built as a separately named binary. In both layouts the source is copied into
+and built inside LXD, and the executable package requires only `package main`
+and `func main()`. If a `cmd/*` package exists, Remote builds the discovered
+`cmd/*` packages rather than the root as an executable. Remote owns the module
+fallback, packaging, toolchain, installation, and build marker. See the
+[container-side Go program layout](04-install-scripts.md#container-side-go-programs).
 
 ## The contract
 

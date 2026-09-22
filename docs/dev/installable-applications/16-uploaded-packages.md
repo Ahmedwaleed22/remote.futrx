@@ -57,7 +57,11 @@ folder — which is what "compress this folder" produces on a desktop. macOS
 bookkeeping (`__MACOSX/`, `.DS_Store`, `._*`) is ignored.
 
 So any zip tool will do. Container-side Go ships as ordinary source under
-`backend/container/`; Remote packs and builds it. Legacy packages may still
+`backend/container/`; Remote packs and builds it. A root main package produces
+one binary named after the application ID, while `cmd/<binary>/` produces one
+or more explicitly named binaries. See
+[Container-side Go programs](04-install-scripts.md#container-side-go-programs).
+Legacy packages may still
 carry `infra/payload.tar.gz`, which is extracted as it arrives.
 
 `application.json` must set both `"id"` and `"version"`.

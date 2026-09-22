@@ -45,6 +45,7 @@ applications/
       api/           Go source, compiled by the server and run as a process
         main.go
       container/     Go source, compiled inside the target container
+        main.go       one binary named after the application, or:
         cmd/my-agent/main.go
     ui/              the extension that calls it
 ```
@@ -52,6 +53,11 @@ applications/
 Keep regular files at the application root limited to `README.md` and
 `application.json`. Put custom provisioning files in `infra/`, host code in
 `backend/api/`, container programs in `backend/container/`, and browser assets in `ui/`.
+These capability paths are enforced. For container Go, `cmd/` itself is
+optional: a root main package in `backend/container/` builds one binary named
+after the application ID. Use `backend/container/cmd/<binary>/` when naming a
+binary explicitly or installing more than one. If `cmd/*` exists, the root is
+not built as an executable.
 
 ## 📚 Full documentation: [`docs/dev/installable-applications/`](../docs/dev/installable-applications/)
 
