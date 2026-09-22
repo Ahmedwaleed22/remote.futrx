@@ -1,3 +1,5 @@
+import { mountInspectionRefresh } from "./inspectionRefresh.js";
+
 export function mountServicePanel(host, backend, target, isDisposed) {
   const refresh = host.querySelector("[data-service-refresh]");
   const status = host.querySelector("[data-service-status]");
@@ -7,7 +9,6 @@ export function mountServicePanel(host, backend, target, isDisposed) {
     host.querySelector(`[data-service-${name}]`).textContent = value;
   };
   const show = (info) => {
-    if (isDisposed()) return;
     setFact("unit", info.service);
     setFact("version", info.version);
     setFact("ports", portSummary(info.externalPort, info.internalPort));
@@ -17,26 +18,19 @@ export function mountServicePanel(host, backend, target, isDisposed) {
     status.textContent = info.message;
     facts.hidden = false;
   };
-  const inspect = () => {
-    refresh.disabled = true;
-    status.textContent = "Calling the supervised service…";
-    backend
-      .call("service", target)
-      .then(show)
-      .catch((error) => {
-        if (!isDisposed()) {
-          facts.hidden = true;
-          status.textContent = `Service inspection failed: ${error.message}`;
-        }
-      })
-      .finally(() => {
-        if (!isDisposed()) refresh.disabled = false;
-      });
-  };
-
-  refresh.addEventListener("click", inspect);
-  inspect();
-  return () => refresh.removeEventListener("click", inspect);
+  return mountInspectionRefresh({
+    refresh,
+    isDisposed,
+    load: () => backend.call("service", target),
+    onLoading: () => {
+      status.textContent = "Calling the supervised service…";
+    },
+    onSuccess: show,
+    onFailure: (error) => {
+      facts.hidden = true;
+      status.textContent = `Service inspection failed: ${error.message}`;
+    },
+  });
 }
 
 export function portSummary(externalPort, internalPort) {

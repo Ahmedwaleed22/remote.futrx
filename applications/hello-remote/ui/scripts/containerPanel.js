@@ -1,3 +1,5 @@
+import { mountInspectionRefresh } from "./inspectionRefresh.js";
+
 export function mountContainerPanel(host, backend, target, isDisposed) {
   const refresh = host.querySelector("[data-container-refresh]");
   const status = host.querySelector("[data-container-status]");
@@ -7,7 +9,6 @@ export function mountContainerPanel(host, backend, target, isDisposed) {
     host.querySelector(`[data-container-${name}]`).textContent = value;
   };
   const show = (info) => {
-    if (isDisposed()) return;
     setFact("name", info.name);
     setFact("hostname", info.hostname);
     setFact("os", info.operatingSystem);
@@ -19,27 +20,20 @@ export function mountContainerPanel(host, backend, target, isDisposed) {
     status.hidden = true;
     facts.hidden = false;
   };
-  const inspect = () => {
-    refresh.disabled = true;
-    status.hidden = false;
-    status.textContent = "Inspecting the container…";
-    backend
-      .call("container", target)
-      .then(show)
-      .catch((error) => {
-        if (!isDisposed()) {
-          facts.hidden = true;
-          status.textContent = `Container inspection failed: ${error.message}`;
-        }
-      })
-      .finally(() => {
-        if (!isDisposed()) refresh.disabled = false;
-      });
-  };
-
-  refresh.addEventListener("click", inspect);
-  inspect();
-  return () => refresh.removeEventListener("click", inspect);
+  return mountInspectionRefresh({
+    refresh,
+    isDisposed,
+    load: () => backend.call("container", target),
+    onLoading: () => {
+      status.hidden = false;
+      status.textContent = "Inspecting the container…";
+    },
+    onSuccess: show,
+    onFailure: (error) => {
+      facts.hidden = true;
+      status.textContent = `Container inspection failed: ${error.message}`;
+    },
+  });
 }
 
 export function formatBytes(bytes) {
