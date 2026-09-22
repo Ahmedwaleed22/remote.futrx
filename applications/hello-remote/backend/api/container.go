@@ -14,6 +14,16 @@ import (
 
 const containerInspectionTimeout = 5 * time.Second
 
+type containerFacts struct {
+	Hostname         string `json:"hostname"`
+	OperatingSystem  string `json:"operatingSystem"`
+	Kernel           string `json:"kernel"`
+	Architecture     string `json:"architecture"`
+	CPUCount         int    `json:"cpuCount"`
+	MemoryTotalBytes int64  `json:"memoryTotalBytes"`
+	UptimeSeconds    int64  `json:"uptimeSeconds"`
+}
+
 type containerInfo struct {
 	Name             string `json:"name"`
 	Hostname         string `json:"hostname"`
@@ -25,9 +35,9 @@ type containerInfo struct {
 	UptimeSeconds    int64  `json:"uptimeSeconds"`
 }
 
-// readContainerInfo invokes the inspector built from backend/container/ in the target
+// readContainerFacts invokes the inspector built from backend/container/ in the target
 // container. The backend runs on the host and crosses only this fixed command.
-func readContainerInfo(name string) (containerInfo, error) {
+func readContainerFacts(name string) (containerFacts, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), containerInspectionTimeout)
 	defer cancel()
 
@@ -37,16 +47,16 @@ func readContainerInfo(name string) (containerInfo, error) {
 	).CombinedOutput()
 	if err != nil {
 		if ctx.Err() != nil {
-			return containerInfo{}, ctx.Err()
+			return containerFacts{}, ctx.Err()
 		}
-		return containerInfo{}, fmt.Errorf("lxc exec: %w: %s", err, strings.TrimSpace(string(output)))
+		return containerFacts{}, fmt.Errorf("lxc exec: %w: %s", err, strings.TrimSpace(string(output)))
 	}
 
-	var info containerInfo
-	if err := json.Unmarshal(output, &info); err != nil {
-		return containerInfo{}, fmt.Errorf("decode container response: %w", err)
+	var facts containerFacts
+	if err := json.Unmarshal(output, &facts); err != nil {
+		return containerFacts{}, fmt.Errorf("decode container response: %w", err)
 	}
-	return info, nil
+	return facts, nil
 }
 
 func (b *backend) container(appplugin.Request) appplugin.Response {
@@ -60,12 +70,20 @@ func (b *backend) container(appplugin.Request) appplugin.Response {
 			"error": "this install has no LXD container",
 		})
 	}
-	info, err := inspect(name)
+	facts, err := inspect(name)
 	if err != nil {
 		return appplugin.JSON(http.StatusBadGateway, map[string]string{
 			"error": fmt.Sprintf("could not inspect the LXD container: %v", err),
 		})
 	}
-	info.Name = name
-	return appplugin.JSON(http.StatusOK, info)
+	return appplugin.JSON(http.StatusOK, containerInfo{
+		Name:             name,
+		Hostname:         facts.Hostname,
+		OperatingSystem:  facts.OperatingSystem,
+		Kernel:           facts.Kernel,
+		Architecture:     facts.Architecture,
+		CPUCount:         facts.CPUCount,
+		MemoryTotalBytes: facts.MemoryTotalBytes,
+		UptimeSeconds:    facts.UptimeSeconds,
+	})
 }

@@ -12,8 +12,8 @@ import (
 
 type backend struct {
 	router           *appplugin.Router
-	inspectContainer func(string) (containerInfo, error)
-	inspectService   func(int) (serviceInfo, error)
+	inspectContainer func(string) (containerFacts, error)
+	inspectService   func(int) (serviceHealth, error)
 
 	mu       sync.Mutex
 	instance appplugin.Instance
@@ -31,8 +31,8 @@ func main() {
 func newBackend() *backend {
 	b := &backend{
 		router:           appplugin.NewRouter(),
-		inspectContainer: readContainerInfo,
-		inspectService:   readServiceInfo,
+		inspectContainer: readContainerFacts,
+		inspectService:   readServiceHealth,
 	}
 
 	b.router.GET("hello", "Greet the calling user", b.hello)

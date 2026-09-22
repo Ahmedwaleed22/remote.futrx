@@ -27,11 +27,11 @@ func newTestBackend(t *testing.T, dataDir string, env map[string]string) *backen
 func TestContainerReportsTheInstalledContainer(t *testing.T) {
 	b := newTestBackend(t, t.TempDir(), nil)
 	b.instance.ContainerName = "futrx-app-test"
-	b.inspectContainer = func(name string) (containerInfo, error) {
+	b.inspectContainer = func(name string) (containerFacts, error) {
 		if name != "futrx-app-test" {
 			t.Fatalf("container name = %q, want futrx-app-test", name)
 		}
-		return containerInfo{Hostname: "hello", OperatingSystem: "Ubuntu 24.04 LTS", CPUCount: 4}, nil
+		return containerFacts{Hostname: "hello", OperatingSystem: "Ubuntu 24.04 LTS", CPUCount: 4}, nil
 	}
 
 	body := call(t, b, "GET", "container")
@@ -51,11 +51,11 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 	b.instance.Service = "hello-remote"
 	b.instance.InternalPort = 4780
 	b.instance.ExternalPort = 4781
-	b.inspectService = func(port int) (serviceInfo, error) {
+	b.inspectService = func(port int) (serviceHealth, error) {
 		if port != 4781 {
 			t.Fatalf("service port = %d, want 4781", port)
 		}
-		return serviceInfo{
+		return serviceHealth{
 			Status:             "ok",
 			Message:            "Hello from the container service.",
 			Version:            "build-id",

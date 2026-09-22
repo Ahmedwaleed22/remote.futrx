@@ -11,6 +11,15 @@ import (
 
 const serviceInspectionTimeout = 5 * time.Second
 
+type serviceHealth struct {
+	Status             string `json:"status"`
+	Message            string `json:"message"`
+	Version            string `json:"version"`
+	User               string `json:"user"`
+	Database           string `json:"database"`
+	PasswordConfigured bool   `json:"passwordConfigured"`
+}
+
 type serviceInfo struct {
 	Status             string `json:"status"`
 	Message            string `json:"message"`
@@ -23,24 +32,24 @@ type serviceInfo struct {
 	ExternalPort       int    `json:"externalPort"`
 }
 
-// readServiceInfo crosses the LXD proxy that Remote created from the declared
+// readServiceHealth crosses the LXD proxy that Remote created from the declared
 // port. It proves the manifest, guest service, host port, and backend can work
 // together without teaching the plugin how Remote controls LXD.
-func readServiceInfo(externalPort int) (serviceInfo, error) {
+func readServiceHealth(externalPort int) (serviceHealth, error) {
 	client := http.Client{Timeout: serviceInspectionTimeout}
 	response, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/health", externalPort))
 	if err != nil {
-		return serviceInfo{}, err
+		return serviceHealth{}, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return serviceInfo{}, fmt.Errorf("health endpoint returned %s", response.Status)
+		return serviceHealth{}, fmt.Errorf("health endpoint returned %s", response.Status)
 	}
-	var info serviceInfo
-	if err := json.NewDecoder(response.Body).Decode(&info); err != nil {
-		return serviceInfo{}, fmt.Errorf("decode health response: %w", err)
+	var health serviceHealth
+	if err := json.NewDecoder(response.Body).Decode(&health); err != nil {
+		return serviceHealth{}, fmt.Errorf("decode health response: %w", err)
 	}
-	return info, nil
+	return health, nil
 }
 
 func (b *backend) service(appplugin.Request) appplugin.Response {
@@ -56,14 +65,21 @@ func (b *backend) service(appplugin.Request) appplugin.Response {
 			"error": "this install has no exposed service port",
 		})
 	}
-	info, err := inspect(externalPort)
+	health, err := inspect(externalPort)
 	if err != nil {
 		return appplugin.JSON(http.StatusBadGateway, map[string]string{
 			"error": fmt.Sprintf("could not reach the container service: %v", err),
 		})
 	}
-	info.Service = service
-	info.InternalPort = internalPort
-	info.ExternalPort = externalPort
-	return appplugin.JSON(http.StatusOK, info)
+	return appplugin.JSON(http.StatusOK, serviceInfo{
+		Status:             health.Status,
+		Message:            health.Message,
+		Version:            health.Version,
+		User:               health.User,
+		Database:           health.Database,
+		PasswordConfigured: health.PasswordConfigured,
+		Service:            service,
+		InternalPort:       internalPort,
+		ExternalPort:       externalPort,
+	})
 }
