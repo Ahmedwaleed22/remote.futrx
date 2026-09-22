@@ -25,29 +25,9 @@ func main() {
 	rpc.Serve(handler())
 }
 
-// handler is the composition root for the example backend. It owns concrete
-// integrations and route registration so production and tests use one route
-// table rather than assembling subtly different backends.
-func handler() *api {
-	h := &api{
-		router:           applications.NewRouter(),
-		inspectContainer: readContainerFacts,
-		inspectService:   readServiceHealth,
-	}
-
-	h.router.GET("hello", "Greet the calling user", h.hello)
-	h.router.POST("echo", "Echo JSON, query, and headers from the frontend API explorer", h.echo)
-	h.router.GET("container", "Report safe facts about this install's LXD container", h.container)
-	h.router.GET("service", "Report the supervised container service and its safe configuration", h.service)
-	h.router.GET("visits", "Report how many greetings this install has served", h.readVisits)
-	h.router.POST("visits", "Count one greeting", h.countVisit)
-
-	return h
-}
-
 // REQUIRED — Describe runs once when the host connects. APIVersion must use
 // applications.APIVersion or the host refuses the process. Routes() reports what
-// was registered above, so the route table the SPA discovers through
+// handler registered, so the route table the SPA discovers through
 // remote.backend.describe() cannot drift from the one actually served.
 func (b *api) Describe() (applications.Descriptor, error) {
 	return applications.Descriptor{
@@ -71,4 +51,24 @@ func (b *api) Init(instance applications.Instance) error {
 // REQUIRED — Handle may be called concurrently.
 func (b *api) Handle(request applications.Request) (applications.Response, error) {
 	return b.router.Serve(request), nil
+}
+
+// handler is the composition root for the example backend. It owns concrete
+// integrations and route registration so production and tests use one route
+// table rather than assembling subtly different backends.
+func handler() *api {
+	h := &api{
+		router:           applications.NewRouter(),
+		inspectContainer: readContainerFacts,
+		inspectService:   readServiceHealth,
+	}
+
+	h.router.GET("hello", "Greet the calling user", h.hello)
+	h.router.POST("echo", "Echo JSON, query, and headers from the frontend API explorer", h.echo)
+	h.router.GET("container", "Report safe facts about this install's LXD container", h.container)
+	h.router.GET("service", "Report the supervised container service and its safe configuration", h.service)
+	h.router.GET("visits", "Report how many greetings this install has served", h.readVisits)
+	h.router.POST("visits", "Count one greeting", h.countVisit)
+
+	return h
 }
