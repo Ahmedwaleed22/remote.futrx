@@ -5,23 +5,23 @@ import (
 	"testing"
 )
 
-func newTestMux() *Mux {
-	mux := NewMux()
-	mux.GET("health", "", func(Request) Response { return Text(200, "health") })
-	mux.GET("kv/*", "", func(request Request) Response {
+func newTestRouter() *Router {
+	router := NewRouter()
+	router.GET("health", "", func(Request) Response { return Text(200, "health") })
+	router.GET("kv/*", "", func(request Request) Response {
 		return Text(200, "get:"+request.Tail("kv/"))
 	})
-	mux.POST("kv/*", "", func(request Request) Response {
+	router.POST("kv/*", "", func(request Request) Response {
 		return Text(200, "put:"+request.Tail("kv/"))
 	})
-	mux.Handle("*", "any", "", func(request Request) Response {
+	router.Handle("*", "any", "", func(request Request) Response {
 		return Text(200, "any:"+request.Method)
 	})
-	return mux
+	return router
 }
 
-func TestMuxRouting(t *testing.T) {
-	mux := newTestMux()
+func TestRouterRouting(t *testing.T) {
+	router := newTestRouter()
 	cases := []struct {
 		method, path string
 		status       int
@@ -37,7 +37,7 @@ func TestMuxRouting(t *testing.T) {
 		{http.MethodPatch, "any", 200, "any:PATCH"},
 	}
 	for _, tc := range cases {
-		response := mux.Serve(Request{Method: tc.method, Path: tc.path})
+		response := router.Serve(Request{Method: tc.method, Path: tc.path})
 		if response.Status != tc.status {
 			t.Errorf("%s %s: status = %d, want %d", tc.method, tc.path, response.Status, tc.status)
 		}
@@ -49,28 +49,28 @@ func TestMuxRouting(t *testing.T) {
 
 // An exact route and a prefix route can both match; the exact one has to win,
 // or a plugin could never special-case one key of a wildcard collection.
-func TestMuxPrefersExactOverPrefixAndLongerPrefix(t *testing.T) {
-	mux := NewMux()
-	mux.GET("kv/*", "", func(Request) Response { return Text(200, "short") })
-	mux.GET("kv/system/*", "", func(Request) Response { return Text(200, "long") })
-	mux.GET("kv/system/version", "", func(Request) Response { return Text(200, "exact") })
+func TestRouterPrefersExactOverPrefixAndLongerPrefix(t *testing.T) {
+	router := NewRouter()
+	router.GET("kv/*", "", func(Request) Response { return Text(200, "short") })
+	router.GET("kv/system/*", "", func(Request) Response { return Text(200, "long") })
+	router.GET("kv/system/version", "", func(Request) Response { return Text(200, "exact") })
 
 	for path, want := range map[string]string{
 		"kv/a":              "short",
 		"kv/system/other":   "long",
 		"kv/system/version": "exact",
 	} {
-		if got := string(mux.Serve(Request{Method: http.MethodGet, Path: path}).Body); got != want {
+		if got := string(router.Serve(Request{Method: http.MethodGet, Path: path}).Body); got != want {
 			t.Errorf("%s = %q, want %q", path, got, want)
 		}
 	}
 }
 
-func TestMuxRoutesAreStableAndDeduplicated(t *testing.T) {
-	mux := newTestMux()
-	mux.GET("health", "replaced", func(Request) Response { return Text(200, "again") })
+func TestRouterRoutesAreStableAndDeduplicated(t *testing.T) {
+	router := newTestRouter()
+	router.GET("health", "replaced", func(Request) Response { return Text(200, "again") })
 
-	routes := mux.Routes()
+	routes := router.Routes()
 	if len(routes) != 4 {
 		t.Fatalf("routes = %d, want 4: %+v", len(routes), routes)
 	}
@@ -115,10 +115,10 @@ func TestRequestHelpers(t *testing.T) {
 // A bare "*" is the catch-all a plugin registers as its fallback: it is a
 // prefix route whose prefix is empty, and reading an empty prefix as "no
 // prefix" turned it into a pattern that matched nothing at all.
-func TestMuxCatchAllPatternMatchesEveryPath(t *testing.T) {
-	mux := NewMux()
-	mux.GET("health", "", func(Request) Response { return Text(200, "health") })
-	mux.Handle("*", "*", "", func(request Request) Response {
+func TestRouterCatchAllPatternMatchesEveryPath(t *testing.T) {
+	router := NewRouter()
+	router.GET("health", "", func(Request) Response { return Text(200, "health") })
+	router.Handle("*", "*", "", func(request Request) Response {
 		return Text(200, "fallback:"+request.Path)
 	})
 
@@ -128,7 +128,7 @@ func TestMuxCatchAllPatternMatchesEveryPath(t *testing.T) {
 		"deep/path/x": "fallback:deep/path/x",
 		"":            "fallback:",
 	} {
-		response := mux.Serve(Request{Method: http.MethodGet, Path: path})
+		response := router.Serve(Request{Method: http.MethodGet, Path: path})
 		if response.Status != 200 {
 			t.Errorf("GET %q: status = %d, want 200", path, response.Status)
 		}

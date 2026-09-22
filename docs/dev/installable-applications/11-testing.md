@@ -176,4 +176,6 @@ cd frontend && npm run build && npm test
 
 Then, if you touched the extension surface or the plugin contract, install
 [`hello-remote`](../../../applications/hello-remote/README.md) at both scopes and confirm its
-panel still greets you and still counts across a server restart.
+panel still greets you, reaches the supervised service, inspects the container,
+and keeps its counter across a server restart. In a project install, also
+confirm that the `hello-remote-inspector` skill is present.

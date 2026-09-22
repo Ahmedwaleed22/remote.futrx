@@ -1,7 +1,7 @@
 <!--
   Panel rendered under the applications list. Loaded by scripts/main.js through
-  remote.views.load("panel"); every .html directly under views/ is discoverable
-  by its filename, so nothing has to be declared in application.json.
+  remote.views.load("panel"); application.json maps that public name to this
+  file explicitly so the example demonstrates the full ui.views contract.
 -->
 <section class="hello-remote">
   <h4 class="hello-remote__title">Hello Remote</h4>
@@ -13,6 +13,23 @@
     <span class="hello-remote__count">
       greetings served: <strong data-hello-count>0</strong>
     </span>
+  </div>
+  <div class="hello-remote__container">
+    <div class="hello-remote__container-heading">
+      <h5>Supervised service</h5>
+      <button class="hello-remote__button" type="button" data-service-refresh>
+        Refresh
+      </button>
+    </div>
+    <p class="hello-remote__note" data-service-status>Calling the supervised service…</p>
+    <dl class="hello-remote__facts" data-service-facts hidden>
+      <div><dt>systemd unit</dt><dd data-service-unit></dd></div>
+      <div><dt>Build version</dt><dd data-service-version></dd></div>
+      <div><dt>Port mapping</dt><dd data-service-ports></dd></div>
+      <div><dt>Connection user</dt><dd data-service-user></dd></div>
+      <div><dt>Database</dt><dd data-service-database></dd></div>
+      <div><dt>Secret password</dt><dd data-service-password></dd></div>
+    </dl>
   </div>
   <div class="hello-remote__container">
     <div class="hello-remote__container-heading">

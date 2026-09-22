@@ -24,7 +24,7 @@ const (
 // The list is explicit rather than a *.go glob so that test files stay out of
 // what a plugin compiles against. TestSourceCoversEveryFile keeps it complete.
 //
-//go:embed contract.go mux.go request.go response.go source.go pluginrpc/client.go pluginrpc/pluginrpc.go pluginrpc/server.go pluginrpc/wire.go
+//go:embed contract.go router.go request.go response.go source.go pluginrpc/client.go pluginrpc/pluginrpc.go pluginrpc/server.go pluginrpc/wire.go
 var sdkSource embed.FS
 
 // Source returns the SDK's own Go source, rooted at this package's directory:

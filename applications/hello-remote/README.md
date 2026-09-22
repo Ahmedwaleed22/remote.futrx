@@ -1,29 +1,33 @@
 # Hello Remote
 
-The catalog's worked example. It combines three application capabilities:
+The catalog's kitchen-sink example. It combines every application capability:
 
-- **`backend/container/`** — Go source Remote copies into and builds inside LXD.
+- **`hostTools[]`** — a checksum-pinned, compressed `restic` executable installed on the Remote host.
+- **`infra/install.sh` + manifest infrastructure fields** — an idempotent systemd
+  service, TCP proxy, health check, install inputs, and connection metadata.
+- **`backend/container/`** — Go source Remote copies into and builds inside LXD;
+  one command inspects the container and another serves HTTP.
 - **`backend/api/`** — Go source the server compiles and runs as a child process,
   reachable at `/api/applications/<instance>/backend/<path>`.
 - **`ui/`** — assets the SPA loads for users who installed the application, which
   call that plugin through `remote.backend.call(...)`.
+- **`skills/`** — an agent skill published into project workspaces.
 
-Its container source builds only `hello-remote-info`; it starts no service and
-opens no port. A project installation uses the project's existing LXD container.
-A global installation demonstrates the other generic path by using a dedicated
-application container. Both are ordinary sibling containers on the host—there
-is no LXD inside LXD. The host backend invokes the installed command with
-`lxc exec`.
+Its container source builds `hello-remote-info` and `hello-remote-service`. The
+install script supervises the latter as `hello-remote.service`, while the
+manifest exposes its internal port through a loopback-only host proxy. A project
+installation uses the project's existing LXD container. A global installation
+uses a dedicated application container. Both are ordinary sibling containers on
+the host—there is no LXD inside LXD. The host backend invokes the inspection
+command with `lxc exec` and reaches the service through the allocated proxy.
 Raw LXD configuration and environment variables are deliberately not returned
 because they can contain secrets.
 
-`infra/install.sh` is included as a documented no-op template. Hello Remote
-does not technically need custom provisioning: Remote already builds and
-installs `backend/container/`. Keep an infra script only for work the generic
-installer cannot infer, such as OS packages, configuration files, systemd
-units, mounts, or application-specific readiness checks. UI-only extensions,
-host-only `backend/api` plugins, and container programs needing only the generic
-Go build do not need one.
+`infra/install.sh` demonstrates the work the generic installer cannot infer: it
+writes root-only configuration, creates a hardened systemd unit, declares its
+daemon to the idle-workspace probe, restarts it idempotently, and waits for the
+application-specific health command. Remote still owns the generic Go build,
+host-tool installation, proxy, and lifecycle around that script.
 
 The backend runs on the Remote host, not inside LXD. The generic container
 capability supplies `ContainerName`, without application-specific packaging.
@@ -35,10 +39,17 @@ capability supplies `ContainerName`, without application-specific packaging.
 | Global | **Settings → Applications** |
 | Project | **Project → Applications** |
 
-The install dialog shows one field, `Greeting`, because `application.json` declares
-it in `env[]`. Whatever is typed there reaches the plugin as
-`Instance.Env["HELLO_GREETING"]` — the same path a database application's password
-takes.
+The install dialog shows a defaulted greeting, defaulted connection user, generated
+secret password, and defaulted database. Together they demonstrate every
+`env[]` option. The same values drive the uniform connection panel, the
+container service, and the host plugin's `Instance.Env`; the service reports
+only whether its password is configured and never returns the secret itself.
+
+The preferred host port is `4780`, bound to `127.0.0.1`; Remote automatically
+chooses another host port if it is occupied. The internal service remains on
+`4780`. The install also downloads the declared `restic` binary for the host's
+architecture, verifies its SHA-256 digest before decompression, runs `restic version`, and publishes it
+under Remote's own data directory.
 
 Install it at both scopes to compare a dedicated global application container
 with an existing project container. Each installation has a separate backend
@@ -60,7 +71,7 @@ directory is a visual catalog of the frontend extension API:
 | Every project row | A context-aware icon with that project's id and name |
 | Chat header and composer | Icons that receive the active project, chat, and working directory context |
 | This application's card | Labeled `ui.addButton` controls, scoped with `when` |
-| A panel below the applications list | Shows the greeting, counter, and live container facts |
+| A panel below the applications list | Shows the greeting, counter, supervised service, port mapping, and live container facts |
 | Project settings | A custom panel mounted through `ui.register` with cleanup |
 
 Every API icon opens the same capability explorer. It displays `apiVersion`,
@@ -69,8 +80,9 @@ and observed `upload.completed` events. Its controls exercise
 `backend.call` (including method, JSON body, query, headers, and cancellation),
 `backend.fetch`, `backend.describe`, `backend.url`,
 `views.load`, `views.url`, `assets.url`, `remote.log`, and popup cleanup.
-The event subscription only observes uploads: the template does not call
-`claim`, because doing so would take ownership of a user's attachment.
+The explorer can also arm a one-shot `event.claim`: the next upload is claimed
+synchronously but resolves to its original path, demonstrating the contract
+without moving or deleting the user's attachment.
 
 The greeting comes back as `"<greeting>, <your email>."`. The email is proof
 of something worth seeing: the browser never sent it. The server stamps the
@@ -82,20 +94,24 @@ on uninstall, and on server restart, and is started again lazily by the next
 call — so a count that survives is a count that reached `DataDir`. Restart the
 server, open the panel, and the number is still there.
 
-The container section reports its LXD name, hostname, operating system, kernel,
-architecture, CPU count, total memory, and uptime. **Refresh** runs the inspection
-again.
+The service section crosses the allocated host proxy and reports the systemd
+unit, build version, port mapping, non-secret connection fields, and whether a
+password exists. The container section reports its LXD name, hostname,
+operating system, kernel, architecture, CPU count, total memory, and uptime.
+Each has an independent **Refresh** action.
 
 ## Reading it
 
 | File | Shows |
 |---|---|
-| `application.json` | The manifest: scopes, `env[]`, and backend options. The `ui` block is omitted, so the layout convention finds the entry, styles and views. |
-| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) plus optional `Mux` routing and persistence. |
-| `backend/api/container.go` | The bounded `lxc exec` call from the host into the installed command. |
+| `application.json` | Every author-controlled application model field: identity, both scopes, base image, port, every `env[]` behavior, service, connection mapping, install path, health check, host tool, explicit UI mapping, and backend policy. |
+| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) plus optional `Router` routing and persistence. |
+| `backend/api/container.go`, `backend/api/service.go` | Bounded host calls into the installed inspection command and the proxied HTTP service. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
+| `backend/container/cmd/hello-remote-service/main.go` | A supervised HTTP service plus the command used by `healthcheck.command`. |
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without plugin-owned shell. |
-| `infra/install.sh` | A deliberately no-op custom-install template, with comments explaining when to keep or remove it. |
+| `infra/install.sh` | Idempotent configuration, systemd unit creation, idle-probe declaration, restart, and readiness wait. |
+| `skills/hello-remote-inspector/SKILL.md` | A project-scoped agent workflow that verifies the service without exposing its generated secret. |
 | `ui/scripts/main.js` | The entry module: activates the showcase, card action, applications panel, and cleanup. |
 | `ui/scripts/showcase.js` | Buttons in every extension slot plus a live explorer for the complete frontend API. |
 | `ui/views/panel.html`, `ui/style/hello.css` | The two conventions — views loaded by name, CSS written against the platform's theme tokens. |

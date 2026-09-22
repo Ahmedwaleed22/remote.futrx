@@ -32,25 +32,25 @@ import (
 )
 
 type backend struct {
-	mux      *appplugin.Mux
+	router   *appplugin.Router
 	instance appplugin.Instance
 }
 
 func main() {
-	b := &backend{mux: appplugin.NewMux()}
-	b.mux.GET("health", "Liveness and process identity", b.health)
-	b.mux.GET("admin", "Admin-only route", b.admin)
-	b.mux.GET("boom", "Deliberate panic", b.boom)
-	b.mux.POST("echo", "Round-trip a value through the process", b.echo)
+	b := &backend{router: appplugin.NewRouter()}
+	b.router.GET("health", "Liveness and process identity", b.health)
+	b.router.GET("admin", "Admin-only route", b.admin)
+	b.router.GET("boom", "Deliberate panic", b.boom)
+	b.router.POST("echo", "Round-trip a value through the process", b.echo)
 	pluginrpc.Serve(b)
 }
 
 func (b *backend) Describe() (appplugin.Descriptor, error) {
-	return appplugin.Descriptor{Name: "catalog-fixture", Version: "1", APIVersion: appplugin.APIVersion, Routes: b.mux.Routes()}, nil
+	return appplugin.Descriptor{Name: "catalog-fixture", Version: "1", APIVersion: appplugin.APIVersion, Routes: b.router.Routes()}, nil
 }
 func (b *backend) Init(instance appplugin.Instance) error { b.instance = instance; return nil }
 func (b *backend) Handle(r appplugin.Request) (appplugin.Response, error) {
-	return b.mux.Serve(r), nil
+	return b.router.Serve(r), nil
 }
 
 func (b *backend) health(appplugin.Request) appplugin.Response {

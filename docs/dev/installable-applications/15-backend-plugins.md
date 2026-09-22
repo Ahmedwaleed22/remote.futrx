@@ -32,15 +32,15 @@ import (
 )
 
 type backend struct {
-	// OPTIONAL — Mux is a routing convenience, not part of Backend.
-	mux      *appplugin.Mux
+	// OPTIONAL — Router is a routing convenience, not part of Backend.
+	router   *appplugin.Router
 	instance appplugin.Instance
 }
 
 // REQUIRED — serve a value implementing appplugin.Backend.
 func main() {
-	b := &backend{mux: appplugin.NewMux()}
-	b.mux.GET("hello", "Say hello", func(request appplugin.Request) appplugin.Response {
+	b := &backend{router: appplugin.NewRouter()}
+	b.router.GET("hello", "Say hello", func(request appplugin.Request) appplugin.Response {
 		return appplugin.JSON(http.StatusOK, map[string]string{
 			"hello": request.Caller.Email,
 		})
@@ -52,7 +52,7 @@ func main() {
 func (b *backend) Describe() (appplugin.Descriptor, error) {
 	return appplugin.Descriptor{
 		APIVersion: appplugin.APIVersion,
-		Routes:     b.mux.Routes(),
+		Routes:     b.router.Routes(),
 	}, nil
 }
 
@@ -64,7 +64,7 @@ func (b *backend) Init(instance appplugin.Instance) error {
 
 // REQUIRED — may be called concurrently.
 func (b *backend) Handle(request appplugin.Request) (appplugin.Response, error) {
-	return b.mux.Serve(request), nil
+	return b.router.Serve(request), nil
 }
 ```
 
@@ -89,7 +89,7 @@ That is the entire round trip.
 ## Required surface
 
 The host side is a Go program rooted at `backend/api/`. These are the parts a
-plugin must have; `Mux`, `appplugin.JSON`, route registration, persistence, and
+plugin must have; `Router`, `appplugin.JSON`, route registration, persistence, and
 the route table are conveniences rather than contract requirements.
 
 | Requirement | Enforced by | Failure if omitted |
@@ -175,15 +175,15 @@ appplugin.Errorf(http.StatusForbidden, "%s may not do that", request.Caller.Emai
 `Errorf` produces `{"error": "…"}`, which is the shape `remote.backend.call`
 turns back into a thrown `Error` with your message intact.
 
-### `Mux`
+### `Router`
 
 Optional, but it keeps a plugin's advertised routes and its real routes the
-same thing, because `Describe` renders `mux.Routes()`.
+same thing, because `Describe` renders `router.Routes()`.
 
 ```go
-mux.GET("health", "Process identity", handler)
-mux.POST("kv/*", "Write a key", handler)      // prefix route
-mux.Handle("*", "echo", "Any method", handler)
+router.GET("health", "Process identity", handler)
+router.POST("kv/*", "Write a key", handler)      // prefix route
+router.Handle("*", "echo", "Any method", handler)
 ```
 
 Patterns are exact or a `/*` prefix. An exact route beats a prefix; a longer

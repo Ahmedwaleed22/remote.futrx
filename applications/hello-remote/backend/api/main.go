@@ -1,6 +1,6 @@
 // Hello Remote is the catalog's worked example. Required host plugin surface:
 // package main, main calling pluginrpc.Serve, and the Describe, Init, and Handle
-// methods. Mux, persistence, and the example routes are optional conveniences.
+// methods. Router, persistence, and the example routes are optional conveniences.
 package main
 
 import (
@@ -23,8 +23,9 @@ import (
 const visitsFile = "visits.json"
 
 type backend struct {
-	mux              *appplugin.Mux
+	router           *appplugin.Router
 	inspectContainer func(string) (containerInfo, error)
+	inspectService   func(int) (serviceInfo, error)
 
 	mu       sync.Mutex
 	instance appplugin.Instance
@@ -33,14 +34,15 @@ type backend struct {
 
 // REQUIRED — main must serve a value implementing appplugin.Backend.
 func main() {
-	// OPTIONAL — Mux keeps route discovery and dispatch in one table.
-	b := &backend{mux: appplugin.NewMux(), inspectContainer: readContainerInfo}
+	// OPTIONAL — Router keeps route discovery and dispatch in one table.
+	b := &backend{router: appplugin.NewRouter(), inspectContainer: readContainerInfo}
 
-	b.mux.GET("hello", "Greet the calling user", b.hello)
-	b.mux.POST("echo", "Echo JSON, query, and headers from the frontend API explorer", b.echo)
-	b.mux.GET("container", "Report safe facts about this install's LXD container", b.container)
-	b.mux.GET("visits", "Report how many greetings this install has served", b.readVisits)
-	b.mux.POST("visits", "Count one greeting", b.countVisit)
+	b.router.GET("hello", "Greet the calling user", b.hello)
+	b.router.POST("echo", "Echo JSON, query, and headers from the frontend API explorer", b.echo)
+	b.router.GET("container", "Report safe facts about this install's LXD container", b.container)
+	b.router.GET("service", "Report the supervised container service and its safe configuration", b.service)
+	b.router.GET("visits", "Report how many greetings this install has served", b.readVisits)
+	b.router.POST("visits", "Count one greeting", b.countVisit)
 
 	pluginrpc.Serve(b)
 }
@@ -52,7 +54,7 @@ func main() {
 func (b *backend) Describe() (appplugin.Descriptor, error) {
 	return appplugin.Descriptor{
 		APIVersion: appplugin.APIVersion,
-		Routes:     b.mux.Routes(),
+		Routes:     b.router.Routes(),
 	}, nil
 }
 
@@ -70,7 +72,7 @@ func (b *backend) Init(instance appplugin.Instance) error {
 
 // REQUIRED — Handle may be called concurrently.
 func (b *backend) Handle(request appplugin.Request) (appplugin.Response, error) {
-	return b.mux.Serve(request), nil
+	return b.router.Serve(request), nil
 }
 
 func (b *backend) hello(request appplugin.Request) appplugin.Response {
@@ -133,6 +135,34 @@ func (b *backend) container(appplugin.Request) appplugin.Response {
 		})
 	}
 	info.Name = name
+	return appplugin.JSON(http.StatusOK, info)
+}
+
+func (b *backend) service(appplugin.Request) appplugin.Response {
+	b.mu.Lock()
+	service := b.instance.Service
+	internalPort := b.instance.InternalPort
+	externalPort := b.instance.ExternalPort
+	inspect := b.inspectService
+	b.mu.Unlock()
+
+	if externalPort == 0 {
+		return appplugin.JSON(http.StatusConflict, map[string]string{
+			"error": "this install has no exposed service port",
+		})
+	}
+	if inspect == nil {
+		inspect = readServiceInfo
+	}
+	info, err := inspect(externalPort)
+	if err != nil {
+		return appplugin.JSON(http.StatusBadGateway, map[string]string{
+			"error": fmt.Sprintf("could not reach the container service: %v", err),
+		})
+	}
+	info.Service = service
+	info.InternalPort = internalPort
+	info.ExternalPort = externalPort
 	return appplugin.JSON(http.StatusOK, info)
 }
 

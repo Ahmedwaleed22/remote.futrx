@@ -14,12 +14,13 @@ import (
 // host.
 func newTestBackend(t *testing.T, dataDir string, env map[string]string) *backend {
 	t.Helper()
-	b := &backend{mux: appplugin.NewMux()}
-	b.mux.GET("hello", "", b.hello)
-	b.mux.POST("echo", "", b.echo)
-	b.mux.GET("container", "", b.container)
-	b.mux.GET("visits", "", b.readVisits)
-	b.mux.POST("visits", "", b.countVisit)
+	b := &backend{router: appplugin.NewRouter()}
+	b.router.GET("hello", "", b.hello)
+	b.router.POST("echo", "", b.echo)
+	b.router.GET("container", "", b.container)
+	b.router.GET("service", "", b.service)
+	b.router.GET("visits", "", b.readVisits)
+	b.router.POST("visits", "", b.countVisit)
 	if err := b.Init(appplugin.Instance{
 		ID: "test", ApplicationID: "hello-remote", Scope: "global",
 		DataDir: dataDir, Env: env,
@@ -48,6 +49,40 @@ func TestContainerReportsTheInstalledContainer(t *testing.T) {
 	}
 	if got := body["cpuCount"]; got != float64(4) {
 		t.Errorf("cpuCount = %v, want 4", got)
+	}
+}
+
+func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
+	b := newTestBackend(t, t.TempDir(), nil)
+	b.instance.Service = "hello-remote"
+	b.instance.InternalPort = 4780
+	b.instance.ExternalPort = 4781
+	b.inspectService = func(port int) (serviceInfo, error) {
+		if port != 4781 {
+			t.Fatalf("service port = %d, want 4781", port)
+		}
+		return serviceInfo{
+			Status:             "ok",
+			Message:            "Hello from the container service.",
+			Version:            "build-id",
+			User:               "remote",
+			Database:           "hello",
+			PasswordConfigured: true,
+		}, nil
+	}
+
+	body := call(t, b, "GET", "service")
+	if got := body["service"]; got != "hello-remote" {
+		t.Errorf("service = %v, want hello-remote", got)
+	}
+	if got := body["internalPort"]; got != float64(4780) {
+		t.Errorf("internal port = %v, want 4780", got)
+	}
+	if got := body["externalPort"]; got != float64(4781) {
+		t.Errorf("external port = %v, want 4781", got)
+	}
+	if got := body["passwordConfigured"]; got != true {
+		t.Errorf("passwordConfigured = %v, want true", got)
 	}
 }
 

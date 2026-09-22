@@ -9,7 +9,7 @@ any an administrator has uploaded as a `.zip` — same shape, same validator,
 stored outside the binary. See [Uploaded packages](../docs/dev/installable-applications/16-uploaded-packages.md).
 
 **One application ships here: [`hello-remote/`](hello-remote/)**, the worked example
-— a host Go backend, a container Go command, and the browser UI that calls it.
+— every supported capability composed into one installable package.
 Real apps — MySQL, PostgreSQL, Redis, s3disk — live in their own
 repositories and reach a server as uploaded packages, so the catalog format can
 change here without a database application riding along in the same review.
@@ -86,8 +86,10 @@ and nothing else. Start with
    [Versions and upgrades](../docs/dev/installable-applications/17-versions-and-upgrades.md).
 2. Add any capabilities the application needs. `infra/install.sh` performs custom
    provisioning; `backend/container/` adds core-built container commands;
-   `port.internal` exposes it; `backend/api/` adds server behavior; and
-   `ui/` adds browser behavior. These may be used independently or together.
+   `port.internal` exposes it; `hostTools[]` installs checksum-pinned host
+   executables; `backend/api/` adds server behavior; `ui/` adds browser
+   behavior; and `skills/` publishes project-agent workflows. These may be
+   used independently or together where their validation rules allow it.
 3. Optionally add `ui/` to contribute to the interface. The layout is the
    manifest: `scripts/main.js` is the entry, `style/*.css` are injected,
    `views/*.html` are loadable by name.
@@ -130,11 +132,13 @@ install's secrets. It deserves the same review as any change under
 ## The example app
 
 [`hello-remote/`](hello-remote/) is the one application this repository ships, and it
-is here to be installed. It has `backend/api/`, `backend/container/`, and `ui/`
-capabilities but no plugin-owned shell. It needs LXD for container inspection
-but no port or proxy device. Installing it exercises the
-catalog, the install dialog's `env[]` field, both extension slots it draws in,
-and a real backend process — so if it works, the feature works.
+is here to be installed. It deliberately carries every composable capability:
+custom infrastructure, a supervised service and port, health checking, host
+tools, container-built commands, a host backend, UI, and a project skill. Its
+manifest also fills every author-controlled model field. Installing it exercises
+the catalog, every install-input behavior, connection metadata, both scopes,
+every extension slot, and the complete application lifecycle — so if it works,
+the feature works.
 
 Install it globally *and* in a project to watch one application run as two processes
 with two counters. Its [README](hello-remote/README.md) says what to look at

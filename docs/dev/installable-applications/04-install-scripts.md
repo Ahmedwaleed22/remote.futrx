@@ -5,11 +5,12 @@ Applications may provide one for custom container provisioning. A Go program in
 UI-only and host-backend-only applications need neither — see
 [03 — Application capabilities](03-application-capabilities.md).
 
-Hello Remote keeps a no-op `infra/install.sh` as a copyable template even
-though its own installation does not require one. A custom script is useful
-only when the application needs OS packages, configuration files, systemd
-units, mounts, or an application-specific readiness check. Do not add shell
-merely to rebuild or install `backend/container/`; Remote owns that shared work.
+Hello Remote is the worked example: its `infra/install.sh` writes root-only
+configuration, creates and restarts a systemd unit, declares the daemon to the
+idle-workspace probe, and waits for its application-specific health command.
+A custom script is useful only for work like this—OS packages, configuration,
+systemd units, mounts, or readiness checks. Do not add shell merely to rebuild
+or install `backend/container/`; Remote owns that shared work.
 
 ## The contract
 
@@ -33,8 +34,9 @@ It receives:
 
 It must:
 
-1. **Be idempotent.** It re-runs on every install *and every start*. A second
-   run must be a no-op, not a reinstall or a reset.
+1. **Be idempotent.** It re-runs on an install, retry, or versioned upgrade. A
+   second run must converge, not duplicate or reset state. An ordinary start
+   does not re-run a current script; it starts the declared service directly.
 2. **Bind `APP_INTERNAL_PORT` on all interfaces** (`0.0.0.0`), so the LXD proxy
    device can forward the host port to it. Binding only to `127.0.0.1` inside
    the container makes the app unreachable from the host. Portless
@@ -242,7 +244,7 @@ The fastest loop:
 - **Anything host-side.** The script runs inside a container and cannot see the
   host.
 - **Interactive prompts.** There is no TTY. Use `DEBIAN_FRONTEND=noninteractive`.
-- **Data destruction on re-run.** Remember it runs on every start.
+- **Data destruction on re-run.** Installs, retries, and upgrades may all run it again.
 - **Network assumptions beyond the container.** A dedicated global container
   has network by the time the script runs (the installer waits for an IPv4
   route), but nothing else is guaranteed.

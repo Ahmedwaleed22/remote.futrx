@@ -103,7 +103,7 @@ func TestLoadApplicationPrependsContainerBuildToCustomInstall(t *testing.T) {
 	}
 }
 
-func TestHelloRemoteCarriesTheOptionalInfrastructureTemplate(t *testing.T) {
+func TestHelloRemoteBuildsContainerCommandsBeforeProvisioningItsService(t *testing.T) {
 	registry, err := NewRegistry(EmbeddedCatalog(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -120,9 +120,9 @@ func TestHelloRemoteCarriesTheOptionalInfrastructureTemplate(t *testing.T) {
 		t.Fatal("hello-remote install program is missing")
 	}
 	generatedAt := bytes.Index(script, []byte("APP_BUILD_VERSION="))
-	templateAt := bytes.Index(script, []byte("no application-specific infrastructure setup required"))
-	if generatedAt < 0 || templateAt < 0 || generatedAt >= templateAt {
-		t.Fatalf("generated container build must run before the no-op infra template")
+	serviceAt := bytes.Index(script, []byte("systemctl daemon-reload"))
+	if generatedAt < 0 || serviceAt < 0 || generatedAt >= serviceAt {
+		t.Fatalf("generated container build must run before custom service provisioning")
 	}
 }
 

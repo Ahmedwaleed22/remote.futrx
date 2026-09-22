@@ -1,11 +1,11 @@
 # 10 — Fixtures
 
 > **These fixture applications are not in this repository.** What ships here is one
-> worked example, [`hello-remote`](../../../applications/hello-remote/README.md), which covers the
-> same ground more briefly: a slot contribution, a view, a plugin process, and
-> per-instance storage. The fixtures below are described as the fuller surface
-> a developer working on the extension API itself would want, and the document
-> stands as the specification for them.
+> worked example, [`hello-remote`](../../../applications/hello-remote/README.md), which is the
+> installable kitchen sink: every slot and frontend mechanism, a host plugin,
+> container commands, a supervised service and port, a host tool, and a project
+> skill. The historical fixtures below remain useful as focused specifications
+> for developers working on one extension surface at a time.
 
 Three applications exist purely to exercise the extension surface. None of them
 needs LXD or creates a container, so you can run the whole extension system on

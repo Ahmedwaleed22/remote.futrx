@@ -1,5 +1,5 @@
 package constants
 
-// ApplicationContainerGoVersion is the toolchain Remote installs inside an
-// application container when building backend/container/ programs.
+// ApplicationContainerGoVersion keeps the generated module directive and the
+// downloaded toolchain in sync so backend/container/ builds are reproducible.
 const ApplicationContainerGoVersion = "1.24.7"

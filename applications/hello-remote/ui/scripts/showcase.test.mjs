@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   backendSummary,
+  claimUploadIfArmed,
   contextSummary,
   installSummary,
   uploadSummary,
@@ -75,4 +76,22 @@ test("summarizes backend instances and observed uploads", () => {
     uploadSummary({ count: 1, latest: { fileName: "demo.txt", size: 12 } }),
     "1 · latest: demo.txt (12 bytes)"
   );
+  assert.equal(
+    uploadSummary({ count: 0, latest: null, claimNext: true, claimed: 0 }),
+    "0 · upload.completed is being observed · pass-through claim armed"
+  );
+});
+
+test("an armed upload claim preserves the original attachment path", async () => {
+  const observedUploads = { claimNext: true, claimed: 0 };
+  let claimed;
+  const used = claimUploadIfArmed(observedUploads, {
+    path: "/workspace/.uploads/demo.txt",
+    claim: (work) => { claimed = work; },
+  });
+
+  assert.equal(used, true);
+  assert.equal(observedUploads.claimNext, false);
+  assert.equal(await claimed, "/workspace/.uploads/demo.txt");
+  assert.equal(observedUploads.claimed, 1);
 });

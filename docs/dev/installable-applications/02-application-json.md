@@ -246,8 +246,9 @@ Enforced in `registry_validation.go:validateApplication` and
 - `port`, `service`, host tools, and `healthcheck` require infrastructure.
 - `defaultExternal` and `healthcheck` require `port.internal`.
 - At least one of `infra/`, `backend/`, `ui/`, or `skills/` must contribute a capability.
-- For `backend`: `port`, `service`, and `healthcheck` must all be absent, and a
-  `backend/` directory must exist.
+- A declared `backend` block requires host plugin source in `backend/api/` (or
+  the legacy flat `backend/` layout). Backend, infrastructure, service, port,
+  and health-check capabilities may coexist in one application.
 - Every path in the `ui` block must exist inside `ui/`.
 - A `ui/` directory that exists must contain at least one file.
 - A `backend/` directory that exists must contain at least one `package main`

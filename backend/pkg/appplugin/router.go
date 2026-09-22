@@ -7,10 +7,10 @@ import (
 	"sync"
 )
 
-// Handler serves one request matched by a Mux.
+// Handler serves one request matched by a Router.
 type Handler func(Request) Response
 
-// Mux is the small router most plugins want instead of a switch statement. It
+// Router is the small request router most plugins want instead of a switch statement. It
 // also builds the Routes half of a Descriptor, so a plugin's advertised
 // surface cannot drift from the one it actually serves.
 //
@@ -18,12 +18,12 @@ type Handler func(Request) Response
 // matches "kv/greeting" and "kv/"; a bare "*" matches every path). Longer
 // prefixes win over shorter ones; an exact route always wins over a prefix. "*"
 // as a method matches any method.
-type Mux struct {
+type Router struct {
 	mu     sync.RWMutex
-	routes []muxRoute
+	routes []registeredRoute
 }
 
-type muxRoute struct {
+type registeredRoute struct {
 	method  string
 	pattern string
 	// prefix is what a wildcard pattern matches on; wildcard says whether the
@@ -37,15 +37,15 @@ type muxRoute struct {
 	handler     Handler
 }
 
-// NewMux returns an empty Mux.
-func NewMux() *Mux { return &Mux{} }
+// NewRouter returns an empty Router.
+func NewRouter() *Router { return &Router{} }
 
 // Handle registers a handler. Registering the same method and pattern twice
 // replaces the first, which keeps a plugin's route table honest when its
 // registration is built from a loop.
-func (m *Mux) Handle(method, pattern, description string, handler Handler) {
+func (router *Router) Handle(method, pattern, description string, handler Handler) {
 	pattern = strings.TrimPrefix(strings.TrimSpace(pattern), "/")
-	route := muxRoute{
+	route := registeredRoute{
 		method:      strings.ToUpper(strings.TrimSpace(method)),
 		pattern:     pattern,
 		description: description,
@@ -55,33 +55,33 @@ func (m *Mux) Handle(method, pattern, description string, handler Handler) {
 		route.prefix = strings.TrimSuffix(pattern, "*")
 		route.wildcard = true
 	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	for i, existing := range m.routes {
+	router.mu.Lock()
+	defer router.mu.Unlock()
+	for i, existing := range router.routes {
 		if existing.method == route.method && existing.pattern == route.pattern {
-			m.routes[i] = route
+			router.routes[i] = route
 			return
 		}
 	}
-	m.routes = append(m.routes, route)
+	router.routes = append(router.routes, route)
 }
 
 // GET and POST are the two shorthands worth having; anything else is rare
 // enough to spell out with Handle.
-func (m *Mux) GET(pattern, description string, handler Handler) {
-	m.Handle(http.MethodGet, pattern, description, handler)
+func (router *Router) GET(pattern, description string, handler Handler) {
+	router.Handle(http.MethodGet, pattern, description, handler)
 }
 
-func (m *Mux) POST(pattern, description string, handler Handler) {
-	m.Handle(http.MethodPost, pattern, description, handler)
+func (router *Router) POST(pattern, description string, handler Handler) {
+	router.Handle(http.MethodPost, pattern, description, handler)
 }
 
 // Routes reports the registered routes in a stable order, for a Descriptor.
-func (m *Mux) Routes() []Route {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	routes := make([]Route, 0, len(m.routes))
-	for _, route := range m.routes {
+func (router *Router) Routes() []Route {
+	router.mu.RLock()
+	defer router.mu.RUnlock()
+	routes := make([]Route, 0, len(router.routes))
+	for _, route := range router.routes {
 		routes = append(routes, Route{
 			Method:      route.method,
 			Path:        route.pattern,
@@ -100,20 +100,20 @@ func (m *Mux) Routes() []Route {
 // Serve dispatches a request, answering 404 when nothing matches and 405 when
 // only the method is wrong — the distinction a caller needs to tell "wrong
 // URL" from "wrong verb".
-func (m *Mux) Serve(request Request) Response {
+func (router *Router) Serve(request Request) Response {
 	path := strings.TrimPrefix(request.Path, "/")
 	method := strings.ToUpper(request.Method)
 
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	router.mu.RLock()
+	defer router.mu.RUnlock()
 
 	var (
-		best      *muxRoute
+		best      *registeredRoute
 		bestScore = -1
 		pathKnown bool
 	)
-	for i := range m.routes {
-		route := &m.routes[i]
+	for i := range router.routes {
+		route := &router.routes[i]
 		score, matches := route.match(path)
 		if !matches {
 			continue
@@ -138,7 +138,7 @@ func (m *Mux) Serve(request Request) Response {
 
 // match scores a route against a path: an exact hit outranks every prefix, and
 // a longer prefix outranks a shorter one.
-func (r muxRoute) match(path string) (int, bool) {
+func (r registeredRoute) match(path string) (int, bool) {
 	if !r.wildcard {
 		if r.pattern == path {
 			return 1 << 30, true

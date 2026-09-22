@@ -137,7 +137,7 @@ flowchart TB
     end
 
     subgraph Catalog["applications/ — embedded by go:embed"]
-        C_Hello["hello-remote/<br/>the worked example: backend/api/ + backend/container/ + ui/ + infra/"]
+        C_Hello["hello-remote/<br/>the worked example: infra + service/port + host tool + backend + ui + skill"]
     end
 
     FE_Section --> FE_Catalog

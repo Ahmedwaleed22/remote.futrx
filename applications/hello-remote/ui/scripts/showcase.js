@@ -6,6 +6,7 @@
 // the exact surface where their contribution is running.
 
 import {
+  claimUploadIfArmed,
   mountSettingsShowcase,
   openFrontendExplorer,
 } from "./showcaseExplorer.js";
@@ -28,7 +29,7 @@ const ACTION_SLOTS = [
 ];
 
 export function activateFrontendShowcase(remote) {
-  const observedUploads = { count: 0, latest: null };
+  const observedUploads = { count: 0, latest: null, claimNext: false, claimed: 0 };
 
   for (const [slotName, surface] of ACTION_SLOTS) {
     remote.ui.addIconButton(remote.slots[slotName], {
@@ -56,12 +57,13 @@ export function activateFrontendShowcase(remote) {
     { order: -100 }
   );
 
-  // Watching is intentionally passive. Calling event.claim(...) would take
-  // ownership of a user's attachment, which belongs in a real upload plugin,
-  // not in a template whose purpose is to be safe to install and explore.
+  // Watching is passive unless the user explicitly arms the pass-through
+  // claim in the explorer. That claim resolves to the original path: it shows
+  // the synchronous claim contract without moving or deleting the attachment.
   remote.events.on("upload.completed", (upload) => {
     observedUploads.count += 1;
     observedUploads.latest = upload;
+    claimUploadIfArmed(observedUploads, upload);
     remote.log("upload.completed", {
       chatId: upload.chatId,
       projectId: upload.projectId,

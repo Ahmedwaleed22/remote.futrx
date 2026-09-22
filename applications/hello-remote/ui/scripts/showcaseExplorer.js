@@ -58,6 +58,7 @@ function mountExplorer(body, remote, context, observedUploads, close) {
         context,
         target,
         output,
+        observedUploads,
         controls.signal,
         close
       );
@@ -78,7 +79,7 @@ function showExplorerFacts(body, remote, context, observedUploads) {
   setText(body, "uploads", uploadSummary(observedUploads));
 }
 
-function invokeExplorerAction(button, remote, context, target, output, signal, close) {
+function invokeExplorerAction(button, remote, context, target, output, observedUploads, signal, close) {
   switch (button.dataset.showcaseAction) {
     case "call":
       void showResult(button, output, () => remote.backend.call("echo", {
@@ -123,6 +124,11 @@ function invokeExplorerAction(button, remote, context, target, output, signal, c
     case "log":
       remote.log("frontend API explorer", { context, install: remote.install });
       output.textContent = "Context written through remote.log. Open the browser console to inspect it.";
+      break;
+    case "claim":
+      observedUploads.claimNext = true;
+      output.textContent =
+        "The next upload in this tab will use event.claim() and resolve to its original path.";
       break;
     case "close":
       close();
@@ -171,6 +177,7 @@ function explorerMarkup() {
         <button class="hello-remote__button" type="button" data-showcase-action="url">URL helpers</button>
         <button class="hello-remote__button" type="button" data-showcase-action="view">views.load</button>
         <button class="hello-remote__button" type="button" data-showcase-action="log">remote.log</button>
+        <button class="hello-remote__button" type="button" data-showcase-action="claim">claim next upload</button>
         <button class="hello-remote__button" type="button" data-showcase-action="close">popup.close</button>
       </div>
       <pre class="hello-remote__api-output" data-showcase-output>Select an ability to see its result.</pre>
@@ -206,8 +213,26 @@ export function backendSummary(backend) {
 }
 
 export function uploadSummary(observedUploads) {
+  const claim = observedUploads.claimNext
+    ? " · pass-through claim armed"
+    : observedUploads.claimed
+      ? ` · ${observedUploads.claimed} pass-through claim${observedUploads.claimed === 1 ? "" : "s"}`
+      : "";
   if (!observedUploads.latest) {
-    return `${observedUploads.count} · upload.completed is being observed`;
+    return `${observedUploads.count} · upload.completed is being observed${claim}`;
   }
-  return `${observedUploads.count} · latest: ${observedUploads.latest.fileName} (${observedUploads.latest.size} bytes)`;
+  return `${observedUploads.count} · latest: ${observedUploads.latest.fileName} (${observedUploads.latest.size} bytes)${claim}`;
+}
+
+// event.claim must be called synchronously inside the event handler. The
+// explorer arms that one moment; this helper consumes the flag and gives the
+// event a promise that deliberately preserves the original path.
+export function claimUploadIfArmed(observedUploads, upload) {
+  if (!observedUploads.claimNext) return false;
+  observedUploads.claimNext = false;
+  upload.claim(Promise.resolve(upload.path).then((path) => {
+    observedUploads.claimed += 1;
+    return path;
+  }));
+  return true;
 }

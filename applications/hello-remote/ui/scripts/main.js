@@ -7,6 +7,7 @@
 // backend/api/ — is the center of the example.
 
 import { mountContainerPanel } from "./containerPanel.js";
+import { mountServicePanel } from "./servicePanel.js";
 import { activateFrontendShowcase } from "./showcase.js";
 
 const WAVE_ICON =
@@ -121,9 +122,16 @@ function renderPanel(host, remote, context) {
       target(context),
       () => disposed
     );
+    const unmountServicePanel = mountServicePanel(
+      host,
+      remote.backend,
+      target(context),
+      () => disposed
+    );
     detach = () => {
       button.removeEventListener("click", onClick);
       unmountContainerPanel();
+      unmountServicePanel();
     };
 
     remote.backend.call("hello", target(context)).then(show).catch(fail);
