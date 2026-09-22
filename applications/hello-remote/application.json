@@ -1,9 +1,9 @@
 {
   "id": "hello-remote",
   "name": "Hello Remote",
-  "description": "Kitchen-sink example: custom infrastructure, service, port, host tool, skill, container commands, Go backend, and every frontend extension slot.",
+  "description": "Reference example: custom infrastructure, service, port, host tool, skill, container commands, Go backend, and every frontend extension slot.",
   "category": "development",
-  "version": "9",
+  "version": "10",
   "icon": "ui/assets/logo.svg",
   "scopes": ["global", "project"],
   "base": "ubuntu:24.04",
@@ -19,24 +19,6 @@
       "key": "HELLO_GREETING",
       "label": "Greeting",
       "default": "Hello"
-    },
-    {
-      "key": "HELLO_USER",
-      "label": "Connection user",
-      "required": true,
-      "default": "remote"
-    },
-    {
-      "key": "HELLO_PASSWORD",
-      "label": "Service password",
-      "required": true,
-      "secret": true,
-      "generate": "password"
-    },
-    {
-      "key": "HELLO_DATABASE",
-      "label": "Example database",
-      "default": "hello"
     }
   ],
   "service": {
@@ -53,10 +35,7 @@
     "restart": "on-failure",
     "restartSec": 1,
     "environment": [
-      {"key": "HELLO_GREETING_B64", "fromEnv": "HELLO_GREETING", "encoding": "base64"},
-      {"key": "HELLO_USER_B64", "fromEnv": "HELLO_USER", "encoding": "base64"},
-      {"key": "HELLO_PASSWORD_B64", "fromEnv": "HELLO_PASSWORD", "encoding": "base64"},
-      {"key": "HELLO_DATABASE_B64", "fromEnv": "HELLO_DATABASE", "encoding": "base64"}
+      {"key": "HELLO_GREETING_B64", "fromEnv": "HELLO_GREETING", "encoding": "base64"}
     ],
     "hardening": {
       "noNewPrivileges": true,
@@ -64,12 +43,6 @@
       "protectHome": true,
       "protectSystem": "strict"
     }
-  },
-  "connection": {
-    "user": "hello",
-    "userEnv": "HELLO_USER",
-    "passwordEnv": "HELLO_PASSWORD",
-    "databaseEnv": "HELLO_DATABASE"
   },
   "healthcheck": {
     "command": "/usr/local/bin/hello-remote-service health --port {{internalPort}}"

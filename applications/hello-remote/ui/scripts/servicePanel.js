@@ -13,9 +13,6 @@ export function mountServicePanel(host, backend, target, isDisposed) {
     setFact("version", info.version);
     setFact("provisioning", info.provisionedVersion);
     setFact("ports", portSummary(info.externalPort, info.internalPort));
-    setFact("user", info.user);
-    setFact("database", info.database);
-    setFact("password", info.passwordConfigured ? "generated and configured" : "missing");
     status.textContent = info.message;
     facts.hidden = false;
   };

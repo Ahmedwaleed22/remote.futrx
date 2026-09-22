@@ -1,10 +1,10 @@
 # Hello Remote
 
-The catalog's kitchen-sink example. It combines every application capability:
+The catalog's reference example. It combines broad application capabilities:
 
 - **`hostTools[]`** — a checksum-pinned, compressed `restic` executable installed on the Remote host.
 - **Manifest infrastructure fields** — a declarative systemd service, TCP
-  proxy, health check, install inputs, and connection metadata.
+  proxy, health check, and a greeting that changes application behavior.
 - **`infra/install.sh`** — idempotent custom provisioning that creates a
   dedicated service account and persistent application state directory.
 - **`backend/container/`** — Go source Remote copies into and builds inside LXD;
@@ -22,8 +22,7 @@ installation uses the project's existing LXD container. A global installation
 uses a dedicated application container. Both are ordinary sibling containers on
 the host—there is no LXD inside LXD. The host backend invokes the inspection
 command with `lxc exec` and reaches the service through the allocated proxy.
-Raw LXD configuration and environment variables are deliberately not returned
-because they can contain secrets.
+Raw LXD configuration and environment variables are deliberately not returned.
 
 Hello Remote's custom install script demonstrates the narrow work that belongs
 under `infra/`: it idempotently creates a dedicated `hello-remote` system
@@ -49,11 +48,11 @@ capability supplies `ContainerName`, without application-specific packaging.
 | Global | **Settings → Applications** |
 | Project | **Project → Applications** |
 
-The install dialog shows a defaulted greeting, defaulted connection user, generated
-secret password, and defaulted database. Together they demonstrate every
-`env[]` option. The same values drive the uniform connection panel, the
-container service, and the host backend's `Instance.Env`; the service reports
-only whether its password is configured and never returns the secret itself.
+The install dialog has one application-specific input: a defaulted greeting.
+It drives both the container service and the host backend's `Instance.Env`, so
+changing it produces an observable result. Hello Remote deliberately declares
+no connection user, password, or database because it implements none of those
+resources.
 
 The preferred host port is `4780`, bound to `127.0.0.1`; Remote automatically
 chooses another host port if it is occupied. The internal service remains on
@@ -105,8 +104,8 @@ call — so a count that survives is a count that reached `DataDir`. Restart the
 server, open the panel, and the number is still there.
 
 The service section crosses the allocated host proxy and reports the systemd
-unit, build version, custom-provisioning version, port mapping, non-secret
-connection fields, and whether a password exists. The container section reports
+unit, build version, custom-provisioning version, port mapping, and greeting
+response. The container section reports
 its LXD name, hostname, operating system, kernel, architecture, CPU count, total
 memory, and uptime. Each has an independent **Refresh** action.
 
@@ -114,7 +113,7 @@ memory, and uptime. Each has an independent **Refresh** action.
 
 | File | Shows |
 |---|---|
-| `application.json` | Every author-controlled application model field: identity, both scopes, base image, port, every `env[]` behavior, service, connection mapping, install path, health check, host tool, explicit UI mapping, and backend policy. |
+| `application.json` | The application identity, both scopes, base image, real greeting input, port, service, install path, health check, host tool, explicit UI mapping, and backend policy. |
 | `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) and the composition root that wires the optional `Router` and concrete inspectors. |
 | `backend/api/greeting.go`, `backend/api/visits.go` | Greeting and echo routes, plus the per-instance persistent counter. |
 | `backend/api/container.go`, `backend/api/service.go` | Bounded host calls into the installed inspection command and the proxied HTTP service. |
@@ -123,7 +122,7 @@ memory, and uptime. Each has an independent **Refresh** action.
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without backend-owned shell. |
 | `application.json.service` | Command, environment mappings, process identity, restart policy, and systemd hardening. |
 | `infra/install.sh` | Idempotent service-account and persistent-state provisioning using platform-supplied install metadata. |
-| `skills/hello-remote-inspector/SKILL.md` | A project-scoped agent workflow that verifies the service without exposing its generated secret. |
+| `skills/hello-remote-inspector/SKILL.md` | A project-scoped agent workflow that verifies the service and its runtime metadata. |
 | `ui/scripts/main.js` | The entry module: activates the showcase, card action, applications panel, and cleanup. |
 | `ui/scripts/containerPanel.js`, `ui/scripts/servicePanel.js`, `ui/scripts/inspectionRefresh.js` | Container/service presentation with one disposal-safe refresh lifecycle. |
 | `ui/scripts/showcase.js`, `ui/scripts/showcaseExplorer.js` | Slot registration and the live explorer for the complete frontend API. |

@@ -12,6 +12,3 @@ Verify the installed example from inside its project container.
 3. Run `/usr/local/bin/hello-remote-service health --port 4780` to test the declared internal port.
 4. When response details matter, request `http://127.0.0.1:4780/health` and parse its JSON.
 5. If a check fails, inspect `systemctl status hello-remote --no-pager --full` and `journalctl -u hello-remote -n 100 --no-pager` before suggesting a fix.
-
-Never print `/etc/remote/applications/hello-remote/environment`: it contains
-the configured password, encoded for transport rather than encrypted.

@@ -102,6 +102,9 @@ func (s *Service) reinstall(ctx context.Context, application Application, inst *
 	if s.installer == nil {
 		return ErrUnavailable
 	}
+	if err := reconcileInstanceEnv(application, inst); err != nil {
+		return err
+	}
 	if inst.Scope == ScopeProject && s.projects != nil {
 		if err := s.projects.EnsureRunning(ctx, inst.ProjectID); err != nil {
 			return err
@@ -119,4 +122,17 @@ func (s *Service) reinstall(ctx context.Context, application Application, inst *
 	inst.ApplicationVersion = application.Version
 	inst.ContainerBuildVersion = application.containerBuildVersion()
 	return s.saveStatus(ctx, inst, StatusRunning, "")
+}
+
+// reconcileInstanceEnv projects persisted inputs onto the current manifest.
+// It preserves values that still exist, applies defaults/generators for new
+// declarations, and drops removed keys so an upgrade cannot retain obsolete
+// credentials or expose them after their secret declaration disappears.
+func reconcileInstanceEnv(application Application, inst *Instance) error {
+	env, err := resolveEnv(application, inst.Env)
+	if err != nil {
+		return err
+	}
+	inst.Env = env
+	return nil
 }

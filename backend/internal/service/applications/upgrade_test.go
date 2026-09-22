@@ -273,10 +273,14 @@ func TestUploadLeavesStoppedInstancesAlone(t *testing.T) {
 
 // …and the upgrade it skipped happens when its owner starts it again.
 func TestStartingAStaleInstanceReinstallsIt(t *testing.T) {
-	store := &fakeStore{global: []Instance{installedAt("g1", "", "1.0.0", StatusStopped)}}
+	stale := installedAt("g1", "", "1.0.0", StatusStopped)
+	stale.Env = map[string]string{"REMOVED_PASSWORD": "stale-secret"}
+	application := serviceApplicationAt("2.0.0")
+	application.Env = []EnvVar{{Key: "GREETING", Default: "Hello"}}
+	store := &fakeStore{global: []Instance{stale}}
 	installer := &failingInstaller{}
 	service := upgradeService(
-		store, &versionedRegistry{application: serviceApplicationAt("2.0.0")}, installer, nil, nil)
+		store, &versionedRegistry{application: application}, installer, nil, nil)
 
 	view, err := service.Start(context.Background(), "g1")
 	if err != nil {
@@ -287,6 +291,16 @@ func TestStartingAStaleInstanceReinstallsIt(t *testing.T) {
 	}
 	if view.ApplicationVersion != "2.0.0" {
 		t.Fatalf("recorded version = %q, want 2.0.0", view.ApplicationVersion)
+	}
+	if got := installer.installed[0].Instance.Env; len(got) != 1 || got["GREETING"] != "Hello" {
+		t.Fatalf("upgrade env = %v, want current defaults without removed values", got)
+	}
+	stored, ok, err := store.Get(context.Background(), "g1")
+	if err != nil || !ok {
+		t.Fatalf("stored upgraded instance: ok=%v err=%v", ok, err)
+	}
+	if len(stored.Env) != 1 || stored.Env["GREETING"] != "Hello" {
+		t.Fatalf("stored env = %v, want pruned current inputs", stored.Env)
 	}
 
 	// Starting a current instance is an ordinary start, not a re-install.

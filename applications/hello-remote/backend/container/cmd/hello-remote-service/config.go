@@ -11,9 +11,6 @@ const provisionedVersionPath = "/var/lib/hello-remote/provisioned-version"
 
 type configuration struct {
 	Greeting           string
-	User               string
-	Database           string
-	PasswordConfigured bool
 	ProvisionedVersion string
 }
 
@@ -37,23 +34,8 @@ func configurationFromEnv(getenv func(string) string) (configuration, error) {
 	if err != nil {
 		return configuration{}, err
 	}
-	user, err := read("HELLO_USER_B64")
-	if err != nil {
-		return configuration{}, err
-	}
-	password, err := read("HELLO_PASSWORD_B64")
-	if err != nil {
-		return configuration{}, err
-	}
-	database, err := read("HELLO_DATABASE_B64")
-	if err != nil {
-		return configuration{}, err
-	}
 	return configuration{
-		Greeting:           greeting,
-		User:               user,
-		Database:           database,
-		PasswordConfigured: password != "",
+		Greeting: greeting,
 	}, nil
 }
 

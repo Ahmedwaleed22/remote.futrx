@@ -16,15 +16,15 @@ func TestConfigurationRequiresEveryDeclaredValue(t *testing.T) {
 
 func TestReadsProvisionedVersion(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "provisioned-version")
-	if err := os.WriteFile(path, []byte("9\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("10\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	version, err := readProvisionedVersion(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version != "9" {
-		t.Fatalf("version = %q, want 9", version)
+	if version != "10" {
+		t.Fatalf("version = %q, want 10", version)
 	}
 }
 

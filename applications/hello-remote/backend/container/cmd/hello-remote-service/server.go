@@ -12,9 +12,6 @@ type healthResponse struct {
 	Message            string `json:"message"`
 	Version            string `json:"version"`
 	ProvisionedVersion string `json:"provisionedVersion"`
-	User               string `json:"user"`
-	Database           string `json:"database"`
-	PasswordConfigured bool   `json:"passwordConfigured"`
 }
 
 func serve(port int, getenv func(string) string) error {
@@ -47,9 +44,6 @@ func serviceHandler(config configuration) http.Handler {
 			Message:            config.Greeting + " from the container service.",
 			Version:            version,
 			ProvisionedVersion: config.ProvisionedVersion,
-			User:               config.User,
-			Database:           config.Database,
-			PasswordConfigured: config.PasswordConfigured,
 		})
 	}
 	router.HandleFunc("/", handle)

@@ -16,9 +16,6 @@ type serviceHealth struct {
 	Message            string `json:"message"`
 	Version            string `json:"version"`
 	ProvisionedVersion string `json:"provisionedVersion"`
-	User               string `json:"user"`
-	Database           string `json:"database"`
-	PasswordConfigured bool   `json:"passwordConfigured"`
 }
 
 type serviceInfo struct {
@@ -26,9 +23,6 @@ type serviceInfo struct {
 	Message            string `json:"message"`
 	Version            string `json:"version"`
 	ProvisionedVersion string `json:"provisionedVersion"`
-	User               string `json:"user"`
-	Database           string `json:"database"`
-	PasswordConfigured bool   `json:"passwordConfigured"`
 	Service            string `json:"service"`
 	InternalPort       int    `json:"internalPort"`
 	ExternalPort       int    `json:"externalPort"`
@@ -78,9 +72,6 @@ func (b *api) service(applications.Request) applications.Response {
 		Message:            health.Message,
 		Version:            health.Version,
 		ProvisionedVersion: health.ProvisionedVersion,
-		User:               health.User,
-		Database:           health.Database,
-		PasswordConfigured: health.PasswordConfigured,
 		Service:            service,
 		InternalPort:       internalPort,
 		ExternalPort:       externalPort,

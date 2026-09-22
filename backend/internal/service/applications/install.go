@@ -275,16 +275,6 @@ func bindOr(a, b string) string {
 	return "127.0.0.1"
 }
 
-func secretKeys(application Application) map[string]bool {
-	m := map[string]bool{}
-	for _, e := range application.Env {
-		if e.Secret {
-			m[e.Key] = true
-		}
-	}
-	return m
-}
-
 // resolveEnv applies defaults, generates secrets, and enforces required inputs.
 func resolveEnv(application Application, provided map[string]string) (map[string]string, error) {
 	out := map[string]string{}

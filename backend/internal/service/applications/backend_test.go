@@ -108,6 +108,42 @@ func TestBackendInstanceCarriesManifestMetadata(t *testing.T) {
 	}
 }
 
+func TestCurrentManifestControlsReportedEnvironment(t *testing.T) {
+	application := backendImage(func(application *Application) {
+		application.Env = []EnvVar{
+			{Key: "VISIBLE"},
+			{Key: "SECRET", Secret: true},
+		}
+		application.Connection = Connection{UserEnv: "VISIBLE", PasswordEnv: "SECRET"}
+	})
+	instance := runningInstance()
+	instance.Env = map[string]string{
+		"VISIBLE": "current-user",
+		"SECRET":  "current-secret",
+		"REMOVED": "stale-value",
+	}
+	service, _ := withInstance(application, instance, &recordingHost{})
+
+	view, ok, err := service.Get(context.Background(), instance.ID)
+	if err != nil || !ok {
+		t.Fatalf("get: ok=%v err=%v", ok, err)
+	}
+	if len(view.EnvPublic) != 1 || view.EnvPublic["VISIBLE"] != "current-user" {
+		t.Fatalf("public env = %v, want only VISIBLE", view.EnvPublic)
+	}
+
+	credentials, err := service.Credentials(context.Background(), instance.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if credentials.Username != "current-user" || credentials.Password != "current-secret" {
+		t.Fatalf("connection mapping = %+v", credentials)
+	}
+	if len(credentials.Env) != 2 || credentials.Env["REMOVED"] != "" {
+		t.Fatalf("credential env = %v, want only currently declared inputs", credentials.Env)
+	}
+}
+
 // The caller a backend sees is the one the transport resolved, never the one a
 // request claimed. A backend authorizes against it, so it has to be unforgeable.
 func TestCallBackendStampsTheResolvedCaller(t *testing.T) {

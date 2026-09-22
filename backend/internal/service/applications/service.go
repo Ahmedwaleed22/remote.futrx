@@ -141,10 +141,11 @@ func (s *Service) Credentials(ctx context.Context, id string) (Credentials, erro
 	if err != nil {
 		return Credentials{}, err
 	}
+	env := declaredEnv(application, inst.Env)
 	conn := application.Connection
 	username := conn.User
 	if conn.UserEnv != "" {
-		username = inst.Env[conn.UserEnv]
+		username = env[conn.UserEnv]
 	}
 	return Credentials{
 		ContainerName: inst.ContainerName,
@@ -153,9 +154,9 @@ func (s *Service) Credentials(ctx context.Context, id string) (Credentials, erro
 		ExternalPort:  inst.ExternalPort,
 		BindAddress:   inst.BindAddress,
 		Username:      username,
-		Password:      inst.Env[conn.PasswordEnv],
-		Database:      inst.Env[conn.DatabaseEnv],
-		Env:           inst.Env,
+		Password:      env[conn.PasswordEnv],
+		Database:      env[conn.DatabaseEnv],
+		Env:           env,
 	}, nil
 }
 
@@ -190,15 +191,26 @@ func (s *Service) view(inst Instance) View {
 	// disk; the retained prefix and tail preserve the useful failure context.
 	inst.Error = boundedInstanceError(inst.Error)
 	pub := map[string]string{}
-	secret := secretKeys(application)
-	for k, v := range inst.Env {
-		if !secret[k] {
-			pub[k] = v
+	for _, variable := range application.Env {
+		if !variable.Secret {
+			if value, ok := inst.Env[variable.Key]; ok {
+				pub[variable.Key] = value
+			}
 		}
 	}
 	safe := inst
 	safe.Env = nil // never leak secrets through the Instance blob
 	return View{Instance: safe, EnvPublic: pub}
+}
+
+func declaredEnv(application Application, stored map[string]string) map[string]string {
+	declared := make(map[string]string, len(application.Env))
+	for _, variable := range application.Env {
+		if value, ok := stored[variable.Key]; ok {
+			declared[variable.Key] = value
+		}
+	}
+	return declared
 }
 
 func boundedInstanceError(message string) string {

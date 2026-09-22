@@ -112,6 +112,12 @@ func (s *Service) transition(ctx context.Context, id string, target InstanceStat
 		}
 	}
 	upgrading := target == StatusRunning && needsUpgrade(inst, application)
+	if upgrading {
+		if err := reconcileInstanceEnv(application, &inst); err != nil {
+			_ = s.saveStatus(ctx, &inst, StatusError, err.Error())
+			return View{}, err
+		}
+	}
 	if err := s.moveContainer(ctx, InstallSpec{Application: application, Instance: inst}, target); err != nil {
 		_ = s.saveStatus(ctx, &inst, StatusError, err.Error())
 		return View{}, err

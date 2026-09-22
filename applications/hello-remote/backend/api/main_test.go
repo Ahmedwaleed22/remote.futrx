@@ -59,10 +59,7 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 			Status:             "ok",
 			Message:            "Hello from the container service.",
 			Version:            "build-id",
-			ProvisionedVersion: "9",
-			User:               "remote",
-			Database:           "hello",
-			PasswordConfigured: true,
+			ProvisionedVersion: "10",
 		}, nil
 	}
 
@@ -76,11 +73,8 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 	if got := body["externalPort"]; got != float64(4781) {
 		t.Errorf("external port = %v, want 4781", got)
 	}
-	if got := body["passwordConfigured"]; got != true {
-		t.Errorf("passwordConfigured = %v, want true", got)
-	}
-	if got := body["provisionedVersion"]; got != "9" {
-		t.Errorf("provisionedVersion = %v, want 9", got)
+	if got := body["provisionedVersion"]; got != "10" {
+		t.Errorf("provisionedVersion = %v, want 10", got)
 	}
 }
 

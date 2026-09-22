@@ -8,10 +8,10 @@ import (
 	svc "github.com/futrx-com/remote.futrx.com/internal/service/applications"
 )
 
-// Hello Remote is intentionally the catalog's kitchen-sink application. This
-// test makes that promise concrete so a later cleanup cannot quietly turn it
-// back into a partial example.
-func TestHelloRemoteDemonstratesEveryApplicationCapability(t *testing.T) {
+// Hello Remote is the catalog's reference application. It exercises broad
+// application capabilities, but every user-facing input must drive real
+// behavior rather than exist only to demonstrate a schema option.
+func TestHelloRemoteDemonstratesApplicationCapabilities(t *testing.T) {
 	registry, err := NewRegistry(EmbeddedCatalog(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -44,20 +44,15 @@ func TestHelloRemoteDemonstratesEveryApplicationCapability(t *testing.T) {
 		application.Port.Protocol == "" || application.Port.BindAddress == "" {
 		t.Fatalf("port fields are incomplete: %+v", application.Port)
 	}
-	if application.Connection.User == "" || application.Connection.UserEnv == "" ||
-		application.Connection.PasswordEnv == "" || application.Connection.DatabaseEnv == "" {
-		t.Fatalf("connection fields are incomplete: %+v", application.Connection)
+	if application.Connection.User != "" || application.Connection.UserEnv != "" ||
+		application.Connection.PasswordEnv != "" || application.Connection.DatabaseEnv != "" {
+		t.Fatalf("hello remote declares credentials it does not implement: %+v", application.Connection)
 	}
 
-	var hasDefault, hasRequired, hasSecret, hasGenerator bool
-	for _, variable := range application.Env {
-		hasDefault = hasDefault || variable.Default != ""
-		hasRequired = hasRequired || variable.Required
-		hasSecret = hasSecret || variable.Secret
-		hasGenerator = hasGenerator || variable.Generate != ""
-	}
-	if !hasDefault || !hasRequired || !hasSecret || !hasGenerator {
-		t.Fatalf("env fields are not all demonstrated: %+v", application.Env)
+	if len(application.Env) != 1 || application.Env[0].Key != "HELLO_GREETING" ||
+		application.Env[0].Default != "Hello" || application.Env[0].Secret ||
+		application.Env[0].Required || application.Env[0].Generate != "" {
+		t.Fatalf("hello remote inputs must contain only the functional greeting: %+v", application.Env)
 	}
 	if len(application.HostTools) == 0 || len(application.HostTools[0].Downloads) < 2 ||
 		len(application.HostTools[0].VersionArgs) == 0 {
