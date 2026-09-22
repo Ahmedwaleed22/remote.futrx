@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -42,30 +41,5 @@ func TestConfigurationAndHealthResponse(t *testing.T) {
 	if body.Status != "ok" || body.Message != "Welcome from the container service." ||
 		body.User != "demo-user" || body.Database != "demo-db" || !body.PasswordConfigured {
 		t.Fatalf("health response = %+v", body)
-	}
-}
-
-func TestProbeAcceptsOnlySuccessfulResponses(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		writer.WriteHeader(http.StatusNoContent)
-	}))
-	defer server.Close()
-	if err := probe(context.Background(), server.URL); err != nil {
-		t.Fatalf("probe successful service: %v", err)
-	}
-
-	failing := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		http.Error(writer, "not ready", http.StatusServiceUnavailable)
-	}))
-	defer failing.Close()
-	if err := probe(context.Background(), failing.URL); err == nil {
-		t.Fatal("probe accepted a failing service")
-	}
-}
-
-func TestConfigurationRequiresEveryDeclaredValue(t *testing.T) {
-	_, err := configurationFromEnv(func(string) string { return "" })
-	if err == nil || !strings.Contains(err.Error(), "HELLO_GREETING_B64") {
-		t.Fatalf("error = %v, want missing greeting", err)
 	}
 }

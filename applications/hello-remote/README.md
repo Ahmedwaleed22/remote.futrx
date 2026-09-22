@@ -109,7 +109,7 @@ Each has an independent **Refresh** action.
 | `backend/api/greeting.go`, `backend/api/visits.go` | Greeting and echo routes, plus the per-instance persistent counter. |
 | `backend/api/container.go`, `backend/api/service.go` | Bounded host calls into the installed inspection command and the proxied HTTP service. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
-| `backend/container/cmd/hello-remote-service/main.go` | A supervised HTTP service plus the command used by `healthcheck.command`. |
+| `backend/container/cmd/hello-remote-service/` | A supervised HTTP service with separate command dispatch, configuration decoding, serving, and health-probe owners. |
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without plugin-owned shell. |
 | `infra/install.sh` | Idempotent configuration, systemd unit creation, idle-probe declaration, restart, and readiness wait. |
 | `skills/hello-remote-inspector/SKILL.md` | A project-scoped agent workflow that verifies the service without exposing its generated secret. |
