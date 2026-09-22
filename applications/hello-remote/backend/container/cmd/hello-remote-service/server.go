@@ -11,6 +11,7 @@ type healthResponse struct {
 	Status             string `json:"status"`
 	Message            string `json:"message"`
 	Version            string `json:"version"`
+	ProvisionedVersion string `json:"provisionedVersion"`
 	User               string `json:"user"`
 	Database           string `json:"database"`
 	PasswordConfigured bool   `json:"passwordConfigured"`
@@ -18,6 +19,10 @@ type healthResponse struct {
 
 func serve(port int, getenv func(string) string) error {
 	config, err := configurationFromEnv(getenv)
+	if err != nil {
+		return err
+	}
+	config.ProvisionedVersion, err = readProvisionedVersion(provisionedVersionPath)
 	if err != nil {
 		return err
 	}
@@ -41,6 +46,7 @@ func serviceHandler(config configuration) http.Handler {
 			Status:             "ok",
 			Message:            config.Greeting + " from the container service.",
 			Version:            version,
+			ProvisionedVersion: config.ProvisionedVersion,
 			User:               config.User,
 			Database:           config.Database,
 			PasswordConfigured: config.PasswordConfigured,

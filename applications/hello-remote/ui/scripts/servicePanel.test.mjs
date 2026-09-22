@@ -20,6 +20,7 @@ test("loads service facts and removes its refresh listener on cleanup", async ()
       return Promise.resolve({
         service: "hello-remote",
         version: "build-1",
+        provisionedVersion: "9",
         externalPort: 4781,
         internalPort: 4780,
         user: "remote",
@@ -40,6 +41,7 @@ test("loads service facts and removes its refresh listener on cleanup", async ()
   assert.equal(elements.refresh.disabled, false);
   assert.equal(elements.facts.hidden, false);
   assert.equal(elements.fields.get("unit").textContent, "hello-remote");
+  assert.equal(elements.fields.get("provisioning").textContent, "9");
   assert.equal(elements.fields.get("ports").textContent, "127.0.0.1:4781 → container:4780/tcp");
   assert.equal(elements.status.textContent, "Hello from the container service.");
 
@@ -54,7 +56,7 @@ function serviceElements() {
   const status = { textContent: "" };
   const facts = { hidden: true };
   const fields = new Map(
-    ["unit", "version", "ports", "user", "database", "password"]
+    ["unit", "version", "provisioning", "ports", "user", "database", "password"]
       .map((name) => [name, { textContent: "" }])
   );
   return {

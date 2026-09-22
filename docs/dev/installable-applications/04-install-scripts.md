@@ -5,13 +5,15 @@ Applications may provide one for custom container provisioning. A Go program in
 UI-only and host-backend-only applications need neither — see
 [03 — Application capabilities](03-application-capabilities.md).
 
-Hello Remote deliberately has no `infra/install.sh`: its Go programs are built
-from `backend/container/`, and its complete systemd service lives in
-`application.json`. A custom script is for work the manifest cannot express,
-such as OS packages, mounts, data migrations, or application-specific
-configuration. Do not add shell merely to build a container program, create a
-unit, manage workspace-idle declarations, or run a health check; Remote owns
-those shared operations.
+Hello Remote combines both paths. Its Go programs are built from
+`backend/container/`, its complete systemd service lives in `application.json`,
+and `infra/install.sh` creates the application-specific system account and
+persistent state directory the service uses. The script also records its
+provisioned version there so the example UI can prove that it ran. A custom
+script is for work the manifest cannot express, such as OS packages, users,
+mounts, data migrations, or application-specific configuration. Do not add
+shell merely to build a container program, create a unit, manage workspace-idle
+declarations, or run a health check; Remote owns those shared operations.
 
 ## The contract
 

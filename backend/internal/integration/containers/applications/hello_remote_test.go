@@ -33,11 +33,12 @@ func TestHelloRemoteDemonstratesEveryApplicationCapability(t *testing.T) {
 		application.Healthcheck.Command == "" {
 		t.Fatalf("infrastructure fields are incomplete: %+v", application)
 	}
-	if application.Install != "" || len(application.Service.Command) == 0 ||
+	if application.Install != "infra/install.sh" || len(application.Service.Command) == 0 ||
+		application.Service.User != "hello-remote" || application.Service.Group != "hello-remote" ||
 		len(application.Service.Environment) != len(application.Env) ||
 		!application.Service.Hardening.NoNewPrivileges || !application.Service.Hardening.PrivateTmp ||
 		!application.Service.Hardening.ProtectHome || application.Service.Hardening.ProtectSystem != "strict" {
-		t.Fatalf("service must be fully manifest-owned: %+v", application.Service)
+		t.Fatalf("service declaration must be fully manifest-owned: %+v", application.Service)
 	}
 	if application.Port.Internal == 0 || application.Port.DefaultExternal == 0 ||
 		application.Port.Protocol == "" || application.Port.BindAddress == "" {

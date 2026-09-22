@@ -5,6 +5,8 @@ The catalog's kitchen-sink example. It combines every application capability:
 - **`hostTools[]`** — a checksum-pinned, compressed `restic` executable installed on the Remote host.
 - **Manifest infrastructure fields** — a declarative systemd service, TCP
   proxy, health check, install inputs, and connection metadata.
+- **`infra/install.sh`** — idempotent custom provisioning that creates a
+  dedicated service account and persistent application state directory.
 - **`backend/container/`** — Go source Remote copies into and builds inside LXD;
   one command inspects the container and another serves HTTP.
 - **`backend/api/`** — Go source the server compiles and runs as a child process,
@@ -23,12 +25,19 @@ command with `lxc exec` and reaches the service through the allocated proxy.
 Raw LXD configuration and environment variables are deliberately not returned
 because they can contain secrets.
 
-Hello Remote needs no custom install script. Remote builds its container Go
-programs, writes the root-only encoded environment, creates the hardened
-systemd unit, declares its daemon to the idle-workspace probe, restarts it
-idempotently, waits for the manifest health check, installs the host tool, and
-owns the proxy and lifecycle. The example therefore shows the standardized
-path rather than reimplementing platform behavior in shell.
+Hello Remote's custom install script demonstrates the narrow work that belongs
+under `infra/`: it idempotently creates a dedicated `hello-remote` system
+account, provisions `/var/lib/hello-remote`, and atomically records the
+installed application version there. The service reads that version and the UI
+displays it, making the custom provisioning observable. On an upgrade, the
+script converges the identity and directory, updates only its metadata file,
+and preserves other application state.
+
+Remote still owns the standardized work. It builds the container Go programs,
+writes the root-only encoded environment, creates the hardened systemd unit,
+declares its daemon to the idle-workspace probe, restarts it idempotently,
+waits for the manifest health check, installs the host tool, and owns the proxy
+and lifecycle. The install script neither writes a unit nor invokes `systemctl`.
 
 The backend runs on the Remote host, not inside LXD. The generic container
 capability supplies `ContainerName`, without application-specific packaging.
@@ -96,10 +105,10 @@ call — so a count that survives is a count that reached `DataDir`. Restart the
 server, open the panel, and the number is still there.
 
 The service section crosses the allocated host proxy and reports the systemd
-unit, build version, port mapping, non-secret connection fields, and whether a
-password exists. The container section reports its LXD name, hostname,
-operating system, kernel, architecture, CPU count, total memory, and uptime.
-Each has an independent **Refresh** action.
+unit, build version, custom-provisioning version, port mapping, non-secret
+connection fields, and whether a password exists. The container section reports
+its LXD name, hostname, operating system, kernel, architecture, CPU count, total
+memory, and uptime. Each has an independent **Refresh** action.
 
 ## Reading it
 
@@ -113,6 +122,7 @@ Each has an independent **Refresh** action.
 | `backend/container/cmd/hello-remote-service/` | A supervised HTTP service with separate command dispatch, configuration decoding, serving, and health-probe owners. |
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without backend-owned shell. |
 | `application.json.service` | Command, environment mappings, process identity, restart policy, and systemd hardening. |
+| `infra/install.sh` | Idempotent service-account and persistent-state provisioning using platform-supplied install metadata. |
 | `skills/hello-remote-inspector/SKILL.md` | A project-scoped agent workflow that verifies the service without exposing its generated secret. |
 | `ui/scripts/main.js` | The entry module: activates the showcase, card action, applications panel, and cleanup. |
 | `ui/scripts/containerPanel.js`, `ui/scripts/servicePanel.js`, `ui/scripts/inspectionRefresh.js` | Container/service presentation with one disposal-safe refresh lifecycle. |

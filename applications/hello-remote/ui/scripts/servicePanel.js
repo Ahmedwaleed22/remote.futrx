@@ -11,6 +11,7 @@ export function mountServicePanel(host, backend, target, isDisposed) {
   const show = (info) => {
     setFact("unit", info.service);
     setFact("version", info.version);
+    setFact("provisioning", info.provisionedVersion);
     setFact("ports", portSummary(info.externalPort, info.internalPort));
     setFact("user", info.user);
     setFact("database", info.database);

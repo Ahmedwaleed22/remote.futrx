@@ -1,12 +1,13 @@
 {
   "id": "hello-remote",
   "name": "Hello Remote",
-  "description": "Kitchen-sink example: service, port, host tool, skill, container commands, Go backend, and every frontend extension slot.",
+  "description": "Kitchen-sink example: custom infrastructure, service, port, host tool, skill, container commands, Go backend, and every frontend extension slot.",
   "category": "development",
-  "version": "8",
+  "version": "9",
   "icon": "ui/assets/logo.svg",
   "scopes": ["global", "project"],
   "base": "ubuntu:24.04",
+  "install": "infra/install.sh",
   "port": {
     "internal": 4780,
     "defaultExternal": 4780,
@@ -47,8 +48,8 @@
       "--port",
       "{{internalPort}}"
     ],
-    "user": "nobody",
-    "group": "nogroup",
+    "user": "hello-remote",
+    "group": "hello-remote",
     "restart": "on-failure",
     "restartSec": 1,
     "environment": [

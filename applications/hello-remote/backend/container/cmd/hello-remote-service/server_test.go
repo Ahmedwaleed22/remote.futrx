@@ -24,6 +24,7 @@ func TestConfigurationAndHealthResponse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	config.ProvisionedVersion = "9"
 
 	request := httptest.NewRequest(http.MethodGet, "/health", nil)
 	response := httptest.NewRecorder()
@@ -39,7 +40,8 @@ func TestConfigurationAndHealthResponse(t *testing.T) {
 		t.Fatal(err)
 	}
 	if body.Status != "ok" || body.Message != "Welcome from the container service." ||
-		body.User != "demo-user" || body.Database != "demo-db" || !body.PasswordConfigured {
+		body.ProvisionedVersion != "9" || body.User != "demo-user" ||
+		body.Database != "demo-db" || !body.PasswordConfigured {
 		t.Fatalf("health response = %+v", body)
 	}
 }

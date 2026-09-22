@@ -59,6 +59,7 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 			Status:             "ok",
 			Message:            "Hello from the container service.",
 			Version:            "build-id",
+			ProvisionedVersion: "9",
 			User:               "remote",
 			Database:           "hello",
 			PasswordConfigured: true,
@@ -77,6 +78,9 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 	}
 	if got := body["passwordConfigured"]; got != true {
 		t.Errorf("passwordConfigured = %v, want true", got)
+	}
+	if got := body["provisionedVersion"]; got != "9" {
+		t.Errorf("provisionedVersion = %v, want 9", got)
 	}
 }
 
