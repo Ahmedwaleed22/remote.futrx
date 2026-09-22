@@ -3,8 +3,11 @@ package applications
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 )
+
+const maxInstanceErrorRunes = 4000
 
 // Errors returned by the service. Handlers map these to HTTP status codes.
 var (
@@ -17,6 +20,7 @@ var (
 	ErrPortRange          = errors.New("applications: external port out of range")
 	ErrAlreadyInstalled   = errors.New("applications: this application is already installed in this scope")
 	ErrNotSupported       = errors.New("applications: capability not supported")
+	ErrInvalidState       = errors.New("applications: invalid lifecycle state")
 
 	// Uploaded-package errors.
 	ErrPackagesUnavailable = errors.New("applications: uploaded packages are not available on this server")
@@ -158,7 +162,7 @@ func (s *Service) Credentials(ctx context.Context, id string) (Credentials, erro
 // saveStatus stamps status/error/updatedAt on an instance and persists it.
 func (s *Service) saveStatus(ctx context.Context, inst *Instance, status InstanceStatus, errMsg string) error {
 	inst.Status = status
-	inst.Error = errMsg
+	inst.Error = boundedInstanceError(errMsg)
 	inst.UpdatedAt = s.now()
 	return s.store.Put(ctx, *inst)
 }
@@ -181,6 +185,10 @@ func (s *Service) load(ctx context.Context, id string) (Instance, Application, e
 // view / views project Instances to API-safe Views (secret env redacted).
 func (s *Service) view(inst Instance) View {
 	application, _ := s.registry.Get(inst.ApplicationID)
+	// Old records may predate the write-side bound. Never make an applications
+	// page carry an arbitrarily large command dump just because one is still on
+	// disk; the retained prefix and tail preserve the useful failure context.
+	inst.Error = boundedInstanceError(inst.Error)
 	pub := map[string]string{}
 	secret := secretKeys(application)
 	for k, v := range inst.Env {
@@ -191,6 +199,21 @@ func (s *Service) view(inst Instance) View {
 	safe := inst
 	safe.Env = nil // never leak secrets through the Instance blob
 	return View{Instance: safe, EnvPublic: pub}
+}
+
+func boundedInstanceError(message string) string {
+	runes := []rune(message)
+	if len(runes) <= maxInstanceErrorRunes {
+		return message
+	}
+	const (
+		prefixRunes = 1200
+		markerRoom  = 64
+	)
+	tailRunes := maxInstanceErrorRunes - prefixRunes - markerRoom
+	omitted := len(runes) - prefixRunes - tailRunes
+	marker := []rune(fmt.Sprintf("\n… %d characters omitted …\n", omitted))
+	return string(runes[:prefixRunes]) + string(marker) + string(runes[len(runes)-tailRunes:])
 }
 
 func (s *Service) views(insts []Instance) []View {

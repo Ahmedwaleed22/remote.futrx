@@ -9,8 +9,10 @@ import type {
 import {
   describeInstalls,
   describeOutcome,
+  hasAssignedConnection,
   hasContainer,
   hasPortBinding,
+  instanceLifecycleAction,
   instanceSummary,
   packageCountLabel,
   packageScopes,
@@ -69,6 +71,21 @@ describe("application presentation", () => {
   it("falls back to the service presentation while the catalog is loading", () => {
     assert.equal(hasContainer(undefined), true);
     assert.equal(hasPortBinding(undefined), true);
+  });
+
+  it("only exposes lifecycle actions for completed installs", () => {
+    assert.equal(instanceLifecycleAction("running"), "stop");
+    assert.equal(instanceLifecycleAction("stopped"), "start");
+    assert.equal(instanceLifecycleAction("installing"), null);
+    assert.equal(instanceLifecycleAction("error"), null);
+  });
+
+  it("does not invent connection details for an early failed attempt", () => {
+    const service = application({ container: true, port: true });
+    assert.equal(hasAssignedConnection(instance({ containerName: "project-1" }), service), true);
+    assert.equal(hasAssignedConnection(instance({ containerName: "" }), service), false);
+    assert.equal(hasAssignedConnection(instance({ externalPort: 0 }), service), false);
+    assert.equal(hasAssignedConnection(instance(), application({ container: true })), false);
   });
 
   it("summarises a tool by where it runs, not by a UI it does not have", () => {

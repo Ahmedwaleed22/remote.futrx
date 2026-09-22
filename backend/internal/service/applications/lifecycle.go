@@ -82,6 +82,14 @@ func (s *Service) transition(ctx context.Context, id string, target InstanceStat
 	if err != nil {
 		return View{}, err
 	}
+	// Error records are failed install attempts, not stopped installations. They
+	// can only be retried through Install (which first tears down the partial
+	// attempt) or explicitly uninstalled. Treating one as stopped can hand an
+	// empty legacy container name to LXD and, more importantly, skips the
+	// cleanup-and-recreate contract of Retry.
+	if inst.Status == StatusError || inst.Status == StatusInstalling {
+		return View{}, fmt.Errorf("%w: %s instances must be retried or uninstalled", ErrInvalidState, inst.Status)
+	}
 	// An application without infrastructure may be purely a record: stopped
 	// means the SPA no longer loads its extension. If it has a backend, the
 	// backend process and record move together.

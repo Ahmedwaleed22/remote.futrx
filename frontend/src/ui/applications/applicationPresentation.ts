@@ -44,6 +44,31 @@ export function hasPortBinding(application: AppApplication | undefined): boolean
   return application?.needsPort ?? true;
 }
 
+// Only completed installs have a lifecycle action. Error/installing records
+// are attempts: retrying them goes through Install so partial state is cleaned
+// up before a fresh instance is created.
+export function instanceLifecycleAction(
+  status: AppInstance["status"],
+): "start" | "stop" | null {
+  if (status === "running") return "stop";
+  if (status === "stopped") return "start";
+  return null;
+}
+
+// A failed install can be persisted before target/port resolution finishes.
+// Catalog capability alone therefore cannot prove that the row has usable
+// connection details.
+export function hasAssignedConnection(
+  instance: AppInstance,
+  application: AppApplication | undefined,
+): boolean {
+  return hasPortBinding(application) &&
+    (instance.containerName ?? "").trim() !== "" &&
+    instance.internalPort > 0 &&
+    instance.externalPort > 0 &&
+    (instance.bindAddress ?? "").trim() !== "";
+}
+
 // The line shown in place of the port row for an application that has no port.
 export function instanceSummary(
   application: AppApplication | undefined,

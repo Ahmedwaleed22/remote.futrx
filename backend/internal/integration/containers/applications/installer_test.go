@@ -83,6 +83,18 @@ func testInstaller(t *testing.T, runner *fakeRunner) *Installer {
 	return NewInstaller(runner, testRegistry(t), t.TempDir())
 }
 
+func TestContainerStateRejectsAnEmptyNameWithoutCallingLXD(t *testing.T) {
+	runner := newFakeRunner()
+	installer := testInstaller(t, runner)
+
+	if _, err := installer.containerState(context.Background(), ""); err == nil || !strings.Contains(err.Error(), "container name is required") {
+		t.Fatalf("error = %v, want a missing container name error", err)
+	}
+	if len(runner.calls) != 0 {
+		t.Fatalf("empty name reached LXD: %v", runner.calls)
+	}
+}
+
 // The fixture service application is used throughout: it has an install script the
 // registry can hand the installer, and a port to proxy.
 func serviceSpec(scope svc.Scope, container string) svc.InstallSpec {

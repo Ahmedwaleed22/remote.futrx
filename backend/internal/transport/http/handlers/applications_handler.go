@@ -395,6 +395,7 @@ func sendAppError(w http.ResponseWriter, err error) {
 	case errors.Is(err, serviceapplications.ErrBackendAccess):
 		httptransport.SendErr(w, http.StatusForbidden, err.Error())
 	case errors.Is(err, serviceapplications.ErrAlreadyInstalled),
+		errors.Is(err, serviceapplications.ErrInvalidState),
 		errors.Is(err, serviceapplications.ErrNotRunning),
 		errors.Is(err, serviceapplications.ErrPackageInUse),
 		errors.Is(err, serviceapplications.ErrPackageReserved):

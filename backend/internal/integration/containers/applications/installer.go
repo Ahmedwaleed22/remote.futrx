@@ -514,6 +514,9 @@ func (in *Installer) removeDevice(ctx context.Context, container, device string)
 
 // containerState returns "running", "stopped", "frozen", or "missing".
 func (in *Installer) containerState(ctx context.Context, name string) (string, error) {
+	if strings.TrimSpace(name) == "" {
+		return "", fmt.Errorf("container name is required")
+	}
 	out, err := command.RunWithTimeout(ctx, in.runner, controlTimeout, "info", name)
 	if err != nil {
 		if isMissing(err, out) {
@@ -527,7 +530,7 @@ func (in *Installer) containerState(ctx context.Context, name string) (string, e
 			return strings.TrimSpace(strings.TrimPrefix(line, "status:")), nil
 		}
 	}
-	return "", fmt.Errorf("could not parse state of %s from: %s", name, out)
+	return "", fmt.Errorf("could not parse state of %s from: %s", name, tail(out))
 }
 
 // waitNetwork blocks until the container has an IPv4 address, so the first

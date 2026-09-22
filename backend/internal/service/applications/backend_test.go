@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
@@ -293,6 +294,34 @@ func TestLifecycleMovesTheBackendProcess(t *testing.T) {
 	}
 }
 
+func TestFailedAttemptCannotBeStartedOrStopped(t *testing.T) {
+	host := &recordingHost{}
+	failed := runningInstance()
+	failed.Status = StatusError
+	failed.Error = "install failed"
+	service, store := withInstance(backendImage(nil), failed, host)
+
+	for _, action := range []struct {
+		name string
+		run  func() (View, error)
+	}{
+		{name: "start", run: func() (View, error) { return service.Start(context.Background(), failed.ID) }},
+		{name: "stop", run: func() (View, error) { return service.Stop(context.Background(), failed.ID) }},
+	} {
+		t.Run(action.name, func(t *testing.T) {
+			if _, err := action.run(); !errors.Is(err, ErrInvalidState) {
+				t.Fatalf("error = %v, want ErrInvalidState", err)
+			}
+		})
+	}
+	if len(host.ensured) != 0 || len(host.stopped) != 0 {
+		t.Fatalf("failed attempt reached backend host: ensured=%v stopped=%v", host.ensured, host.stopped)
+	}
+	if len(store.puts) != 0 {
+		t.Fatalf("failed attempt was rewritten: %+v", store.puts)
+	}
+}
+
 // A backend that will not start is an install failure the user can see, not a
 // silently half-installed app.
 func TestInstallRecordsAFailingBackend(t *testing.T) {
@@ -308,6 +337,38 @@ func TestInstallRecordsAFailingBackend(t *testing.T) {
 	if last.Status != StatusError || last.Error == "" {
 		t.Errorf("stored instance = %+v, want an error status carrying the reason", last)
 	}
+}
+
+func TestStoredAndReportedInstanceErrorsAreBounded(t *testing.T) {
+	host := &recordingHost{ensureErr: errors.New("prefix " + strings.Repeat("x", 9000) + " tail")}
+	service, store := backendService(backendImage(nil), nil, host)
+
+	if _, err := service.Install(
+		context.Background(), InstallRequest{ApplicationID: "demo", Scope: ScopeGlobal},
+	); err == nil {
+		t.Fatal("install succeeded despite the backend failure")
+	}
+	stored := store.puts[len(store.puts)-1]
+	if got := len([]rune(stored.Error)); got > maxInstanceErrorRunes {
+		t.Fatalf("stored error has %d runes, want at most %d", got, maxInstanceErrorRunes)
+	}
+	if !strings.Contains(stored.Error, "prefix ") || !strings.HasSuffix(stored.Error, " tail") {
+		t.Fatalf("bounded error lost its context: %q", stored.Error)
+	}
+
+	// The read-side bound also protects records written by older releases.
+	legacy := failedInstanceWithError(strings.Repeat("legacy", 2000))
+	view := service.view(legacy)
+	if got := len([]rune(view.Error)); got > maxInstanceErrorRunes {
+		t.Fatalf("reported error has %d runes, want at most %d", got, maxInstanceErrorRunes)
+	}
+}
+
+func failedInstanceWithError(message string) Instance {
+	instance := runningInstance()
+	instance.Status = StatusError
+	instance.Error = message
+	return instance
 }
 
 // A failed install leaves a record so its error and whatever it left in a
