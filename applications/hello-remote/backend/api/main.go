@@ -4,23 +4,11 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
 	"github.com/futrx-com/remote.futrx.com/pkg/appplugin/pluginrpc"
 )
-
-// visitsFile is where the greeting counter lives inside the instance's
-// DataDir. That directory is the only storage a plugin can rely on: the
-// process is killed on stop, uninstall, and server restart, and restarted
-// lazily by the next call, so anything kept in memory is gone by then. The
-// counter surviving a restart is the whole point of the example.
-const visitsFile = "visits.json"
 
 type backend struct {
 	router           *appplugin.Router
@@ -34,8 +22,18 @@ type backend struct {
 
 // REQUIRED — main must serve a value implementing appplugin.Backend.
 func main() {
-	// OPTIONAL — Router keeps route discovery and dispatch in one table.
-	b := &backend{router: appplugin.NewRouter(), inspectContainer: readContainerInfo}
+	pluginrpc.Serve(newBackend())
+}
+
+// newBackend is the composition root for the example plugin. It owns concrete
+// integrations and route registration so production and tests use one route
+// table rather than assembling subtly different backends.
+func newBackend() *backend {
+	b := &backend{
+		router:           appplugin.NewRouter(),
+		inspectContainer: readContainerInfo,
+		inspectService:   readServiceInfo,
+	}
 
 	b.router.GET("hello", "Greet the calling user", b.hello)
 	b.router.POST("echo", "Echo JSON, query, and headers from the frontend API explorer", b.echo)
@@ -44,7 +42,7 @@ func main() {
 	b.router.GET("visits", "Report how many greetings this install has served", b.readVisits)
 	b.router.POST("visits", "Count one greeting", b.countVisit)
 
-	pluginrpc.Serve(b)
+	return b
 }
 
 // REQUIRED — Describe runs once when the host connects. APIVersion must use
@@ -73,149 +71,4 @@ func (b *backend) Init(instance appplugin.Instance) error {
 // REQUIRED — Handle may be called concurrently.
 func (b *backend) Handle(request appplugin.Request) (appplugin.Response, error) {
 	return b.router.Serve(request), nil
-}
-
-func (b *backend) hello(request appplugin.Request) appplugin.Response {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	// Env carries the install's resolved inputs — here the greeting the user
-	// typed into the install dialog, declared as env[] in application.json.
-	greeting := b.instance.Env["HELLO_GREETING"]
-	// Caller is stamped by the server from the session, never sent by the
-	// browser, so a plugin may trust it. The cookies that authenticated it are
-	// withheld: this plugin can tell who is asking, and cannot act as them.
-	who := request.Caller.Email
-	if who == "" {
-		who = "there"
-	}
-
-	return appplugin.JSON(http.StatusOK, map[string]any{
-		"message": fmt.Sprintf("%s, %s.", greeting, who),
-		"scope":   b.instance.Scope,
-		"project": b.instance.ProjectID,
-		"admin":   request.Caller.IsAdmin,
-		"visits":  b.visits,
-	})
-}
-
-func (b *backend) echo(request appplugin.Request) appplugin.Response {
-	var body any
-	if len(request.Body) > 0 {
-		if err := json.Unmarshal(request.Body, &body); err != nil {
-			body = string(request.Body)
-		}
-	}
-	return appplugin.JSON(http.StatusOK, map[string]any{
-		"method":  request.Method,
-		"query":   request.Query,
-		"headers": request.Headers,
-		"body":    body,
-	})
-}
-
-func (b *backend) container(appplugin.Request) appplugin.Response {
-	b.mu.Lock()
-	name := b.instance.ContainerName
-	inspect := b.inspectContainer
-	b.mu.Unlock()
-
-	if name == "" {
-		return appplugin.JSON(http.StatusConflict, map[string]string{
-			"error": "this install has no LXD container",
-		})
-	}
-	if inspect == nil {
-		inspect = readContainerInfo
-	}
-	info, err := inspect(name)
-	if err != nil {
-		return appplugin.JSON(http.StatusBadGateway, map[string]string{
-			"error": fmt.Sprintf("could not inspect the LXD container: %v", err),
-		})
-	}
-	info.Name = name
-	return appplugin.JSON(http.StatusOK, info)
-}
-
-func (b *backend) service(appplugin.Request) appplugin.Response {
-	b.mu.Lock()
-	service := b.instance.Service
-	internalPort := b.instance.InternalPort
-	externalPort := b.instance.ExternalPort
-	inspect := b.inspectService
-	b.mu.Unlock()
-
-	if externalPort == 0 {
-		return appplugin.JSON(http.StatusConflict, map[string]string{
-			"error": "this install has no exposed service port",
-		})
-	}
-	if inspect == nil {
-		inspect = readServiceInfo
-	}
-	info, err := inspect(externalPort)
-	if err != nil {
-		return appplugin.JSON(http.StatusBadGateway, map[string]string{
-			"error": fmt.Sprintf("could not reach the container service: %v", err),
-		})
-	}
-	info.Service = service
-	info.InternalPort = internalPort
-	info.ExternalPort = externalPort
-	return appplugin.JSON(http.StatusOK, info)
-}
-
-func (b *backend) readVisits(appplugin.Request) appplugin.Response {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return appplugin.JSON(http.StatusOK, map[string]int{"visits": b.visits})
-}
-
-func (b *backend) countVisit(appplugin.Request) appplugin.Response {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	b.visits++
-	if err := writeVisits(b.instance.DataDir, b.visits); err != nil {
-		// The count is still correct in memory, so the call succeeds and the
-		// browser sees it; only its survival across a restart is lost. A
-		// plugin's errors are its own to grade — the host only forwards them.
-		return appplugin.JSON(http.StatusOK, map[string]any{
-			"visits":  b.visits,
-			"warning": fmt.Sprintf("not persisted: %v", err),
-		})
-	}
-	return appplugin.JSON(http.StatusOK, map[string]int{"visits": b.visits})
-}
-
-// readVisits tolerates every kind of missing: no DataDir, no file, or a file
-// this version cannot read. A fresh install and an unreadable one both start
-// at zero rather than failing Init, which would fail the app's start.
-func readVisits(dataDir string) int {
-	if dataDir == "" {
-		return 0
-	}
-	raw, err := os.ReadFile(filepath.Join(dataDir, visitsFile))
-	if err != nil {
-		return 0
-	}
-	var state struct {
-		Visits int `json:"visits"`
-	}
-	if err := json.Unmarshal(raw, &state); err != nil {
-		return 0
-	}
-	return state.Visits
-}
-
-func writeVisits(dataDir string, visits int) error {
-	if dataDir == "" {
-		return fmt.Errorf("no data directory")
-	}
-	raw, err := json.Marshal(map[string]int{"visits": visits})
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(dataDir, visitsFile), raw, 0o600)
 }

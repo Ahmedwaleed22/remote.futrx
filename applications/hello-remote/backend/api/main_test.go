@@ -14,13 +14,7 @@ import (
 // host.
 func newTestBackend(t *testing.T, dataDir string, env map[string]string) *backend {
 	t.Helper()
-	b := &backend{router: appplugin.NewRouter()}
-	b.router.GET("hello", "", b.hello)
-	b.router.POST("echo", "", b.echo)
-	b.router.GET("container", "", b.container)
-	b.router.GET("service", "", b.service)
-	b.router.GET("visits", "", b.readVisits)
-	b.router.POST("visits", "", b.countVisit)
+	b := newBackend()
 	if err := b.Init(appplugin.Instance{
 		ID: "test", ApplicationID: "hello-remote", Scope: "global",
 		DataDir: dataDir, Env: env,

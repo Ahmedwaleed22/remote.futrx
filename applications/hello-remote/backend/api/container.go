@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
 )
 
 const containerInspectionTimeout = 5 * time.Second
@@ -44,4 +47,25 @@ func readContainerInfo(name string) (containerInfo, error) {
 		return containerInfo{}, fmt.Errorf("decode container response: %w", err)
 	}
 	return info, nil
+}
+
+func (b *backend) container(appplugin.Request) appplugin.Response {
+	b.mu.Lock()
+	name := b.instance.ContainerName
+	inspect := b.inspectContainer
+	b.mu.Unlock()
+
+	if name == "" {
+		return appplugin.JSON(http.StatusConflict, map[string]string{
+			"error": "this install has no LXD container",
+		})
+	}
+	info, err := inspect(name)
+	if err != nil {
+		return appplugin.JSON(http.StatusBadGateway, map[string]string{
+			"error": fmt.Sprintf("could not inspect the LXD container: %v", err),
+		})
+	}
+	info.Name = name
+	return appplugin.JSON(http.StatusOK, info)
 }

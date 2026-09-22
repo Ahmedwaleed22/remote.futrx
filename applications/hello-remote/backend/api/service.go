@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/futrx-com/remote.futrx.com/pkg/appplugin"
 )
 
 const serviceInspectionTimeout = 5 * time.Second
@@ -39,4 +41,29 @@ func readServiceInfo(externalPort int) (serviceInfo, error) {
 		return serviceInfo{}, fmt.Errorf("decode health response: %w", err)
 	}
 	return info, nil
+}
+
+func (b *backend) service(appplugin.Request) appplugin.Response {
+	b.mu.Lock()
+	service := b.instance.Service
+	internalPort := b.instance.InternalPort
+	externalPort := b.instance.ExternalPort
+	inspect := b.inspectService
+	b.mu.Unlock()
+
+	if externalPort == 0 {
+		return appplugin.JSON(http.StatusConflict, map[string]string{
+			"error": "this install has no exposed service port",
+		})
+	}
+	info, err := inspect(externalPort)
+	if err != nil {
+		return appplugin.JSON(http.StatusBadGateway, map[string]string{
+			"error": fmt.Sprintf("could not reach the container service: %v", err),
+		})
+	}
+	info.Service = service
+	info.InternalPort = internalPort
+	info.ExternalPort = externalPort
+	return appplugin.JSON(http.StatusOK, info)
 }

@@ -105,7 +105,8 @@ Each has an independent **Refresh** action.
 | File | Shows |
 |---|---|
 | `application.json` | Every author-controlled application model field: identity, both scopes, base image, port, every `env[]` behavior, service, connection mapping, install path, health check, host tool, explicit UI mapping, and backend policy. |
-| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) plus optional `Router` routing and persistence. |
+| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) and the composition root that wires the optional `Router` and concrete inspectors. |
+| `backend/api/greeting.go`, `backend/api/visits.go` | Greeting and echo routes, plus the per-instance persistent counter. |
 | `backend/api/container.go`, `backend/api/service.go` | Bounded host calls into the installed inspection command and the proxied HTTP service. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
 | `backend/container/cmd/hello-remote-service/main.go` | A supervised HTTP service plus the command used by `healthcheck.command`. |
