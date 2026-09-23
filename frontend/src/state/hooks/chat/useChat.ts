@@ -18,11 +18,12 @@ import type {
   TranscriptIndexProgress,
 } from "../../../models/chat";
 import { chatEventStateProjector } from "./chatEventStateProjector";
-import type { ChatMessageBlock } from "../../../models/chatMessage";
+import type { ChatMessageBlock, HydratedTextPart } from "../../../models/chatMessage";
 
 interface UseChatResult {
   meta: ChatMeta | null;
   blocks: ChatMessageBlock[];
+  hydratedTextPart: HydratedTextPart | null;
   eventCount: number;
   hasOlder: boolean;
   loadingOlder: boolean;
@@ -63,6 +64,7 @@ export function useChat(chatId: string): UseChatResult {
   const pendingEventsRef = useRef<ChatEvent[]>([]);
   const pendingFrameRef = useRef<number | null>(null);
   const lastSeqRef = useRef(0);
+  const hydratedTextPartRef = useRef<HydratedTextPart | null>(null);
 
   // The batcher reaches state only through refs and setState updaters, so these
   // three close over nothing that can go stale and take no dependencies. They
@@ -113,6 +115,7 @@ export function useChat(chatId: string): UseChatResult {
     setIndexingProgress(null);
     setHistoryReadyForStream(false);
     lastSeqRef.current = 0;
+    hydratedTextPartRef.current = null;
 
     (async () => {
       try {
@@ -128,7 +131,13 @@ export function useChat(chatId: string): UseChatResult {
           page.lastSeq,
           chatEventStateProjector.latestSequence(page.events)
         );
-        setRenderState(chatEventStateProjector.fromEvents(page.events, page));
+        const initialState = chatEventStateProjector.fromEvents(page.events, page);
+        const tail = initialState.blocks.at(-1);
+        const partIndex = tail?.type === "assistant" ? tail.parts.length - 1 : -1;
+        hydratedTextPartRef.current = tail?.type === "assistant" && tail.parts[partIndex]?.kind === "text"
+          ? { assistantT: tail.t, partIndex }
+          : null;
+        setRenderState(initialState);
         setIndexingProgress(page.indexing ?? null);
         setHistoryReadyForStream(!page.indexing || page.indexing.tailSeqKnown);
         setMeta(m);
@@ -248,6 +257,7 @@ export function useChat(chatId: string): UseChatResult {
   const rewind = useCallback(async (beforeT: number) => {
     const res = await chatApi.rewind(chatId, beforeT);
     clearPendingEvents();
+    hydratedTextPartRef.current = null;
     lastSeqRef.current = Math.max(
       res.lastSeq,
       chatEventStateProjector.latestSequence(res.events)
@@ -282,6 +292,7 @@ export function useChat(chatId: string): UseChatResult {
   return {
     meta,
     blocks: renderState.blocks,
+    hydratedTextPart: hydratedTextPartRef.current,
     eventCount: renderState.eventCount,
     hasOlder: renderState.hasOlder,
     loadingOlder,

@@ -35,6 +35,7 @@ export function ChatContainer({
   const {
     meta,
     blocks,
+    hydratedTextPart,
     eventCount,
     hasOlder,
     loadingOlder,
@@ -201,6 +202,7 @@ export function ChatContainer({
             find={find}
             chat={displayMeta}
             blocks={blocks}
+            hydratedTextPart={hydratedTextPart}
             hasOlder={hasOlder}
             loadingOlder={loadingOlder}
             indexingProgress={indexingProgress}

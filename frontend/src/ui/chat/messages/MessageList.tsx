@@ -1,7 +1,7 @@
 import type { RefObject } from "preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { ChatStatus, TranscriptIndexProgress } from "../../../models/chat";
-import type { ChatMessageBlock } from "../../../models/chatMessage";
+import type { ChatMessageBlock, HydratedTextPart } from "../../../models/chatMessage";
 import { MessageBlock } from "./MessageBlock";
 import { MessageSkeleton } from "./MessageSkeleton";
 import { ThreadEmptyState } from "./ThreadEmptyState";
@@ -13,6 +13,7 @@ const LOAD_MORE_BLOCKS = 80;
 export function MessageList({
   status,
   blocks,
+  hydratedTextPart,
   hasOlder,
   loadingOlder,
   indexingProgress,
@@ -31,6 +32,7 @@ export function MessageList({
 }: {
   status: ChatStatus;
   blocks: ChatMessageBlock[];
+  hydratedTextPart?: HydratedTextPart | null;
   hasOlder: boolean;
   loadingOlder: boolean;
   indexingProgress: TranscriptIndexProgress | null;
@@ -117,6 +119,8 @@ export function MessageList({
             <MessageBlock
               key={`${block.type}-${block.t}-${blockIndex}`}
               block={block}
+              hydratedPartIndex={block.type === "assistant" && block.t === hydratedTextPart?.assistantT
+                ? hydratedTextPart.partIndex : -1}
               streaming={status === "streaming" && blockIndex === blocks.length - 1}
               streamingPresentation={streamingPresentation}
               chatId={chatId}

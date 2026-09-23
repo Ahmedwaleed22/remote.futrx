@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { Markdown, MarkdownBlocks } from "../markdown/Markdown";
-import { parseStreamingMarkdown } from "../markdown/blockParser";
+import { parseMarkdown, parseStreamingMarkdown } from "../markdown/blockParser";
 import { getTextAlignClass, getTextDirection } from "../markdown/bidi";
 
 interface Props {
@@ -9,13 +9,21 @@ interface Props {
   chatId?: string;
   cwd?: string;
   presentation?: "blocks" | "tokens";
+  hydrated?: boolean;
 }
 
 export function StreamingText(props: Props) {
+  // The transcript snapshot was written before this component mounted. Keep it
+  // visible immediately on reconnect, including an unfinished final block.
+  // Later tool calls create new text parts and use the normal reveal path.
+  const hydrated = useRef(props.hydrated ?? false);
   // Capability discovery can finish after a text part starts. Keep that
   // part's presentation stable rather than replacing visible text mid-reply.
   const presentation = useRef(props.presentation ?? "tokens");
   const stream = useRef({ text: props.text, requested: props.streaming, active: props.streaming });
+  if (props.hydrated) hydrated.current = true;
+  if (hydrated.current) return <HydratedText {...props} />;
+
   // sendPrompt marks the thread streaming before the next user/assistant event
   // arrives. The previous reply may still be the last block in that window.
   // Keep its settled Markdown visible until this text part actually changes.
@@ -32,6 +40,11 @@ export function StreamingText(props: Props) {
   return presentation.current === "blocks"
     ? <BlockStreamingText {...currentProps} />
     : <TokenStreamingText {...currentProps} />;
+}
+
+function HydratedText({ text, chatId, cwd }: Props) {
+  const blocks = useMemo(() => parseMarkdown(text), [text]);
+  return <MarkdownBlocks blocks={blocks} chatId={chatId} cwd={cwd} streaming={false} />;
 }
 
 function BlockStreamingText({ text, streaming, chatId, cwd }: Props) {

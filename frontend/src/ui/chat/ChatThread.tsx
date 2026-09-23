@@ -1,6 +1,6 @@
 import type { ComponentChildren, RefObject } from "preact";
 import type { ChatMeta, ChatStatus, TranscriptIndexProgress } from "../../models/chat";
-import type { ChatMessageBlock } from "../../models/chatMessage";
+import type { ChatMessageBlock, HydratedTextPart } from "../../models/chatMessage";
 import type { ChatFind } from "../../state/hooks/chat/useChatFind";
 import { ChatComposer, type ChatComposerProps } from "./composer/ChatComposer";
 import { ChatFindBar } from "./find/ChatFindBar";
@@ -13,6 +13,7 @@ export function ChatThread({
   chat,
   find,
   blocks,
+  hydratedTextPart,
   hasOlder,
   loadingOlder,
   indexingProgress,
@@ -37,6 +38,7 @@ export function ChatThread({
   chat: ChatMeta;
   find: ChatFind;
   blocks: ChatMessageBlock[];
+  hydratedTextPart?: HydratedTextPart | null;
   hasOlder: boolean;
   loadingOlder: boolean;
   indexingProgress: TranscriptIndexProgress | null;
@@ -79,6 +81,7 @@ export function ChatThread({
             status={status}
             streamingPresentation={streamingPresentation}
             blocks={blocks}
+            hydratedTextPart={hydratedTextPart}
             hasOlder={hasOlder}
             loadingOlder={loadingOlder}
             indexingProgress={indexingProgress}

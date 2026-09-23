@@ -5,6 +5,7 @@ import type { ChatInteractionResponder } from "../../../types/chatApi";
 
 export function AssistantMessage({
   block,
+  hydratedPartIndex,
   streaming,
   chatId,
   cwd,
@@ -13,6 +14,7 @@ export function AssistantMessage({
   streamingPresentation,
 }: {
   block: AssistantMessageBlock;
+  hydratedPartIndex?: number;
   streaming: boolean;
   chatId?: string;
   cwd?: string;
@@ -26,6 +28,7 @@ export function AssistantMessage({
     <div class="codex-assistant-block min-w-0 space-y-2 max-w-full">
       <AssistantPartList
         parts={block.parts}
+        hydratedPartIndex={hydratedPartIndex}
         streaming={streaming && !block.isComplete}
         streamingPresentation={streamingPresentation}
         chatId={chatId}

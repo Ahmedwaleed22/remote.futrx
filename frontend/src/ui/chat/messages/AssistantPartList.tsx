@@ -13,6 +13,7 @@ type ToolPart = Extract<AssistantMessagePart, { kind: "tool" }>;
 
 export function AssistantPartList({
   parts,
+  hydratedPartIndex,
   streaming,
   chatId,
   cwd,
@@ -21,6 +22,7 @@ export function AssistantPartList({
   streamingPresentation,
 }: {
   parts: AssistantMessagePart[];
+  hydratedPartIndex?: number;
   streaming: boolean;
   chatId?: string;
   cwd?: string;
@@ -28,13 +30,14 @@ export function AssistantPartList({
   onRespondInteraction?: ChatInteractionResponder;
   streamingPresentation: "blocks" | "tokens";
 }) {
-  return <>{renderAssistantParts(parts, { streaming, chatId, cwd, onAnswerQuestion, onRespondInteraction, streamingPresentation })}</>;
+  return <>{renderAssistantParts(parts, { streaming, hydratedPartIndex, chatId, cwd, onAnswerQuestion, onRespondInteraction, streamingPresentation })}</>;
 }
 
 function renderAssistantParts(
   parts: AssistantMessagePart[],
   context: {
     streaming: boolean;
+    hydratedPartIndex?: number;
     chatId?: string;
     cwd?: string;
     onAnswerQuestion?: (text: string) => void;
@@ -74,6 +77,7 @@ function renderAssistantParts(
         <div key={index} class="codex-prose min-w-0 max-w-full text-[14.5px] leading-[1.7] text-ink-100 [overflow-wrap:anywhere]">
           <StreamingText
             text={part.text}
+            hydrated={index === context.hydratedPartIndex}
             streaming={context.streaming && index === parts.length - 1}
             presentation={context.streamingPresentation}
             chatId={context.chatId}
