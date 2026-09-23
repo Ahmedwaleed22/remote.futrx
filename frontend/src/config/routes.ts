@@ -5,8 +5,8 @@ function applicationPath(path: ApplicationPath): ApplicationPath {
 }
 
 /**
- * Encodes a plugin route for a URL while leaving its separators alone, so a
- * plugin sees the path it declared ("kv/greeting") rather than an escaped one.
+ * Encodes a backend route for a URL while leaving its separators alone, so a
+ * backend sees the path it declared ("kv/greeting") rather than an escaped one.
  */
 function backendSuffix(path: string): string {
   const trimmed = path.replace(/^\/+/, "");
@@ -125,7 +125,7 @@ export const API_ROUTES = {
     item: (appId: string) => `/api/applications/${encodeURIComponent(appId)}`,
     action: (appId: string, action: string) =>
       `/api/applications/${encodeURIComponent(appId)}/${action}`,
-    /** An instance's Go plugin: the bare prefix describes it, deeper paths call it. */
+    /** An instance's Go backend: the bare prefix describes it, deeper paths call it. */
     backend: (appId: string, path = "") =>
       `/api/applications/${encodeURIComponent(appId)}/backend${backendSuffix(path)}`,
   },

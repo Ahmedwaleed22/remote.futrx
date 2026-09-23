@@ -89,7 +89,7 @@ type Dependencies struct {
 	AppRegistry  serviceapplications.Registry
 	AppInstaller serviceapplications.Installer
 	AppPorts     serviceapplications.PortAllocator
-	// AppBackends runs the Go plugins applications ship in their backend/ directory.
+	// AppBackends runs the application backends applications ship in their backend/ directory.
 	// Leaving it nil keeps every other application capability working and
 	// reports backend calls as unavailable.
 	AppBackends serviceapplications.BackendHost
@@ -97,6 +97,12 @@ type Dependencies struct {
 	// of packages an administrator uploaded. Nil leaves the catalog to whatever
 	// the binary was built with.
 	AppPackages serviceapplications.PackageCatalog
+	// ApplicationLifecycle receives successful application catalog and
+	// installed-copy transitions. Subscribers are wired at the process root.
+	ApplicationLifecycle serviceapplications.ApplicationLifecyclePublisher
+	// ApplicationEvents is the process-wide validated event stream routed to
+	// subscribed application backends.
+	ApplicationEvents serviceapplications.EventSource
 }
 
 // ScheduleLimits mirrors the deployment's scheduled-task guardrails without
@@ -328,6 +334,8 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			deps.AppPorts,
 			serviceapplications.WithBackendHost(deps.AppBackends),
 			serviceapplications.WithPackageCatalog(deps.AppPackages),
+			serviceapplications.WithLifecyclePublisher(deps.ApplicationLifecycle),
+			serviceapplications.WithEventSource(ctx, deps.ApplicationEvents),
 		)
 	}
 
