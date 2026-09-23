@@ -32,6 +32,7 @@ export function ChatThread({
   onRewind,
   actions,
   projectName,
+  streamingPresentation,
 }: {
   chat: ChatMeta;
   find: ChatFind;
@@ -57,6 +58,7 @@ export function ChatThread({
    *  strip below it on mobile — only ever one of the two is visible. */
   actions: ComponentChildren;
   projectName?: string;
+  streamingPresentation: "blocks" | "tokens";
 }) {
   return (
     <div class="codex-thread flex-1 h-full flex min-h-0 overflow-hidden bg-canvas">
@@ -75,6 +77,7 @@ export function ChatThread({
         <div class="relative flex-1 min-h-0">
           <MessageList
             status={status}
+            streamingPresentation={streamingPresentation}
             blocks={blocks}
             hasOlder={hasOlder}
             loadingOlder={loadingOlder}

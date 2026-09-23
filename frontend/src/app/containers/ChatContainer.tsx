@@ -16,6 +16,8 @@ import { useChatComposerController } from "../../state/hooks/chat/useChatCompose
 import { useChatDrawerController } from "../../state/hooks/chat/useChatDrawerController";
 import { useChatFind } from "../../state/hooks/chat/useChatFind";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
+import { useAgentCapabilities } from "../../state/hooks/chat/useAgentCapabilities";
+import { streamingPresentationFor } from "../../config/agents";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
 import { useDismissShortcut } from "../../state/hooks/shared/useDismissShortcut.ts";
 import { useTerminalOverlayController } from "../../ui/chat/terminal/useTerminalOverlayController";
@@ -50,6 +52,8 @@ export function ChatContainer({
   } = useChat(chat.id);
   const preferences = useChatPreferences({ chat, loadedMeta: meta, refreshMeta });
   const { displayMeta, displayMode, selectedSkills } = preferences;
+  const agentCapabilities = useAgentCapabilities(displayMeta.projectId);
+  const streamingPresentation = streamingPresentationFor(agentCapabilities.catalog, displayMeta.provider);
   const attachmentBasePath = chatAttachmentService.basePath(displayMeta, projects);
   const project = projects.find((candidate) => candidate.id === displayMeta.projectId);
   const composer = useChatComposerController({
@@ -201,6 +205,7 @@ export function ChatContainer({
             loadingOlder={loadingOlder}
             indexingProgress={indexingProgress}
             status={status}
+            streamingPresentation={streamingPresentation}
             error={error}
             composer={composerView}
             showJump={composer.scroll.showJump}

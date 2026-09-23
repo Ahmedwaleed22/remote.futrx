@@ -27,6 +27,7 @@ export function MessageList({
   onRespondInteraction,
   onLoadOlder,
   onRewind,
+  streamingPresentation,
 }: {
   status: ChatStatus;
   blocks: ChatMessageBlock[];
@@ -44,6 +45,7 @@ export function MessageList({
   onRespondInteraction?: ChatInteractionResponder;
   onLoadOlder: () => Promise<void>;
   onRewind: (t: number, text: string) => void;
+  streamingPresentation: "blocks" | "tokens";
 }) {
   const [visibleBlockCount, setVisibleBlockCount] = useState(INITIAL_VISIBLE_BLOCKS);
   const firstVisibleIndex = Math.max(0, blocks.length - visibleBlockCount);
@@ -116,6 +118,7 @@ export function MessageList({
               key={`${block.type}-${block.t}-${blockIndex}`}
               block={block}
               streaming={status === "streaming" && blockIndex === blocks.length - 1}
+              streamingPresentation={streamingPresentation}
               chatId={chatId}
               cwd={cwd}
               onAnswerQuestion={onAnswerQuestion}

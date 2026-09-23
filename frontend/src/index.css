@@ -400,6 +400,16 @@ html[data-theme="light"] {
   .codex-prose h3 { font-size: 1.02em; }
   .codex-prose > *:first-child { margin-top: 0; }
 
+  /* A newly mounted block fades in once. Re-rendering or settling an older
+     block cannot replay the transition, and opacity never changes layout. */
+  @media (prefers-reduced-motion: no-preference) {
+    .markdown-block-reveal {
+      transition: opacity 600ms ease-out;
+
+      @starting-style { opacity: 0; }
+    }
+  }
+
 
   /* -------------------------------------------------------------------------
      Buttons

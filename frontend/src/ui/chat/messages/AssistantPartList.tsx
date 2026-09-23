@@ -18,6 +18,7 @@ export function AssistantPartList({
   cwd,
   onAnswerQuestion,
   onRespondInteraction,
+  streamingPresentation,
 }: {
   parts: AssistantMessagePart[];
   streaming: boolean;
@@ -25,8 +26,9 @@ export function AssistantPartList({
   cwd?: string;
   onAnswerQuestion?: (text: string) => void;
   onRespondInteraction?: ChatInteractionResponder;
+  streamingPresentation: "blocks" | "tokens";
 }) {
-  return <>{renderAssistantParts(parts, { streaming, chatId, cwd, onAnswerQuestion, onRespondInteraction })}</>;
+  return <>{renderAssistantParts(parts, { streaming, chatId, cwd, onAnswerQuestion, onRespondInteraction, streamingPresentation })}</>;
 }
 
 function renderAssistantParts(
@@ -37,6 +39,7 @@ function renderAssistantParts(
     cwd?: string;
     onAnswerQuestion?: (text: string) => void;
     onRespondInteraction?: ChatInteractionResponder;
+    streamingPresentation: "blocks" | "tokens";
   }
 ): ComponentChildren[] {
   const rendered: ComponentChildren[] = [];
@@ -69,7 +72,13 @@ function renderAssistantParts(
     if (part.kind === "text") {
       rendered.push(
         <div key={index} class="codex-prose min-w-0 max-w-full text-[14.5px] leading-[1.7] text-ink-100 [overflow-wrap:anywhere]">
-          <StreamingText text={part.text} streaming={context.streaming} chatId={context.chatId} cwd={context.cwd} />
+          <StreamingText
+            text={part.text}
+            streaming={context.streaming && index === parts.length - 1}
+            presentation={context.streamingPresentation}
+            chatId={context.chatId}
+            cwd={context.cwd}
+          />
         </div>
       );
       return;

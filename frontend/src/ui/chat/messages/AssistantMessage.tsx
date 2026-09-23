@@ -10,6 +10,7 @@ export function AssistantMessage({
   cwd,
   onAnswerQuestion,
   onRespondInteraction,
+  streamingPresentation,
 }: {
   block: AssistantMessageBlock;
   streaming: boolean;
@@ -17,6 +18,7 @@ export function AssistantMessage({
   cwd?: string;
   onAnswerQuestion?: (text: string) => void;
   onRespondInteraction?: ChatInteractionResponder;
+  streamingPresentation: "blocks" | "tokens";
 }) {
   const reasoningActive = block.parts.at(-1)?.kind === "thinking";
 
@@ -24,7 +26,8 @@ export function AssistantMessage({
     <div class="codex-assistant-block min-w-0 space-y-2 max-w-full">
       <AssistantPartList
         parts={block.parts}
-        streaming={streaming}
+        streaming={streaming && !block.isComplete}
+        streamingPresentation={streamingPresentation}
         chatId={chatId}
         cwd={cwd}
         onAnswerQuestion={onAnswerQuestion}

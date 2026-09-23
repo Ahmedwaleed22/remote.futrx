@@ -12,6 +12,7 @@ export function MessageBlock({
   onAnswerQuestion,
   onRespondInteraction,
   onRewind,
+  streamingPresentation,
 }: {
   block: ChatMessageBlock;
   streaming: boolean;
@@ -20,6 +21,7 @@ export function MessageBlock({
   onAnswerQuestion?: (text: string) => void;
   onRespondInteraction?: ChatInteractionResponder;
   onRewind?: (t: number, text: string) => void;
+  streamingPresentation: "blocks" | "tokens";
 }) {
   if (block.type === "user") {
     return <UserMessage text={block.text} t={block.t} onRewind={onRewind} />;
@@ -33,6 +35,7 @@ export function MessageBlock({
     <AssistantMessage
       block={block}
       streaming={streaming}
+      streamingPresentation={streamingPresentation}
       chatId={chatId}
       cwd={cwd}
       onAnswerQuestion={onAnswerQuestion}

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "preact/hooks";
-import { Markdown } from "../markdown/Markdown";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { Markdown, MarkdownBlocks } from "../markdown/Markdown";
+import { parseStreamingMarkdown } from "../markdown/blockParser";
 import { getTextAlignClass, getTextDirection } from "../markdown/bidi";
 
 interface Props {
@@ -7,6 +8,37 @@ interface Props {
   streaming: boolean;
   chatId?: string;
   cwd?: string;
+  presentation?: "blocks" | "tokens";
+}
+
+export function StreamingText(props: Props) {
+  // Capability discovery can finish after a text part starts. Keep that
+  // part's presentation stable rather than replacing visible text mid-reply.
+  const presentation = useRef(props.presentation ?? "tokens");
+  const stream = useRef({ text: props.text, requested: props.streaming, active: props.streaming });
+  // sendPrompt marks the thread streaming before the next user/assistant event
+  // arrives. The previous reply may still be the last block in that window.
+  // Keep its settled Markdown visible until this text part actually changes.
+  if (!props.streaming) {
+    stream.current.active = false;
+  } else if (!stream.current.requested && props.text === stream.current.text) {
+    stream.current.active = false;
+  } else if (props.text !== stream.current.text) {
+    stream.current.active = true;
+  }
+  stream.current.text = props.text;
+  stream.current.requested = props.streaming;
+  const currentProps = { ...props, streaming: stream.current.active };
+  return presentation.current === "blocks"
+    ? <BlockStreamingText {...currentProps} />
+    : <TokenStreamingText {...currentProps} />;
+}
+
+function BlockStreamingText({ text, streaming, chatId, cwd }: Props) {
+  const blocks = useMemo(() => parseStreamingMarkdown(text, !streaming), [text, streaming]);
+  const hasStreamed = useRef(streaming);
+  if (streaming) hasStreamed.current = true;
+  return <MarkdownBlocks blocks={blocks} chatId={chatId} cwd={cwd} streaming={hasStreamed.current} />;
 }
 
 // Typewriter-style renderer: buffers incoming text and reveals it at a steady
@@ -17,7 +49,7 @@ interface Props {
 //   2KB chunk doesn't take 25 seconds to animate.
 // • When `streaming` flips false, snap to the full text immediately.
 // • For history replay (mounted with streaming=false), render instantly.
-export function StreamingText({ text, streaming, chatId, cwd }: Props) {
+function TokenStreamingText({ text, streaming, chatId, cwd }: Props) {
   const [displayed, setDisplayed] = useState<string>(() => (streaming ? "" : text));
   const targetRef = useRef(text);
   targetRef.current = text;
