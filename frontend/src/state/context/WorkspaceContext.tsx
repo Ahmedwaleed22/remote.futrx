@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { createContext } from "preact";
-import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useReducer } from "preact/hooks";
+import { useCallback, useContext, useEffect, useMemo } from "preact/hooks";
 import type { ChatMeta } from "../../models/chat";
 import type { ProjectMeta } from "../../models/project";
 import { chatApi } from "../../api/chatApi";
@@ -9,12 +9,11 @@ import { projectApi } from "../../api/projectApi";
 import { useWorkspaceData } from "../hooks/workspace/useWorkspaceData";
 import { useWorkspacePushLifecycle } from "../hooks/push/useWorkspacePushLifecycle";
 import { useWorkspaceTitle } from "../hooks/workspace/useWorkspaceTitle";
+import { useWorkspaceNavigation } from "../hooks/workspace/useWorkspaceNavigation";
 import { useUserSettingsContext } from "./UserSettingsContext";
 import type { SettingsTab, WorkspaceUiState } from "../../models/workspace";
-import { workspaceUiState } from "./workspaceUiState";
 import { workspaceSidebarService } from "../../services/workspace/workspaceSidebarService.ts";
 import { agentCapabilityCatalogStore } from "../stores/agents/agentCapabilityCatalogStore";
-import { currentWorkspaceRoute, navigateWorkspace } from "./workspaceNavigation";
 import { useAuthContext } from "./AuthContext";
 
 interface WorkspaceContextValue {
@@ -57,14 +56,10 @@ export function WorkspaceProvider({
   const data = useWorkspaceData(enabled);
   const { auth } = useAuthContext();
   const { settings } = useUserSettingsContext();
-  const [ui, dispatch] = useReducer(
-    workspaceUiState.reduce,
-    null,
-    () => {
-      const route = currentWorkspaceRoute();
-      return workspaceUiState.createInitial(route.chatId, route.tab, route.view);
-    }
-  );
+  const {
+    ui, selectChat, openSidebar, closeSidebar, showChat, showSettings,
+    selectSettingsTab, showProjectContainers, openCreateProject, closeCreateProject,
+  } = useWorkspaceNavigation(data.chats, data.loaded, enabled);
   const activeChat = workspaceSidebarService.activeChat(data.chats, ui.activeChatId);
   const account = auth.email || auth.adminEmail;
   const capabilityUserId = account || "anonymous";
@@ -73,17 +68,11 @@ export function WorkspaceProvider({
   ////////////////
   // Handlers
   ////////////////
-  const openPushChat = useCallback((chatId: string) => {
-    navigateWorkspace({ view: "chat", chatId, tab: "appearance" });
-    dispatch({ type: "select-chat", chatId });
-  }, []);
-
   const activateNewChat = useCallback((chat: ChatMeta): ChatMeta => {
     data.seedChat(chat);
-    navigateWorkspace({ view: "chat", chatId: chat.id, tab: "appearance" });
-    dispatch({ type: "select-chat", chatId: chat.id });
+    selectChat(chat.id);
     return chat;
-  }, [data.seedChat]);
+  }, [data.seedChat, selectChat]);
 
   const createProject = useCallback(async (name: string): Promise<ProjectMeta> => {
     const project = await projectApi.create(name);
@@ -113,44 +102,9 @@ export function WorkspaceProvider({
     await projectApi.reorder(projectIds);
   }, []);
 
-  // Navigation commands update the address bar and workspace view together.
-  const selectChat = useCallback((chatId: string | null) => {
-    navigateWorkspace({ view: "chat", chatId, tab: "appearance" });
-    dispatch({ type: "select-chat", chatId });
-  }, []);
-  const openSidebar = useCallback(() => dispatch({ type: "open-sidebar" }), []);
-  const closeSidebar = useCallback(() => dispatch({ type: "close-sidebar" }), []);
-  const showChat = useCallback(() => {
-    navigateWorkspace({ view: "chat", chatId: ui.activeChatId, tab: ui.settingsTab });
-    dispatch({ type: "show-chat" });
-  }, [ui.activeChatId, ui.settingsTab]);
-  const showSettings = useCallback(() => {
-    navigateWorkspace({ view: "settings", chatId: null, tab: ui.settingsTab });
-    dispatch({ type: "show-settings" });
-  }, [ui.settingsTab]);
-  const selectSettingsTab = useCallback((tab: SettingsTab) => {
-    navigateWorkspace({ view: "settings", chatId: null, tab });
-    dispatch({ type: "select-settings-tab", tab });
-  }, []);
-  const showProjectContainers = useCallback((projectId: string | null) => {
-    navigateWorkspace({ view: "chat", chatId: null, tab: "appearance" });
-    dispatch({ type: "show-project-containers", projectId });
-  }, []);
-  const openCreateProject = useCallback(() => dispatch({ type: "open-create-project" }), []);
-  const closeCreateProject = useCallback(() => dispatch({ type: "close-create-project" }), []);
-
   ////////////////
   // Effects
   ////////////////
-  useEffect(() => {
-    const restore = () => {
-      const route = currentWorkspaceRoute();
-      dispatch({ type: "restore-route", chatId: route.chatId, view: route.view, tab: route.tab });
-    };
-    window.addEventListener("popstate", restore);
-    return () => window.removeEventListener("popstate", restore);
-  }, []);
-
   useEffect(() => {
     if (!enabled || !activeChat) return;
     void agentCapabilityCatalogStore.getState()
@@ -162,7 +116,7 @@ export function WorkspaceProvider({
     account: enabled ? account : "",
     activeChatId: ui.activeChatId,
     view: ui.view,
-    openChat: openPushChat,
+    openChat: selectChat,
   });
 
   useWorkspaceTitle({
@@ -172,36 +126,6 @@ export function WorkspaceProvider({
     enabled,
     loaded: data.loaded,
   });
-
-  useEffect(() => {
-    if (ui.view !== "chat" || !data.loaded) return;
-    const chatId = workspaceSidebarService.initialChatId(enabled, ui.activeChatId, data.chats);
-    if (chatId) {
-      navigateWorkspace({ view: "chat", chatId, tab: ui.settingsTab }, true);
-      dispatch({ type: "select-chat", chatId });
-    }
-  }, [data.chats, data.loaded, enabled, ui.activeChatId, ui.settingsTab, ui.view]);
-
-  // Layout effect, not a passive one: the render that drops the chat from the
-  // list already resolves activeChat to null, so a passive effect would let the
-  // browser paint the "no chat selected" screen before the handover lands.
-  useLayoutEffect(() => {
-    // Wait for the first snapshot: a chat id handed over by a notification tap
-    // would otherwise be discarded against a not-yet-populated list.
-    if (!data.loaded || ui.view !== "chat") return;
-    if (workspaceSidebarService.isActiveChatMissing(data.chats, ui.activeChatId)) {
-      // Hand straight over to the next chat instead of clearing the selection:
-      // clearing renders the "no chat selected" empty state for the one frame
-      // before the initial-chat effect picks a replacement, which reads as a
-      // flash of the New project screen after deleting a chat.
-      const replacement = workspaceSidebarService.replacementChatId(data.chats);
-      navigateWorkspace({ view: "chat", chatId: replacement, tab: ui.settingsTab }, true);
-      dispatch({
-        type: "select-chat",
-        chatId: replacement,
-      });
-    }
-  }, [data.chats, data.loaded, ui.activeChatId, ui.settingsTab, ui.view]);
 
   ////////////////
   // Context Value
