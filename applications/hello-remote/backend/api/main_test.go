@@ -82,7 +82,7 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 			Status:             "ok",
 			Message:            "Hello from the container service.",
 			Version:            "build-id",
-			ProvisionedVersion: "11",
+			ProvisionedVersion: "12",
 		}, nil
 	}
 
@@ -96,8 +96,8 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 	if got := body["externalPort"]; got != float64(4781) {
 		t.Errorf("external port = %v, want 4781", got)
 	}
-	if got := body["provisionedVersion"]; got != "11" {
-		t.Errorf("provisionedVersion = %v, want 11", got)
+	if got := body["provisionedVersion"]; got != "12" {
+		t.Errorf("provisionedVersion = %v, want 12", got)
 	}
 }
 
@@ -229,41 +229,12 @@ func TestGreetingVisitSucceedsWhenPublicationFails(t *testing.T) {
 	}
 }
 
-func TestReceivedEventsAreRecordedAndExposed(t *testing.T) {
+func TestBackendPublishesWithoutSubscribing(t *testing.T) {
 	b := newTestBackend(t, t.TempDir(), nil)
-	if err := b.InitPublisher(&recordingEventPublisher{}); err != nil {
-		t.Fatalf("init publisher: %v", err)
+	if _, ok := any(b).(applications.PublisherBackend); !ok {
+		t.Fatal("backend does not implement applications.PublisherBackend")
 	}
-	payload := json.RawMessage(`{"applicationId":"hello-remote"}`)
-	event := applications.Event{
-		Source: applications.EventSource{
-			ApplicationID: "remote",
-			InstanceID:    "test",
-			Scope:         "global",
-			Publisher:     "remote.applications",
-		},
-		Name:    "installed",
-		Version: 1,
-		Payload: payload,
-	}
-	if err := b.OnEvent(event); err != nil {
-		t.Fatalf("receive event: %v", err)
-	}
-	payload[0] = 'x' // The recorded event must own its payload bytes.
-
-	body := call(t, b, http.MethodGet, "events")
-	if body["publisherReady"] != true || body["received"] != float64(1) {
-		t.Fatalf("event activity = %#v", body)
-	}
-	last, ok := body["lastEvent"].(map[string]any)
-	if !ok {
-		t.Fatalf("lastEvent = %#v", body["lastEvent"])
-	}
-	if last["name"] != "installed" || last["version"] != float64(1) {
-		t.Fatalf("last event identity = %#v", last)
-	}
-	lastPayload, ok := last["payload"].(map[string]any)
-	if !ok || lastPayload["applicationId"] != "hello-remote" {
-		t.Fatalf("last event payload = %#v", last["payload"])
+	if _, ok := any(b).(applications.EventSubscriber); ok {
+		t.Fatal("backend unexpectedly implements applications.EventSubscriber")
 	}
 }

@@ -20,7 +20,7 @@ test("loads service facts and removes its refresh listener on cleanup", async ()
       return Promise.resolve({
         service: "hello-remote",
         version: "build-1",
-        provisionedVersion: "11",
+        provisionedVersion: "12",
         externalPort: 4781,
         internalPort: 4780,
         message: "Hello from the container service.",
@@ -38,7 +38,7 @@ test("loads service facts and removes its refresh listener on cleanup", async ()
   assert.equal(elements.refresh.disabled, false);
   assert.equal(elements.facts.hidden, false);
   assert.equal(elements.fields.get("unit").textContent, "hello-remote");
-  assert.equal(elements.fields.get("provisioning").textContent, "11");
+  assert.equal(elements.fields.get("provisioning").textContent, "12");
   assert.equal(elements.fields.get("ports").textContent, "127.0.0.1:4781 → container:4780/tcp");
   assert.equal(elements.status.textContent, "Hello from the container service.");
 

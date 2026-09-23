@@ -73,6 +73,9 @@ func TestHelloRemoteDemonstratesApplicationCapabilities(t *testing.T) {
 		application.Publishers[0].Events[0].Version != 1 {
 		t.Fatalf("greeting event contract = %+v", application.Publishers)
 	}
+	if len(application.Subscriptions) != 0 {
+		t.Fatalf("hello remote should publish only, subscriptions = %+v", application.Subscriptions)
+	}
 	if application.Container == nil ||
 		!slices.Contains(application.Container.Commands, "hello-remote-info") ||
 		!slices.Contains(application.Container.Commands, "hello-remote-service") {

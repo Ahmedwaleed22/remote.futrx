@@ -42,7 +42,7 @@ func (b *api) countVisit(applications.Request) applications.Response {
 	// Never hold application state locks across host/RPC publication. Publishing
 	// crosses back into Remote and may cause callbacks into this process; that
 	// boundary does not belong inside the counter's critical section.
-	publicationErr := b.Events.PublishGreeting(visits)
+	publicationErr := b.Publisher.PublishGreeting(visits)
 	if publicationErr != nil {
 		// Publishing is an observable side effect, not the greeting operation's
 		// transaction. The count remains successful and the warning tells the UI

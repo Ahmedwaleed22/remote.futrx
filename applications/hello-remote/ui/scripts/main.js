@@ -8,7 +8,6 @@
 // example.
 
 import { mountContainerPanel } from "./containerPanel.js";
-import { mountEventPanel } from "./eventPanel.js";
 import { mountServicePanel } from "./servicePanel.js";
 import { activateFrontendShowcase } from "./showcase.js";
 
@@ -134,17 +133,10 @@ function renderPanel(host, remote, context) {
       target(context),
       () => disposed
     );
-    const unmountEventPanel = mountEventPanel(
-      host,
-      remote.backend,
-      target(context),
-      () => disposed
-    );
     detach = () => {
       button.removeEventListener("click", onClick);
       unmountContainerPanel();
       unmountServicePanel();
-      unmountEventPanel();
     };
 
     remote.backend.call("hello", target(context)).then(show).catch(fail);

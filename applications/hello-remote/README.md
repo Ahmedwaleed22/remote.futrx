@@ -13,9 +13,9 @@ The catalog's reference example. It combines broad application capabilities:
   server compiles and runs as a child process, reachable at
   `/api/applications/<instance>/backend/<path>`.
 - **`backend/lifecycle/`** — the importable sibling package that owns event
-  publication, subscription, and activity state inside that same process.
-- **Application events** — a declared `greetings.greeted` publisher plus
-  subscriptions to Remote's application lifecycle and its own published event.
+  publication inside that same process.
+- **Application events** — a declared `greetings.greeted` publisher. Hello
+  Remote does not subscribe to core or application events.
 - **`ui/`** — assets the SPA loads for users who installed the application, which
   call that backend through `remote.backend.call(...)`.
 - **`skills/`** — an agent skill published into project workspaces.
@@ -85,7 +85,7 @@ directory is a visual catalog of the frontend extension API:
 | Every project row | A context-aware icon with that project's id and name |
 | Chat header and composer | Icons that receive the active project, chat, and working directory context |
 | This application's card | Labeled `ui.addButton` controls, scoped with `when` |
-| A panel below the applications list | Shows the greeting, counter, backend event activity, supervised service, port mapping, and live container facts |
+| A panel below the applications list | Shows the greeting, counter, supervised service, port mapping, and live container facts |
 | Project settings | A custom panel mounted through `ui.register` with cleanup |
 
 Every API icon opens the same capability explorer. It displays `apiVersion`,
@@ -109,17 +109,14 @@ call — so a count that survives is a count that reached `DataDir`. Restart the
 server, open the panel, and the number is still there.
 
 Each successful counter increment also publishes the manifest-declared
-`greetings.greeted` event with a versioned JSON payload. Hello Remote subscribes
-to that event through its canonical
-`applications.hello-remote.greetings` name and to all seven events from
-`remote.applications`. `backend/lifecycle/` implements the optional publisher
-and subscriber contracts and protects its own event state. The
-`backend/api/` composition root embeds that owner into the value passed to
-`rpc.Serve`, so its methods participate in the same handshake and process as
-the required API methods. The API exposes a lifecycle snapshot through
-`GET events`. Publication happens outside the visit-counter lock and a
-publication failure becomes a response warning; it never rolls back a
-greeting.
+`greetings.greeted` event with a versioned JSON payload.
+`backend/lifecycle/` implements only the optional publisher contract, and the
+`backend/api/` composition root embeds that publisher into the value passed to
+`rpc.Serve`. The manifest deliberately declares no subscriptions: Remote core
+publishes its application lifecycle events automatically, independently of
+whether Hello Remote consumes them. Publication happens outside the
+visit-counter lock and a publication failure becomes a response warning; it
+never rolls back a greeting.
 
 The service section crosses the allocated host proxy and reports the systemd
 unit, build version, custom-provisioning version, port mapping, and greeting
@@ -131,11 +128,11 @@ memory, and uptime. Each has an independent **Refresh** action.
 
 | File | Shows |
 |---|---|
-| `application.json` | The application identity, both scopes, base image, real greeting input, port, service, install path, health check, host tool, publishers, subscriptions, explicit UI mapping, and backend policy. |
+| `application.json` | The application identity, both scopes, base image, real greeting input, port, service, install path, health check, host tool, publisher, explicit UI mapping, and backend policy. |
 | `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) and the composition root that wires the `Router`, concrete inspectors, and embedded lifecycle owner into one served backend. |
 | `backend/api/greeting.go`, `backend/api/visits.go` | Greeting and echo routes, the per-instance persistent counter, and the request-side trigger that asks the lifecycle owner to publish. |
 | `backend/api/container.go`, `backend/api/service.go` | Bounded host calls into the installed inspection command and the proxied HTTP service. |
-| `backend/lifecycle/events.go` | Publisher/event identity, `InitPublisher`, `OnEvent`, publication, concurrency-safe received-event state, and immutable activity snapshots. It is imported by `backend/api`; it is not another process. |
+| `backend/lifecycle/publisher.go` | Publisher/event identity, `InitPublisher`, and greeting publication. It is imported by `backend/api`; it is not another process. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
 | `backend/container/cmd/hello-remote-service/` | A supervised HTTP service with separate command dispatch, configuration decoding, serving, and health-probe owners. |
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without backend-owned shell. |
@@ -143,7 +140,7 @@ memory, and uptime. Each has an independent **Refresh** action.
 | `infra/install.sh` | Idempotent service-account and persistent-state provisioning using platform-supplied install metadata. |
 | `skills/hello-remote-inspector/SKILL.md` | A project-scoped agent workflow that verifies the service and its runtime metadata. |
 | `ui/scripts/main.js` | The entry module: activates the showcase, card action, applications panel, and cleanup. |
-| `ui/scripts/containerPanel.js`, `ui/scripts/servicePanel.js`, `ui/scripts/eventPanel.js`, `ui/scripts/inspectionRefresh.js` | Container, service, and event presentation with one disposal-safe refresh lifecycle. |
+| `ui/scripts/containerPanel.js`, `ui/scripts/servicePanel.js`, `ui/scripts/inspectionRefresh.js` | Container and service presentation with one disposal-safe refresh lifecycle. |
 | `ui/scripts/showcase.js`, `ui/scripts/showcaseExplorer.js` | Slot registration and the live explorer for the complete frontend API. |
 | `ui/scripts/uploadTracker.js` | Cohesive upload observation and one-shot pass-through claim state. |
 | `ui/views/panel.html`, `ui/style/hello.css` | The two conventions — views loaded by name, CSS written against the platform's theme tokens. |

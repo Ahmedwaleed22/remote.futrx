@@ -4,7 +4,6 @@
 package main
 
 import (
-	"net/http"
 	"sync"
 
 	appLifecycle "futrx.local/catalog/applications/hello-remote/backend/lifecycle"
@@ -13,7 +12,7 @@ import (
 )
 
 type api struct {
-	appLifecycle.Events
+	appLifecycle.Publisher
 
 	router           *applications.Router
 	inspectContainer func(string) (containerFacts, error)
@@ -27,7 +26,6 @@ type api struct {
 var (
 	_ applications.Backend          = (*api)(nil)
 	_ applications.PublisherBackend = (*api)(nil)
-	_ applications.EventSubscriber  = (*api)(nil)
 )
 
 // REQUIRED — main must serve a value implementing applications.Backend.
@@ -64,7 +62,7 @@ func (b *api) Handle(request applications.Request) (applications.Response, error
 }
 
 // handler is the composition root for the example backend. It owns concrete
-// integrations, lifecycle capability, and route registration so production
+// integrations, the lifecycle publisher, and route registration so production
 // and tests use one assembly rather than subtly different backends.
 func handler() *api {
 	h := &api{
@@ -79,9 +77,5 @@ func handler() *api {
 	h.router.GET("service", "Report the supervised container service and its safe configuration", h.service)
 	h.router.GET("visits", "Report how many greetings this install has served", h.readVisits)
 	h.router.POST("visits", "Count one greeting", h.countVisit)
-	h.router.GET("events", "Report this backend's publication and subscription activity", func(applications.Request) applications.Response {
-		return applications.JSON(http.StatusOK, h.Events.Snapshot())
-	})
-
 	return h
 }
