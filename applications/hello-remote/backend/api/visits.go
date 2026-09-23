@@ -28,7 +28,6 @@ func (b *api) countVisit(applications.Request) applications.Response {
 	b.mu.Lock()
 	b.visits++
 	visits := b.visits
-	publisher := b.publisher
 	persistErr := writeVisits(b.instance.DataDir, visits)
 	b.mu.Unlock()
 
@@ -43,7 +42,7 @@ func (b *api) countVisit(applications.Request) applications.Response {
 	// Never hold application state locks across host/RPC publication. Publishing
 	// crosses back into Remote and may cause callbacks into this process; that
 	// boundary does not belong inside the counter's critical section.
-	publicationErr := publishGreeting(publisher, visits)
+	publicationErr := b.Events.PublishGreeting(visits)
 	if publicationErr != nil {
 		// Publishing is an observable side effect, not the greeting operation's
 		// transaction. The count remains successful and the warning tells the UI
@@ -56,25 +55,6 @@ func (b *api) countVisit(applications.Request) applications.Response {
 		body["warning"] = strings.Join(warnings, "; ")
 	}
 	return applications.JSON(http.StatusOK, body)
-}
-
-func publishGreeting(publisher applications.EventPublisher, visits int) error {
-	if publisher == nil {
-		return fmt.Errorf("publisher is not initialized")
-	}
-	payload, err := json.Marshal(map[string]int{"visits": visits})
-	if err != nil {
-		return fmt.Errorf("encode greeted event: %w", err)
-	}
-	if err := publisher.Publish(applications.Publication{
-		Publisher: greetingPublisher,
-		Event:     greetedEvent,
-		Version:   greetedVersion,
-		Payload:   payload,
-	}); err != nil {
-		return err
-	}
-	return nil
 }
 
 // readVisits tolerates every kind of missing: no DataDir, no file, or a file

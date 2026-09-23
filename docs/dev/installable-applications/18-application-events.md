@@ -1,4 +1,4 @@
-# 18 — Backend events
+# 18 — Backend event lifecycle
 
 Application events let one running application backend announce a fact and let
 other running backends react without either package importing the other. Remote
@@ -16,7 +16,9 @@ publishes typed catalog and installed-copy transitions inside
 `backend/internal/lifecycle`. `ApplicationEventBridge` translates those facts
 into the public dynamic `applications.Event` envelope.
 
-Application backends publish and consume only the dynamic contract:
+Application backends publish and consume only the dynamic contract. Event code
+is conventionally owned by an importable `backend/lifecycle/` package, but the
+API composition root serves it as part of the same backend process:
 
 ```text
 Application service
@@ -26,7 +28,8 @@ Application service
     -> bounded application delivery queue
     -> matching running backends
 
-Application backend
+Application backend process
+    -> backend/lifecycle owner composed by backend/api
     -> validated EventPublisher
     -> bounded EventBus queue
     -> bounded application delivery queue
@@ -45,8 +48,8 @@ subscriber must apply any audience policy its own side effect requires.
 
 ## Declare publishers and subscriptions
 
-An event-capable application needs a `backend/api/` and declarations in
-`application.json`:
+An event-capable application needs a `backend/api/` executable and declarations
+in `application.json`:
 
 ```json
 {
@@ -103,27 +106,68 @@ inspect `Event.Version` and ignore or reject versions it cannot decode.
 The complete field-level validation is in
 [02 — application.json reference](02-application-json.md#publishers).
 
-## Publish from a backend
+## Own event behavior in `backend/lifecycle`
 
-Implement the optional `applications.PublisherBackend` capability and retain
-the host-owned publisher:
+`backend/api/` remains the required `package main` and composition root. Keep
+publisher, subscriber, and event-state behavior in an importable sibling so the
+HTTP package does not become the owner of two unrelated concerns:
+
+```text
+backend/
+  api/
+    main.go       required executable; calls rpc.Serve
+  lifecycle/
+    events.go     importable publisher/subscriber implementation
+  container/      excluded from the host module and built in LXD
+```
+
+Remote generates one module rooted at `backend/`, excludes `container/`, and
+builds `./api`. Its module path is
+`futrx.local/catalog/applications/<application-id>/backend`, matching the
+catalog module used in this checkout. `go.mod`, `go.sum`, `go.work`, and
+`go.work.sum` are forbidden throughout the host tree so an application cannot
+replace that generated boundary. The API entry point can therefore compose the
+lifecycle owner directly:
 
 ```go
+// backend/api/main.go
+import appLifecycle "futrx.local/catalog/applications/job-runner/backend/lifecycle"
+
 type backend struct {
+	appLifecycle.Events
+	router *applications.Router
+}
+```
+
+Embedding promotes the lifecycle owner's `InitPublisher` and `OnEvent` methods
+onto the value passed to `rpc.Serve`; explicit delegation works too. This is one
+binary, one per-instance process, and one RPC handshake. The sibling directory
+is a source-ownership boundary, not an independently detected capability.
+
+## Publish from the lifecycle owner
+
+Implement the optional `applications.PublisherBackend` capability on the
+lifecycle owner and retain the host-owned publisher:
+
+```go
+// backend/lifecycle/events.go
+package lifecycle
+
+type Events struct {
 	events applications.EventPublisher
 }
 
-func (b *backend) InitPublisher(events applications.EventPublisher) error {
-	b.events = events
+func (e *Events) InitPublisher(events applications.EventPublisher) error {
+	e.events = events
 	return nil
 }
 
-func (b *backend) completed(jobID string) error {
+func (e *Events) PublishCompleted(jobID string) error {
 	payload, err := json.Marshal(map[string]string{"jobId": jobID})
 	if err != nil {
 		return err
 	}
-	return b.events.Publish(applications.Publication{
+	return e.events.Publish(applications.Publication{
 		Publisher: "jobs",
 		Event:     "completed",
 		Version:   1,
@@ -132,10 +176,10 @@ func (b *backend) completed(jobID string) error {
 }
 ```
 
-Remote calls `InitPublisher` after the required `Backend.Init` handshake. The
-publisher is valid for that backend process's lifetime. Stop and uninstall
-terminate the process; a later start performs the handshake and supplies a new
-publisher.
+Remote calls the promoted `InitPublisher` after the required `Backend.Init`
+handshake. The publisher is valid for that backend process's lifetime. Stop and
+uninstall terminate the one process; a later start performs the handshake and
+supplies a new publisher.
 
 Every publication must exactly match a declared local publisher, event name,
 and version. The payload must be a valid, non-null JSON object no larger than
@@ -155,13 +199,14 @@ event to its best-effort in-memory dispatcher. It does not wait for subscribers,
 cannot report their result, and does not guarantee delivery when an overload
 queue is full.
 
-## Consume events in a backend
+## Consume events in the lifecycle owner
 
 Declare `subscriptions` and implement the optional
 `applications.EventSubscriber` capability:
 
 ```go
-func (b *backend) OnEvent(event applications.Event) error {
+// backend/lifecycle/events.go
+func (e *Events) OnEvent(event applications.Event) error {
 	if event.Source.Publisher != "applications.importer.imports" ||
 		event.Name != "completed" || event.Version != 1 {
 		return nil
@@ -351,6 +396,6 @@ different lifecycle and failure semantics.
 ## Related
 
 - [02 — application.json reference](02-application-json.md#publishers) — declaration fields and validation.
-- [15 — Application backends](15-application-backends.md#optional-event-capabilities) — the Go interfaces in backend context.
+- [15 — Application backends](15-application-backends.md#optional-event-capabilities) — composing the lifecycle owner into the required API backend.
 - [13 — Security model](13-security-model.md#backend-event-security) — trust boundaries and review checklist.
 - [Lifecycle publishers and subscribers](../lifecycle-events.md) — the typed core publishers and bridge.

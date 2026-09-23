@@ -3,8 +3,9 @@
 // The default export runs once, after sign-in, with the extension API. It adds
 // controls across every extension slot plus the applications panel. Together
 // they expose the complete frontend API and call this application's own Go
-// backend. That round trip — browser to a process the server compiled out of
-// backend/api/ — is the center of the example.
+// backend. That round trip — browser to the backend/api entry point the server
+// compiled with its sibling backend/lifecycle package — is the center of the
+// example.
 
 import { mountContainerPanel } from "./containerPanel.js";
 import { mountEventPanel } from "./eventPanel.js";

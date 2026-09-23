@@ -15,9 +15,11 @@ Four things live here, and the differences matter:
   runs in the browser and contributes to defined places in the Remote
   interface: a button in the chat header, a panel, a popup.
 - **An application backend** is a `backend/` directory of Go source. The server
-  compiles it and runs it as a process, and the application's `ui/` calls it. It is
-  how an application adds a server-side feature rather than only a button. A
-  backend may also publish or subscribe to declared server-side events.
+  compiles `backend/api/` with its imported sibling host packages and runs one
+  process, which the application's `ui/` calls. It is how an application adds a
+  server-side feature rather than only a button. A backend may also publish or
+  subscribe to declared server-side events, conventionally owned by
+  `backend/lifecycle/` and composed by the API entry point.
 
 One application can be any of these, or several at once. A MySQL application can ship a "Connect"
 button alongside the database it provisions and a backend that runs the queries
@@ -34,7 +36,7 @@ behind it; an application that only adds a button ships no container side at all
 | Look up a field in `application.json` | [02 — application.json reference](02-application-json.md) |
 | Look up an extension API method | [06 — Extension API reference](06-extension-api.md) |
 | Look up the application backend contract | [15 — Application backends](15-application-backends.md) |
-| Publish or consume backend events | [18 — Backend events](18-application-events.md) |
+| Publish or consume backend events | [18 — Backend event lifecycle](18-application-events.md) |
 | Know where you are allowed to render | [05 — Slots](05-slots.md) |
 | Know who sees your extension | [08 — Scoping and visibility](08-scoping-and-visibility.md) |
 | Make your UI match the app's look | [09 — Styling and icons](09-styling-and-icons.md) |
@@ -64,7 +66,7 @@ behind it; an application that only adds a button ships no container side at all
 15. [Application backends](15-application-backends.md) — shipping Go that runs on the server, and calling it from `ui/`.
 16. [Uploaded packages](16-uploaded-packages.md) — the same catalog entry, delivered as a `.zip` at runtime and surviving updates.
 17. [Versions and upgrades](17-versions-and-upgrades.md) — how `version` decides when an installed copy is re-provisioned.
-18. [Backend events](18-application-events.md) — manifest publishers and subscriptions, namespaces, routing, and delivery guarantees.
+18. [Backend event lifecycle](18-application-events.md) — lifecycle-package ownership, manifest publishers and subscriptions, namespaces, routing, and delivery guarantees.
 
 ## Conventions in these documents
 

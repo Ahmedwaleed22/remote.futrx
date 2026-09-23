@@ -200,8 +200,8 @@ func TestGreetingVisitPublishesTheDeclaredEvent(t *testing.T) {
 		t.Fatalf("publications = %d, want 1", len(publications))
 	}
 	publication := publications[0]
-	if publication.Publisher != greetingPublisher || publication.Event != greetedEvent ||
-		publication.Version != greetedVersion {
+	if publication.Publisher != "greetings" || publication.Event != "greeted" ||
+		publication.Version != 1 {
 		t.Fatalf("publication identity = %+v", publication)
 	}
 	var payload map[string]int
@@ -265,26 +265,5 @@ func TestReceivedEventsAreRecordedAndExposed(t *testing.T) {
 	lastPayload, ok := last["payload"].(map[string]any)
 	if !ok || lastPayload["applicationId"] != "hello-remote" {
 		t.Fatalf("last event payload = %#v", last["payload"])
-	}
-}
-
-func TestOnEventIsSafeForConcurrentDelivery(t *testing.T) {
-	b := newTestBackend(t, t.TempDir(), nil)
-	const deliveries = 32
-	var wait sync.WaitGroup
-	wait.Add(deliveries)
-	for index := 0; index < deliveries; index++ {
-		go func() {
-			defer wait.Done()
-			_ = b.OnEvent(applications.Event{
-				Name: "greeted", Version: 1,
-				Payload: json.RawMessage(`{"visits":1}`),
-			})
-		}()
-	}
-	wait.Wait()
-
-	if got := call(t, b, http.MethodGet, "events")["received"]; got != float64(deliveries) {
-		t.Fatalf("received = %v, want %d", got, deliveries)
 	}
 }

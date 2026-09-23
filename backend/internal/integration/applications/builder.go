@@ -16,8 +16,9 @@ import (
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
-// Builder turns an application's backend/api/ source into an executable, caching the
-// result by a fingerprint of everything that went into it.
+// Builder turns an application's backend/api/ entry point and its sibling host
+// packages into an executable, caching the result by a fingerprint of
+// everything that went into it.
 //
 // The catalog ships source rather than binaries because it is embedded in the
 // server and has to stay portable across the architectures a server runs on.
@@ -42,16 +43,14 @@ type Builder struct {
 // buildTimeout bounds one compile, including any module download it makes.
 const buildTimeout = 10 * time.Minute
 
-// sharedInputs are the build inputs that are the same for every application: the SDK
-// source, the two generated go.mod files, and the Go version pinning them. None
-// of them can change while the server runs — the SDK is compiled into the
-// binary and the pins are read at startup — so they are collected once and
-// their contribution to the fingerprint is precomputed.
+// sharedInputs are the build inputs that are the same for every application:
+// the SDK source, its generated go.mod, and the Go version pinning it. The
+// backend go.mod carries the application ID in its module path, so it is added
+// to the per-application fingerprint in Build.
 type sharedInputs struct {
-	sdkFiles      []sourceFile
-	backendModule string
-	sdkModule     string
-	fingerprint   string
+	sdkFiles    []sourceFile
+	sdkModule   string
+	fingerprint string
 }
 
 func (b *Builder) sharedInputs() (sharedInputs, error) {
@@ -61,13 +60,11 @@ func (b *Builder) sharedInputs() (sharedInputs, error) {
 			b.sharedErr = fmt.Errorf("read backend sdk: %w", err)
 			return
 		}
-		backendModule := b.backendModuleFile()
 		sdkModule := b.sdkModuleFile()
 		b.shared = sharedInputs{
-			sdkFiles:      sdk,
-			backendModule: backendModule,
-			sdkModule:     sdkModule,
-			fingerprint:   sharedFingerprintOf(sdk, backendModule, sdkModule, b.pins.goVersion),
+			sdkFiles:    sdk,
+			sdkModule:   sdkModule,
+			fingerprint: sharedFingerprintOf(sdk, sdkModule, b.pins.goVersion),
 		}
 	})
 	return b.shared, b.sharedErr
@@ -98,14 +95,20 @@ func (b *Builder) Build(ctx context.Context, applicationID string, source fs.FS)
 	if err != nil {
 		return "", err
 	}
-	// Only the application's own backend/api/ directory is read here; the SDK behind it is
-	// the same tree for every application and was hashed once.
+	// Only the application's host backend tree is read here; backend/container
+	// was already excluded by the catalog. The SDK behind it is the same tree
+	// for every application and was hashed once.
 	files, err := collect(source)
 	if err != nil {
 		return "", fmt.Errorf("read backend source: %w", err)
 	}
 
-	fingerprint := fingerprintWith(files, shared.fingerprint)
+	backendModule := b.backendModuleFile(applicationID)
+	fingerprint := fingerprintWith(files, backendModule, shared.fingerprint)
+	entry := "."
+	if info, statErr := fs.Stat(source, "api"); statErr == nil && info.IsDir() {
+		entry = "./api"
+	}
 	binary := filepath.Join(b.binaryDir(), fmt.Sprintf("%s-%s", applicationID, fingerprint))
 	plan := buildPlan{
 		applicationID: applicationID,
@@ -113,8 +116,9 @@ func (b *Builder) Build(ctx context.Context, applicationID string, source fs.FS)
 		binary:        binary,
 		backendFiles:  files,
 		sdkFiles:      shared.sdkFiles,
-		backendModule: shared.backendModule,
+		backendModule: backendModule,
 		sdkModule:     shared.sdkModule,
+		entry:         entry,
 	}
 
 	unlock := b.locks.lock(applicationID)
@@ -143,6 +147,7 @@ type buildPlan struct {
 	sdkFiles      []sourceFile
 	backendModule string
 	sdkModule     string
+	entry         string
 }
 
 // compile materializes a self-contained module and runs the Go toolchain over
@@ -191,7 +196,7 @@ func (b *Builder) compile(ctx context.Context, plan buildPlan) error {
 	// anyway and fails the whole build on a host where that probe errors
 	// instead of reporting "no repository" — which would make every backend
 	// uninstallable for a reason that has nothing to do with the backend.
-	arguments := []string{"build", "-trimpath", "-buildvcs=false", "-o", plan.binary + ".tmp", "."}
+	arguments := []string{"build", "-trimpath", "-buildvcs=false", "-o", plan.binary + ".tmp", plan.entry}
 	offlineOutput, offlineErr := runGo(ctx, goTool, source, goEnv(b.root, true), arguments)
 	if offlineErr != nil {
 		// Falling back to the network covers the case the offline path cannot:

@@ -122,6 +122,7 @@ func (p modulePins) indirectBlock(direct ...string) string {
 func goEnv(workRoot string, offline bool) []string {
 	env := append(os.Environ(),
 		"GOFLAGS=-mod=mod",
+		"GOWORK=off",
 		"GOCACHE="+filepath.Join(workRoot, "build-cache"),
 	)
 	if strings.TrimSpace(os.Getenv("HOME")) == "" {

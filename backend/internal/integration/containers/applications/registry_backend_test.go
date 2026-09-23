@@ -1,6 +1,8 @@
 package applications
 
 import (
+	"crypto/sha256"
+	"errors"
 	"io/fs"
 	"strings"
 	"testing"
@@ -158,10 +160,27 @@ func TestLoadApplicationBackendRejectsBrokenLayouts(t *testing.T) {
 			contains: "generates the backend module",
 		},
 		{
+			name: "a workspace file beside backend/api",
+			files: map[string]string{
+				"backend/api/main.go": validBackendMain,
+				"backend/go.work":     "go 1.25\n",
+			},
+			contains: "generates the backend module",
+		},
+		{
 			name: "backend/api carrying its own module file",
 			files: map[string]string{
 				"backend/api/main.go": validBackendMain,
 				"backend/api/go.mod":  "module example.com/backend\n",
+			},
+			contains: "generates the backend module",
+		},
+		{
+			name: "backend lifecycle carrying its own module file",
+			files: map[string]string{
+				"backend/api/main.go":         validBackendMain,
+				"backend/lifecycle/events.go": "package lifecycle\n",
+				"backend/lifecycle/go.mod":    "module example.com/lifecycle\n",
 			},
 			contains: "generates the backend module",
 		},
@@ -224,18 +243,100 @@ func TestRegistryBackendSource(t *testing.T) {
 	}
 }
 
-// The api/ and container/ split is what states which Go runs where. Only
-// backend/api/ is compiled on the host, and container source must stay out of
-// what the host is handed — it is built inside the target container instead.
+// The api/ and container/ split is what states which Go runs where. api/ and
+// its sibling packages compile on the host, while container source must stay
+// out of what the host is handed — it is built inside the target container.
 func TestLoadApplicationBackendAcceptsTheAPILayout(t *testing.T) {
 	_, err := loadApplicationBackend(backendTree(map[string]string{
 		"backend/api/main.go":                    validBackendMain,
 		"backend/api/main_test.go":               "package main\n",
+		"backend/lifecycle/events.go":            "package lifecycle\n",
 		"backend/container/cmd/agent/main.go":    validBackendMain,
 		"backend/container/internal/x/helper.go": "package x\n",
 	}), "backend", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// Sibling packages belong to the same generated host module as api/. That is
+// what lets event lifecycle code have its own owner without turning api/ into
+// a grab bag or a second process.
+func TestBackendSourceIncludesHostSiblingsAndExcludesContainerSource(t *testing.T) {
+	files := backendTree(map[string]string{
+		"applications/split/application.json":            `{ "name": "Split", "version": "1", "scopes": ["global"] }`,
+		"applications/split/backend/api/main.go":         validBackendMain,
+		"applications/split/backend/lifecycle/events.go": "package lifecycle\n",
+		"applications/split/backend/container/main.go":   validBackendMain,
+	})
+	registry, err := NewRegistry(files, nil)
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	source, ok := registry.BackendSource("split")
+	if !ok {
+		t.Fatal("no host backend source")
+	}
+	for _, name := range []string{"api/main.go", "lifecycle/events.go"} {
+		if _, err := fs.Stat(source, name); err != nil {
+			t.Errorf("host source is missing %s: %v", name, err)
+		}
+	}
+	for _, name := range []string{"container", "container/main.go"} {
+		if _, err := fs.Stat(source, name); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("container source %s is visible to host compiler: %v", name, err)
+		}
+	}
+}
+
+// The builder fingerprints every file the registry hands it. This pins the
+// boundary at that handoff: editing a sibling host package must invalidate the
+// binary, while editing container-only code must not.
+func TestBackendSourceFingerprintInputsIncludeLifecycleNotContainer(t *testing.T) {
+	fingerprintInput := func(lifecycle, container string) [sha256.Size]byte {
+		t.Helper()
+		files := backendTree(map[string]string{
+			"applications/split/application.json":            `{ "name": "Split", "version": "1", "scopes": ["global"] }`,
+			"applications/split/backend/api/main.go":         validBackendMain,
+			"applications/split/backend/lifecycle/events.go": lifecycle,
+			"applications/split/backend/container/main.go":   container,
+		})
+		registry, err := NewRegistry(files, nil)
+		if err != nil {
+			t.Fatalf("load catalog: %v", err)
+		}
+		source, ok := registry.BackendSource("split")
+		if !ok {
+			t.Fatal("no host backend source")
+		}
+
+		digest := sha256.New()
+		err = fs.WalkDir(source, ".", func(name string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil || entry.IsDir() {
+				return walkErr
+			}
+			contents, readErr := fs.ReadFile(source, name)
+			if readErr != nil {
+				return readErr
+			}
+			_, _ = digest.Write([]byte(name))
+			_, _ = digest.Write(contents)
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("read host source: %v", err)
+		}
+		var sum [sha256.Size]byte
+		copy(sum[:], digest.Sum(nil))
+		return sum
+	}
+
+	base := fingerprintInput("package lifecycle\nconst Event = 1\n", "package main\nconst Build = 1\n")
+	if edited := fingerprintInput("package lifecycle\nconst Event = 2\n", "package main\nconst Build = 1\n"); edited == base {
+		t.Fatal("editing lifecycle source did not change the builder's source inputs")
+	}
+	if edited := fingerprintInput("package lifecycle\nconst Event = 1\n", "package main\nconst Build = 2\n"); edited != base {
+		t.Fatal("editing container source changed the builder's source inputs")
 	}
 }
 

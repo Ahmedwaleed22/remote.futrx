@@ -9,8 +9,11 @@ The catalog's reference example. It combines broad application capabilities:
   dedicated service account and persistent application state directory.
 - **`backend/container/`** — Go source Remote copies into and builds inside LXD;
   one command inspects the container and another serves HTTP.
-- **`backend/api/`** — Go source the server compiles and runs as a child process,
-  reachable at `/api/applications/<instance>/backend/<path>`.
+- **`backend/api/`** — the required Go executable and composition root the
+  server compiles and runs as a child process, reachable at
+  `/api/applications/<instance>/backend/<path>`.
+- **`backend/lifecycle/`** — the importable sibling package that owns event
+  publication, subscription, and activity state inside that same process.
 - **Application events** — a declared `greetings.greeted` publisher plus
   subscriptions to Remote's application lifecycle and its own published event.
 - **`ui/`** — assets the SPA loads for users who installed the application, which
@@ -109,11 +112,14 @@ Each successful counter increment also publishes the manifest-declared
 `greetings.greeted` event with a versioned JSON payload. Hello Remote subscribes
 to that event through its canonical
 `applications.hello-remote.greetings` name and to all seven events from
-`remote.applications`. The backend implements the optional publisher and
-subscriber contracts below its required methods, records received events under
-the same mutex as its other process state, and exposes that activity through
-`GET events`. Publication happens outside the state lock and a publication
-failure becomes a response warning; it never rolls back a greeting.
+`remote.applications`. `backend/lifecycle/` implements the optional publisher
+and subscriber contracts and protects its own event state. The
+`backend/api/` composition root embeds that owner into the value passed to
+`rpc.Serve`, so its methods participate in the same handshake and process as
+the required API methods. The API exposes a lifecycle snapshot through
+`GET events`. Publication happens outside the visit-counter lock and a
+publication failure becomes a response warning; it never rolls back a
+greeting.
 
 The service section crosses the allocated host proxy and reports the systemd
 unit, build version, custom-provisioning version, port mapping, and greeting
@@ -126,9 +132,10 @@ memory, and uptime. Each has an independent **Refresh** action.
 | File | Shows |
 |---|---|
 | `application.json` | The application identity, both scopes, base image, real greeting input, port, service, install path, health check, host tool, publishers, subscriptions, explicit UI mapping, and backend policy. |
-| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`), optional event hooks, and the composition root that wires the `Router` and concrete inspectors. |
-| `backend/api/greeting.go`, `backend/api/visits.go`, `backend/api/events.go` | Greeting and echo routes, the per-instance persistent counter and event publication, and received-event inspection. |
+| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) and the composition root that wires the `Router`, concrete inspectors, and embedded lifecycle owner into one served backend. |
+| `backend/api/greeting.go`, `backend/api/visits.go` | Greeting and echo routes, the per-instance persistent counter, and the request-side trigger that asks the lifecycle owner to publish. |
 | `backend/api/container.go`, `backend/api/service.go` | Bounded host calls into the installed inspection command and the proxied HTTP service. |
+| `backend/lifecycle/events.go` | Publisher/event identity, `InitPublisher`, `OnEvent`, publication, concurrency-safe received-event state, and immutable activity snapshots. It is imported by `backend/api`; it is not another process. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
 | `backend/container/cmd/hello-remote-service/` | A supervised HTTP service with separate command dispatch, configuration decoding, serving, and health-probe owners. |
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without backend-owned shell. |

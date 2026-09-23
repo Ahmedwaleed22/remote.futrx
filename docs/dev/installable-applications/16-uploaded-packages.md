@@ -57,6 +57,7 @@ infra/install.sh     optional container provisioning
 infra/payload.tar.gz optional infra payload (see 04 — Install scripts)
 ui/…                  optional browser extension
 backend/api/…         optional host Go backend
+backend/lifecycle/…   optional host package imported by backend/api for events
 backend/container/…   optional Go programs built inside the target container
 ```
 
@@ -64,10 +65,15 @@ Both shapes are accepted: the files at the archive root, or inside a single
 folder — which is what "compress this folder" produces on a desktop. macOS
 bookkeeping (`__MACOSX/`, `.DS_Store`, `._*`) is ignored.
 
-So any zip tool will do. Container-side Go ships as ordinary source under
-`backend/container/`; Remote packs and builds it. A root main package produces
-one binary named after the application ID, while `cmd/<binary>/` produces one
-or more explicitly named binaries. See
+So any zip tool will do. For the host backend, Remote generates one module from
+`backend/api/` and its sibling host packages, then builds `./api` as the single
+process; `backend/container/` is excluded from those source bytes and the host
+build fingerprint. Module-control files (`go.mod`, `go.sum`, `go.work`, and
+`go.work.sum`) are therefore refused in the host tree. Container-side Go ships
+as ordinary source under `backend/container/`; Remote packs and builds it in
+the target container. A root main package produces one binary named after the
+application ID, while `cmd/<binary>/` produces one or more explicitly named
+binaries. See
 [Container-side Go programs](04-install-scripts.md#container-side-go-programs).
 Legacy packages may still
 carry `infra/payload.tar.gz`, which is extracted as it arrives.

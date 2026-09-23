@@ -4,24 +4,31 @@
 package main
 
 import (
+	"net/http"
 	"sync"
 
+	appLifecycle "futrx.local/catalog/applications/hello-remote/backend/lifecycle"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications/rpc"
 )
 
 type api struct {
+	appLifecycle.Events
+
 	router           *applications.Router
 	inspectContainer func(string) (containerFacts, error)
 	inspectService   func(int) (serviceHealth, error)
 
-	mu        sync.Mutex
-	instance  applications.Instance
-	visits    int
-	publisher applications.EventPublisher
-	events    int
-	lastEvent *applications.Event
+	mu       sync.Mutex
+	instance applications.Instance
+	visits   int
 }
+
+var (
+	_ applications.Backend          = (*api)(nil)
+	_ applications.PublisherBackend = (*api)(nil)
+	_ applications.EventSubscriber  = (*api)(nil)
+)
 
 // REQUIRED — main must serve a value implementing applications.Backend.
 func main() {
@@ -56,31 +63,9 @@ func (b *api) Handle(request applications.Request) (applications.Response, error
 	return b.router.Serve(request), nil
 }
 
-// OPTIONAL — InitPublisher is called only because this backend implements
-// applications.PublisherBackend. The host validates every Publication against
-// application.json and stamps the installed instance onto the delivered Event.
-func (b *api) InitPublisher(publisher applications.EventPublisher) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.publisher = publisher
-	return nil
-}
-
-// OPTIONAL — OnEvent is called only because this backend implements
-// applications.EventSubscriber. It may run concurrently with Handle and with
-// other event deliveries, so the example records a private value copy.
-func (b *api) OnEvent(event applications.Event) error {
-	event.Payload = append([]byte(nil), event.Payload...)
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.events++
-	b.lastEvent = &event
-	return nil
-}
-
 // handler is the composition root for the example backend. It owns concrete
-// integrations and route registration so production and tests use one route
-// table rather than assembling subtly different backends.
+// integrations, lifecycle capability, and route registration so production
+// and tests use one assembly rather than subtly different backends.
 func handler() *api {
 	h := &api{
 		router:           applications.NewRouter(),
@@ -94,7 +79,9 @@ func handler() *api {
 	h.router.GET("service", "Report the supervised container service and its safe configuration", h.service)
 	h.router.GET("visits", "Report how many greetings this install has served", h.readVisits)
 	h.router.POST("visits", "Count one greeting", h.countVisit)
-	h.router.GET("events", "Report this backend's publication and subscription activity", h.eventActivity)
+	h.router.GET("events", "Report this backend's publication and subscription activity", func(applications.Request) applications.Response {
+		return applications.JSON(http.StatusOK, h.Events.Snapshot())
+	})
 
 	return h
 }

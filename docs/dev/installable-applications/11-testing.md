@@ -13,18 +13,21 @@ cd backend && go test ./internal/integration/containers/applications/
 This catches: a mismatched `id`, a missing `name`, an invalid capability layout or
 `scopes`, a `service` application with no port or no install script, a `ui` or
 `backend` application declaring a port, a `ui` block naming a file that does not
-exist, an empty `ui/` directory, and a `backend/` that is not a `package main`
-program or that carries its own `go.mod`.
+exist, an empty `ui/` directory, a `backend/api/` that is not a `package main`
+program, or a host backend tree that carries `go.mod`, `go.sum`, `go.work`, or
+`go.work.sum` instead of using Remote's generated module.
 
-Backend source is also compiled by the repository's own build, because a
-`backend/` directory is an ordinary package inside the catalog module at the
-repository root:
+Backend source is also compiled by the repository's own build. The catalog is
+a Go module: `backend/api/` is the executable package and sibling host
+directories such as `backend/lifecycle/` are normal importable packages:
 
 ```bash
 go build ./... && go vet ./...
 ```
 
-A backend that does not compile fails there, not on someone's server.
+A backend or one of its imported host siblings that does not compile fails
+there, not on someone's server. The runtime build reproduces that layout in a
+generated module, compiles `./api`, and omits `backend/container/` entirely.
 
 A malformed application fails the build — it never reaches a browser as a 404.
 
@@ -43,7 +46,7 @@ go build ./... && go vet ./...
 | File | Covers |
 |---|---|
 | `registry_test.go` | catalog loading, capability inference, `ui/` discovery, the declared `ui` manifest, asset path traversal, reserved directories |
-| `registry_backend_test.go` | `backend/` discovery and every layout the registry refuses |
+| `registry_backend_test.go` | `backend/` discovery, module-control-file rejection, host sibling inclusion, container-source exclusion, and every layout the registry refuses |
 | `registry_events_test.go` | publisher/subscription names, versions, canonical namespaces, and backend requirements |
 | `installer_test.go` | which `lxc` commands each scope issues — and, crucially, which it must **not** |
 | `service/applications/ui_extensions_test.go` | which extensions a caller may load, and their install scope |
@@ -51,7 +54,7 @@ go build ./... && go vet ./...
 | `applications/host_test.go` | compiling, launching, one process per instance, restart, timeout, panic isolation, data retention |
 | `applications/events_test.go` | publication authorization, host-stamped identity, payload limits, optional capability handshake, and delivery |
 | `applications/builder_test.go` | fingerprinting and the generated module files |
-| `applications/catalog_test.go` | the shipped `backend-playground`, compiled and called end to end |
+| `applications/catalog_test.go` | an API importing a sibling lifecycle package, with container source excluded, compiled and called end to end |
 | `pkg/applications/mux_test.go` | route matching, method fallbacks, request helpers |
 | `pkg/applications/rpc/events_test.go` | publisher callback and subscriber delivery across the backend RPC boundary |
 | `lifecycle/event_bus_test.go`, `application_event_bridge_test.go` | defensive payload copies and canonical version-1 core event envelopes |
@@ -154,7 +157,8 @@ For a manifest event change, also test a publication with the wrong publisher,
 event, and version; primitive, `null`, malformed, and over-64-KiB payloads; and
 an empty payload normalized to `{}`. An application subscription selects an
 event name, so exercise both the version the handler understands and one it
-must ignore safely. See [18 — Backend events](18-application-events.md).
+must ignore safely. See
+[18 — Backend event lifecycle](18-application-events.md).
 
 ## Testing an install script
 

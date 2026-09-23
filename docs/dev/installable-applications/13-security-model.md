@@ -40,7 +40,7 @@ session.
 | Global app management is admin-only | `requireAdmin` | Server-wide infrastructure |
 | A project member cannot touch another project's app | `ensureProject` | Ownership re-checked per request |
 | Secrets are not echoed to the UI | `View` / `envPublic` | Secret env values are redacted outside the credentials route |
-| Only validated catalog source becomes a backend | `registry_backend.go` for built-in and uploaded packages | `backend/api/` must be `package main` and carry no module file |
+| Only validated catalog source becomes a backend | `registry_backend.go` for built-in and uploaded packages | `backend/api/` must be `package main`; sibling host packages share Remote's generated module; host `go.mod`, `go.sum`, `go.work`, and `go.work.sum` files are refused; `backend/container/` is excluded |
 | A backend cannot act as its caller | `applications_backend_handler.go:forwardableHeaders` | `Cookie` and `Authorization` are withheld; the caller is supplied separately |
 | A backend's caller cannot be forged | `service/applications/backend.go:CallBackend` | `Request.Caller` is overwritten with the session's identity |
 | A stopped app's backend is unreachable | `Service.backendSpec` | `409` rather than a silent start |
@@ -159,8 +159,11 @@ There are three important non-guarantees:
 
 Review an event-capable backend for both sides: what data it publishes and
 whether every possible scope-eligible recipient may see it; then how it
-validates publisher, name, version, and payload before acting. The full routing
-contract is [18 — Backend events](18-application-events.md).
+validates publisher, name, version, and payload before acting. Event behavior
+belongs in the importable `backend/lifecycle/` owner, but it runs with
+`backend/api/` in the same unsandboxed process and has the same authority. The
+full routing contract is
+[18 — Backend event lifecycle](18-application-events.md).
 
 ## Path traversal
 

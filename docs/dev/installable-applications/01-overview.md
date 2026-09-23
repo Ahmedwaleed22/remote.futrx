@@ -14,8 +14,10 @@ applications/
     infra/
       install.sh              provisioner, run inside a container
     backend/
-      api/                    Go backend, compiled and run on the host
+      api/                    host entry point and composition root
         main.go
+      lifecycle/              importable host package for backend events
+        events.go
       container/              Go programs built inside the target container
         main.go                one program named after the application, or:
         cmd/my-agent/main.go   an explicitly named program
@@ -35,15 +37,17 @@ applications/
 
 The only regular files at an application root are `README.md` and
 `application.json`. Everything executable or distributable is grouped by
-capability: custom provisioning in `infra/`, host code in `backend/api/`,
-container code in `backend/container/`, browser code
-and assets in `ui/`, and project skills in `skills/`. These capability folders
-are optional; the tree above shows the complete layout rather than a list of
-required folders. The capability folder names and locations are enforced.
-Under `backend/container/`, however, `cmd/` is optional: use a root `main.go`
-for one binary named after the application ID, or `cmd/<binary>/` for
-explicitly named or multiple binaries. Once a `cmd/*` program exists, Remote
-builds the discovered command packages rather than the root as an executable.
+capability: custom provisioning in `infra/`, a host entry point in
+`backend/api/`, importable host packages in sibling directories such as
+`backend/lifecycle/`, container code in `backend/container/`, browser code and
+assets in `ui/`, and project skills in `skills/`. `backend/api/` remains the
+required executable package; a sibling package does not create another process
+or capability. Remote generates one host module from the API and its imported
+sibling packages and excludes `backend/container/`. Under
+`backend/container/`, `cmd/` is optional: use a root `main.go` for one binary
+named after the application ID, or `cmd/<binary>/` for explicitly named or
+multiple binaries. Once a `cmd/*` program exists, Remote builds the discovered
+command packages rather than the root as an executable.
 
 That directory is `applications/` at the repository root. The whole tree is compiled
 into the server binary with `//go:embed applications` in
@@ -65,11 +69,11 @@ Applications tab.
 ## One application, composable capabilities
 
 ```
-                         application.json
-            /                 |              |             \
- infra/install.sh      backend/api/    backend/container/      ui/        skills/
-         |                  |                  |                |            |
- custom provisioning   host process      container programs   browser      projects
+                              application.json
+            /                       |                    |             \
+ infra/install.sh      backend/{api,lifecycle}/   backend/container/   ui/      skills/
+         |                       |                       |              |          |
+ custom provisioning    one host process          container programs browser   projects
 ```
 
 There are no application types and `application.json` has no `type` field.
@@ -80,8 +84,8 @@ optional and independent:
 |---|---|---|
 | Infrastructure | `infra/install.sh`, an `install` path inside `infra/`, `backend/container/`, or a manifest `service` | Provisions software in a container |
 | Network exposure | infrastructure plus `port.internal` | Allocates a host port and adds an LXD proxy device |
-| Backend | `backend/api/` | Compiles and runs the Go backend on the host |
-| Backend events | manifest `publishers` / `subscriptions` plus `backend/api/` | Validates publications and routes matching events between running backends |
+| Backend | `backend/api/`; optional imported sibling host packages such as `backend/lifecycle/` | Generates one host module, builds `./api`, and runs one backend process |
+| Backend event lifecycle | manifest `publishers` / `subscriptions` plus `backend/api/`; conventionally implemented in `backend/lifecycle/` | Validates publications and routes matching events through that same backend process |
 | UI | `ui/` | Loads the browser extension |
 | Skills | `skills/*/SKILL.md` | Publishes skills to the target project |
 
@@ -131,7 +135,7 @@ flowchart TB
     end
 
     subgraph Integration["integration/containers/applications — the catalog and lxc"]
-        I_Registry["registry.go<br/>validates the catalog, serves ui/ assets and backend/api/ source"]
+        I_Registry["registry.go<br/>validates the catalog, serves ui/ assets and host backend source"]
         I_RegParts["registry_ui.go / registry_backend.go<br/>registry_packages.go / registry_skills.go"]
         I_Payload["infra_payload.go<br/>stages infra/payload.tar.gz into the install script"]
         I_Installer["installer.go<br/>lxc launch, infra/install.sh, systemd, proxy device"]
@@ -140,7 +144,7 @@ flowchart TB
     end
 
     subgraph Support["Supporting packages"]
-        P_ApplicationHost["integration/applications<br/>compiles backend/api/, runs it over go-plugin"]
+        P_ApplicationHost["integration/applications<br/>builds backend/api with host siblings, runs it over go-plugin"]
         P_FileApps["stores/fileapplications<br/>global.json, projects/{id}.json"]
         P_HostTools["integration/containers/applications/hosttools<br/>checksum-pinned host binaries"]
     end
@@ -180,7 +184,7 @@ flowchart TB
     I_Registry -. go:embed .-> C_Hello
     I_Installer --> P_HostTools
     I_Packages -. uploaded packages join the catalog .-> I_Registry
-    P_ApplicationHost -. reads backend/api/ source from .-> I_Registry
+    P_ApplicationHost -. reads backend host source, excluding container/ .-> I_Registry
 ```
 
 Every arrow out of the service layer crosses an interface it declares itself:
@@ -192,9 +196,9 @@ is what keeps the domain testable without LXD, a Go toolchain, or a disk.
 
 | Layer | File | Responsibility |
 |---|---|---|
-| integration | `containers/applications/registry.go` | loads and validates the embedded catalog; serves `ui/` asset bytes and `backend/api/` source |
+| integration | `containers/applications/registry.go` | loads and validates the embedded catalog; serves `ui/` assets and the host backend tree while excluding `backend/container/` |
 | integration | `containers/applications/installer.go` | everything `lxc`-facing: containers, install scripts, proxy devices |
-| integration | `applications/` | everything toolchain- and process-facing: compiling `backend/api/`, running it, forwarding calls |
+| integration | `applications/` | everything toolchain- and process-facing: generating a module for `backend/api/` and its sibling host packages, compiling `./api`, running it, and forwarding calls |
 | contract | `pkg/applications` | the types and interface a backend is written against |
 | service | `service/applications/service.go` | policy: install, lifecycle, which extensions a caller may load |
 | service | `service/applications/backend.go` | policy: who may call a backend, and when |

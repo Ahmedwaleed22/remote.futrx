@@ -34,7 +34,7 @@ func TestGoPluginFallbackMatchesGoMod(t *testing.T) {
 func TestGeneratedModuleFilesAreStable(t *testing.T) {
 	builder := NewBuilder(t.TempDir(), "")
 	for name, render := range map[string]func() string{
-		"backend": builder.backendModuleFile,
+		"backend": func() string { return builder.backendModuleFile("example") },
 		"sdk":     builder.sdkModuleFile,
 	} {
 		first, second := render(), render()
@@ -45,7 +45,7 @@ func TestGeneratedModuleFilesAreStable(t *testing.T) {
 			t.Errorf("%s go.mod does not pin %s:\n%s", name, goPluginModule, first)
 		}
 	}
-	backend := builder.backendModuleFile()
+	backend := builder.backendModuleFile("example")
 	// The replace is what keeps the SDK's canonical import path working, so
 	// the same backend source compiles in a checkout and in a build directory.
 	if !strings.Contains(backend, "replace "+applications.ModulePath+" => ../sdk") {
@@ -54,6 +54,22 @@ func TestGeneratedModuleFilesAreStable(t *testing.T) {
 	if strings.Count(backend, applications.ModulePath+" v") > 1 {
 		t.Errorf("the SDK is required more than once:\n%s", backend)
 	}
+	if !strings.Contains(backend, "module futrx.local/catalog/applications/example/backend") {
+		t.Errorf("backend go.mod does not match the catalog package path:\n%s", backend)
+	}
+}
+
+func TestBackendBuildDisablesExternalGoWorkspaces(t *testing.T) {
+	environment := goEnv(t.TempDir(), false)
+	for index := len(environment) - 1; index >= 0; index-- {
+		if strings.HasPrefix(environment[index], "GOWORK=") {
+			if environment[index] != "GOWORK=off" {
+				t.Fatalf("GOWORK = %q, want off", environment[index])
+			}
+			return
+		}
+	}
+	t.Fatal("backend build environment does not set GOWORK")
 }
 
 // Fingerprints must change when any input does, and only then: a collision is

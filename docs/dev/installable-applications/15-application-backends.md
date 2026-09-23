@@ -1,23 +1,28 @@
 # 15 — Application backends
 
-An application can ship a `backend/api/` directory of Go source. The server compiles it,
-runs it as a separate process, and forwards HTTP calls to it — so an application can
-add a **server-side feature**, and its `ui/` can call that feature, without any
-change to the Remote codebase.
+An application can ship a `backend/api/` directory of Go source. The server
+builds it with its importable sibling host packages, runs the resulting
+executable as a separate process, and forwards HTTP calls to it — so an
+application can add a **server-side feature**, and its `ui/` can call that
+feature, without any change to the Remote codebase.
 
 ```
 applications/my-backend/
   application.json
   backend/
-    api/              ← Go source, compiled and run on the host
+    api/              ← required executable and composition root
       main.go
+    lifecycle/        ← optional imported package that owns backend events
+      events.go
   ui/                ← runs in the browser, calls the backend
     scripts/main.js
 ```
 
-`ui/` is what an application can add to the interface. `backend/api/` is what it can add
-to the server. Together they are the whole shape of a feature that could
-otherwise only be added by editing this repository.
+`ui/` is what an application can add to the interface. `backend/api/` is the
+entry point for what it adds to the server. Sibling directories under
+`backend/` keep cohesive host concerns out of that entry package;
+`backend/lifecycle/` conventionally owns event publication and subscription.
+They all compile into the same backend process.
 
 ## The shortest complete backend
 
@@ -88,14 +93,16 @@ That is the entire round trip.
 
 ## Required surface
 
-The host side is a Go program rooted at `backend/api/`. These are the parts a
-backend must have; `Router`, `applications.JSON`, route registration, persistence, and
-the route table are conveniences rather than contract requirements.
+The host executable is the Go program at `backend/api/`. Remote creates a
+module rooted at `backend/`, so `api/` can import sibling host packages such as
+`lifecycle/`; it then builds `./api`. These are the parts a backend must have;
+`Router`, `applications.JSON`, route registration, persistence, and the route
+table are conveniences rather than contract requirements.
 
 | Requirement | Enforced by | Failure if omitted |
 |---|---|---|
 | `package main` and at least one non-test Go file in `backend/api/` | catalog validator | application is refused at load |
-| no `go.mod` or `go.sum` in `backend/api/` | catalog validator; Remote generates the module | application is refused at load |
+| no `go.mod`, `go.sum`, `go.work`, or `go.work.sum` anywhere in the host backend tree | catalog validator; Remote generates and owns the module boundary | application is refused at load |
 | `func main()` calling `rpc.Serve` | compiler and backend handshake | build failure, or a process that cannot connect |
 | `Describe() (applications.Descriptor, error)` | `applications.Backend` interface | build failure |
 | `Init(applications.Instance) error` | `applications.Backend` interface | build failure |
@@ -106,6 +113,11 @@ Do not repeat package metadata in `Describe`. Remote fills `Descriptor.Name`
 and `Descriptor.Version` from `application.json` after the handshake, making
 the manifest the single source for the UI, upgrade policy, and backend
 descriptor. The backend owns only its API contract version and routes.
+
+`backend/container/` is not part of that host module. The registry removes the
+whole subtree before fingerprinting or compiling host source, even when
+`backend/api/` has sibling packages. Container-only changes therefore cannot
+accidentally enter the host binary through a broad `./...` build.
 
 `backend/container/` is a separate, optional execution context. A root main
 package there is built as one binary named after the application ID.
@@ -170,6 +182,29 @@ type EventSubscriber interface {
 }
 ```
 
+Those interfaces still belong to the one value served by `backend/api/` and
+run in the same process as `Handle`. They do not belong in the API package's
+request-routing implementation, however. Put their state and behavior in an
+importable `backend/lifecycle/` package, then embed or delegate to that owner
+from the API composition root:
+
+```go
+// backend/api/main.go
+import appLifecycle "futrx.local/catalog/applications/job-runner/backend/lifecycle"
+
+type backend struct {
+	appLifecycle.Events
+	router *applications.Router
+}
+```
+
+The import path is stable because Remote's generated module is named
+`futrx.local/catalog/applications/<application-id>/backend`, matching the
+catalog module used in this checkout. Embedding promotes `InitPublisher` and
+`OnEvent` onto the value passed to `rpc.Serve`; explicit delegation is equally
+valid. `backend/lifecycle/` is an ownership boundary inside the generated
+module, not a separately discovered capability or a second process.
+
 The corresponding `publishers` or `subscriptions` declaration in
 `application.json` is mandatory. Remote validates the declaration, detects the
 implemented interface during the handshake, and fails install or start when a
@@ -179,24 +214,28 @@ declaration has no matching implementation. `Descriptor.PublishesEvents` and
 
 #### Publishing
 
-Retain the capability Remote supplies after the required `Init` call:
+Retain the capability Remote supplies after the required `Init` call in the
+lifecycle owner:
 
 ```go
-type backend struct {
+// backend/lifecycle/events.go
+package lifecycle
+
+type Events struct {
 	events applications.EventPublisher
 }
 
-func (b *backend) InitPublisher(events applications.EventPublisher) error {
-	b.events = events
+func (e *Events) InitPublisher(events applications.EventPublisher) error {
+	e.events = events
 	return nil
 }
 
-func (b *backend) publishCompleted(jobID string) error {
+func (e *Events) PublishCompleted(jobID string) error {
 	payload, err := json.Marshal(map[string]string{"jobId": jobID})
 	if err != nil {
 		return err
 	}
-	return b.events.Publish(applications.Publication{
+	return e.events.Publish(applications.Publication{
 		Publisher: "jobs", // local manifest name
 		Event:     "completed",
 		Version:   1,
@@ -222,7 +261,8 @@ may drop the event under overload.
 Handle the event envelope delivered by Remote:
 
 ```go
-func (b *backend) OnEvent(event applications.Event) error {
+// backend/lifecycle/events.go
+func (e *Events) OnEvent(event applications.Event) error {
 	if event.Source.Publisher != "remote.applications" || event.Version != 1 {
 		return nil
 	}
@@ -245,7 +285,7 @@ restores it lazily for a later request or event. Subscriber failure never rolls
 back the publication or a lifecycle transition.
 
 The complete namespace, routing, lifecycle, queue, and delivery contract is in
-[18 — Backend events](18-application-events.md).
+[18 — Backend event lifecycle](18-application-events.md).
 
 ### `Request`
 
@@ -345,19 +385,22 @@ Nothing is compiled until an application with a `backend/api/` directory is inst
 Then, on install — and on start, and on the first call after a restart:
 
 ```
-1. fingerprint   sha256(backend source + SDK source + generated go.mod + Go version)
-2. cache hit?    <dataDir>/backends/bin/<application>-<fingerprint>   → skip to 5
-3. materialize   <dataDir>/backends/build/<application>-<fingerprint>/
-                   src/   your backend/ + a generated go.mod
-                   sdk/   pkg/applications, as a module named after this repo
-4. compile       go build -trimpath, offline first, network only as a fallback
-5. launch        one process per instance, over hashicorp/go-plugin
-6. Describe      version and optional-capability check
-7. Init          the instance
-8. InitPublisher when the manifest declares publishers
+1. select        backend/api/ plus sibling host packages; exclude backend/container/
+2. fingerprint   sha256(selected host source + SDK source + generated go.mod + Go version)
+3. cache hit?    <dataDir>/backends/bin/<application>-<fingerprint>   → skip to 6
+4. materialize   <dataDir>/backends/build/<application>-<fingerprint>/
+                   src/api/         executable package
+                   src/lifecycle/   imported host package, when present
+                   src/go.mod       generated application-specific module
+                   sdk/             pkg/applications, as a generated module
+5. compile       go build -trimpath ./api, offline first, network only as a fallback
+6. launch        one process per instance, over hashicorp/go-plugin
+7. Describe      version and optional-capability check
+8. Init          the instance
+9. InitPublisher when the manifest declares publishers
 ```
 
-Steps 3–4 happen once per source change; every later start is a `stat` and a
+Steps 4–5 happen once per source change; every later start is a `stat` and a
 handshake. The build directory is removed on success and **kept on failure**,
 so you can look at exactly what did not compile.
 
@@ -371,13 +414,20 @@ already provides.
 
 ### Dependencies
 
-A backend may import the **standard library** and **this SDK**. The generated
-`go.mod` pins every module to the version the server itself was built with,
-which is what lets a backend compile with no network at all.
+A backend may import the **standard library**, **this SDK**, and its own sibling
+host packages. Remote generates `backend/` as a module named
+`futrx.local/catalog/applications/<application-id>/backend`; an API imports its
+lifecycle owner, for example, as
+`futrx.local/catalog/applications/job-runner/backend/lifecycle`. The generated
+`go.mod` pins every external module to the version the server itself was built
+with, which is what lets a backend compile with no network at all.
 
-A `go.mod` inside `backend/api/` is rejected at catalog load: the server writes that
-file. If you need a third-party module, the honest answer today is to vendor
-the code you need into `backend/api/` or add the dependency to the server.
+`go.mod`, `go.sum`, `go.work`, and `go.work.sum` are rejected anywhere in the
+host backend tree: Remote owns the module and workspace boundary. The separate
+`backend/container/` build is excluded from that check. If host code needs a
+third-party module, the honest answer today is to vendor the code into an
+importable sibling package under `backend/` or add the dependency to the
+server.
 
 ### Where things live
 
@@ -445,10 +495,12 @@ request normally.
 
 ## Combining capabilities
 
-`backend/api/` and `ui/` install nothing in a container and work on a host with no
-container runtime. Add `backend/container/` for Go commands built in LXD, and
-`infra/install.sh` only for additional custom provisioning; the host backend can
-coordinate that software and its UI can expose it to the user.
+`backend/api/`, its imported siblings such as `backend/lifecycle/`, and `ui/`
+install nothing in a container and work on a host with no container runtime.
+The host packages become one executable and one process. Add
+`backend/container/` for Go commands built in LXD, and `infra/install.sh` only
+for additional custom provisioning; the host backend can coordinate that
+software and its UI can expose it to the user.
 
 ## Why net/rpc rather than gRPC
 
@@ -477,4 +529,4 @@ contract. See [10 — Fixtures](10-fixtures.md).
 - [06 — Extension API](06-extension-api.md#remotebackend) — `remote.backend` in full.
 - [12 — HTTP API](12-http-api.md#backend-backend-routes) — the routes and their authorization.
 - [13 — Security model](13-security-model.md#application-backends) — what a backend can do, and what stops it.
-- [18 — Backend events](18-application-events.md) — manifest declarations, namespaces, scope routing, and delivery guarantees.
+- [18 — Backend event lifecycle](18-application-events.md) — lifecycle-package ownership, manifest declarations, namespaces, scope routing, and delivery guarantees.

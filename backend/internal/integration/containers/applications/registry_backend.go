@@ -19,10 +19,10 @@ const backendDir = "backend"
 // An application's backend/ holds Go for two different machines, and the
 // directory names are the only thing that says which is which.
 //
-// backendAPIDir is compiled here, by this server, and run as a child process on
-// the host. backendContainerDir is never compiled here: it is packed and built
-// inside the target LXD container, for that container's own architecture, and
-// reached over lxc exec.
+// backendAPIDir is the host process entry point. Its sibling packages are also
+// host source and may be imported by api/; backendContainerDir is the one
+// exception. It is packed and built inside the target LXD container, for that
+// container's own architecture, and reached over lxc exec.
 const (
 	backendAPIDir       = "api"
 	backendContainerDir = "container"
@@ -91,15 +91,46 @@ func loadApplicationBackend(fsys fs.FS, root string, declared *svc.ApplicationBa
 	return &backend, nil
 }
 
-// validateBackendLayout checks backend/ as a whole, then the one directory the
-// host actually compiles.
+// validateBackendLayout checks the generated host module as a whole, then its
+// executable entry-point directory.
 func validateBackendLayout(fsys fs.FS, root, source string) error {
+	if err := rejectHostModuleControlFiles(fsys, root); err != nil {
+		return err
+	}
 	if source != root {
 		if err := rejectStrayBackendRoot(fsys, root); err != nil {
 			return err
 		}
 	}
 	return validateBackendSource(fsys, source)
+}
+
+// rejectHostModuleControlFiles keeps the generated module authoritative across
+// api/ and every sibling host package. backend/container is a separate build
+// context and may intentionally carry its own module.
+func rejectHostModuleControlFiles(fsys fs.FS, root string) error {
+	container := path.Join(root, backendContainerDir)
+	return fs.WalkDir(fsys, root, func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() && name == container {
+			return fs.SkipDir
+		}
+		if entry.IsDir() || !isModuleControlFile(entry.Name()) {
+			return nil
+		}
+		return fmt.Errorf("%s is not supported: the server generates the backend module", name)
+	})
+}
+
+func isModuleControlFile(name string) bool {
+	switch name {
+	case "go.mod", "go.sum", "go.work", "go.work.sum":
+		return true
+	default:
+		return false
+	}
 }
 
 // rejectStrayBackendRoot enforces that backend/'s own root carries no build
@@ -116,7 +147,7 @@ func rejectStrayBackendRoot(fsys fs.FS, root string) error {
 			continue
 		}
 		name := entry.Name()
-		if name == "go.mod" || name == "go.sum" {
+		if isModuleControlFile(name) {
 			return fmt.Errorf(
 				"%s/%s is not supported: the server generates the backend module", root, name)
 		}
@@ -143,7 +174,7 @@ func validateBackendSource(fsys fs.FS, root string) error {
 		if entry.IsDir() {
 			continue
 		}
-		if name == "go.mod" || name == "go.sum" {
+		if isModuleControlFile(name) {
 			return fmt.Errorf(
 				"%s/%s is not supported: the server generates the backend module", root, name)
 		}
@@ -177,10 +208,12 @@ func packageName(fsys fs.FS, name string) (string, error) {
 	return file.Name.Name, nil
 }
 
-// BackendSource returns the Go source the application backend host compiles, rooted at the
-// directory that holds it — backend/api/ in the current layout, backend/ itself
-// in the flat one. Unlike ui/ assets these bytes are never served, so there is
-// no path-traversal surface here: a caller gets the whole subtree or nothing.
+// BackendSource returns the Go source the application backend host compiles,
+// rooted at backend/. For the current layout api/ is the executable package and
+// sibling directories are importable support packages. In the legacy flat
+// layout the backend root itself remains the executable package. Unlike ui/
+// assets these bytes are never served, so there is no path-traversal surface
+// here: a caller gets the host subtree or nothing.
 //
 // backend/container/ is deliberately outside whatever this returns. That source
 // is built inside the target container, so handing it to the host compiler
@@ -192,13 +225,13 @@ func (r *Registry) BackendSource(applicationID string) (fs.FS, bool) {
 		return nil, false
 	}
 	root := path.Join(catalogRoot, applicationID, backendDir)
-	source, ok := resolveBackendSource(catalog, root)
+	_, ok = resolveBackendSource(catalog, root)
 	if !ok {
 		return nil, false
 	}
-	sub, err := fs.Sub(catalog, source)
+	sub, err := fs.Sub(catalog, root)
 	if err != nil {
 		return nil, false
 	}
-	return sub, true
+	return hostBackendSource{sub}, true
 }

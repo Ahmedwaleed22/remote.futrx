@@ -67,23 +67,24 @@ func writeFile(name string, data []byte) error {
 // builder precomputes it once and pays only for the backend's own source on each
 // build.
 func fingerprintOf(files, sdk []sourceFile, backendModule, sdkModule, goVersion string) string {
-	return fingerprintWith(files, sharedFingerprintOf(sdk, backendModule, sdkModule, goVersion))
+	return fingerprintWith(files, backendModule, sharedFingerprintOf(sdk, sdkModule, goVersion))
 }
 
 // sharedFingerprintOf hashes the inputs every application builds against.
-func sharedFingerprintOf(sdk []sourceFile, backendModule, sdkModule, goVersion string) string {
+func sharedFingerprintOf(sdk []sourceFile, sdkModule, goVersion string) string {
 	digest := sha256.New()
 	writeSection(digest, "sdk", sdk)
-	writeChunk(digest, []byte(backendModule))
 	writeChunk(digest, []byte(sdkModule))
 	writeChunk(digest, []byte(goVersion))
 	return hex.EncodeToString(digest.Sum(nil))
 }
 
-// fingerprintWith hashes one application's backend source against the shared half.
-func fingerprintWith(files []sourceFile, shared string) string {
+// fingerprintWith hashes one application's backend source and generated module
+// against the shared half.
+func fingerprintWith(files []sourceFile, backendModule, shared string) string {
 	digest := sha256.New()
 	writeSection(digest, "backend", files)
+	writeChunk(digest, []byte(backendModule))
 	writeChunk(digest, []byte(shared))
 	return hex.EncodeToString(digest.Sum(nil))[:16]
 }

@@ -67,6 +67,12 @@ func TestHelloRemoteDemonstratesApplicationCapabilities(t *testing.T) {
 		len(application.UI.Views) == 0 || application.Backend == nil {
 		t.Fatalf("UI/backend fields are incomplete: ui=%+v backend=%+v", application.UI, application.Backend)
 	}
+	if len(application.Publishers) != 1 || application.Publishers[0].Name != "greetings" ||
+		len(application.Publishers[0].Events) != 1 ||
+		application.Publishers[0].Events[0].Name != "greeted" ||
+		application.Publishers[0].Events[0].Version != 1 {
+		t.Fatalf("greeting event contract = %+v", application.Publishers)
+	}
 	if application.Container == nil ||
 		!slices.Contains(application.Container.Commands, "hello-remote-info") ||
 		!slices.Contains(application.Container.Commands, "hello-remote-service") {

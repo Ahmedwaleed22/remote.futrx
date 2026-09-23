@@ -1,11 +1,12 @@
 // Package applications is the contract an installable application's Go backend is
 // written against.
 //
-// An application ships backend/api/ Go source. The server compiles it and runs
-// it as a separate process, talking to it over hashicorp/go-plugin. The
-// backend implements Backend; the SPA reaches it through
-// /api/applications/<instance>/backend/<path>, so a backend author writes Go
-// and gets an HTTP endpoint their ui/ extension can call.
+// An application ships a backend/api/ Go entry point and may keep supporting
+// host packages beside it under backend/ (for example backend/lifecycle/). The
+// server compiles that host module and runs api as a separate process, talking
+// to it over hashicorp/go-plugin. The backend implements Backend; the SPA
+// reaches it through /api/applications/<instance>/backend/<path>, so a backend
+// author writes Go and gets an HTTP endpoint their ui/ extension can call.
 //
 // This package holds only the wire types and the interface. It has no
 // dependencies outside the standard library, so the service layer can speak

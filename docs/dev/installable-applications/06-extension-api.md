@@ -318,7 +318,7 @@ caller but cannot act as them. See
 This is the **browser-side** event helper for one extension in one tab. It is
 unrelated to the manifest `publishers` / `subscriptions` bus used by Go
 backends. Browser code cannot use this API to publish or consume backend events;
-see [18 — Backend events](18-application-events.md) for that contract.
+see [18 — Backend event lifecycle](18-application-events.md) for that contract.
 
 Subscribes to something the SPA finished doing, and returns a dispose
 function. Use it when your extension has to react to the app rather than to a

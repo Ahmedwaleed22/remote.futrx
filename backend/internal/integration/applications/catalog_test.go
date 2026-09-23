@@ -202,10 +202,10 @@ func decode(t *testing.T, host *Host, instance applications.Instance, request ap
 	return payload
 }
 
-// The same proof for the api/container layout: the registry resolves the
-// compiled root to backend/api/, and backend/container/ — source meant for the
-// target container, which is not package main and would not compile here — is
-// kept out of what the host is handed rather than breaking the build.
+// The same proof for the split host/container layout: the registry presents
+// backend/ as one generated host module, api/ imports its lifecycle sibling,
+// and container/ — source meant for the target container — stays out of the
+// host build entirely.
 func TestBackendWithTheAPILayoutCompilesAndServes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("compiles a backend with the Go toolchain")
@@ -214,6 +214,14 @@ func TestBackendWithTheAPILayoutCompilesAndServes(t *testing.T) {
 		t.Skipf("no Go toolchain available: %v", err)
 	}
 	file := func(data string) *fstest.MapFile { return &fstest.MapFile{Data: []byte(data)} }
+	apiBackendMain := strings.Replace(
+		catalogBackendMain,
+		`"net/http"`,
+		`"net/http"
+
+	_ "futrx.local/catalog/applications/api-fixture/backend/lifecycle"`,
+		1,
+	)
 	registry, err := containerapplications.NewRegistry(fstest.MapFS{
 		"applications/api-fixture/application.json": file(`{
 			"name": "API Fixture",
@@ -221,7 +229,9 @@ func TestBackendWithTheAPILayoutCompilesAndServes(t *testing.T) {
 			"scopes": ["global", "project"],
 			"backend": {"access": "registered", "timeoutMs": 10000}
 		}`),
-		"applications/api-fixture/backend/api/main.go": file(catalogBackendMain),
+		"applications/api-fixture/backend/api/main.go": file(apiBackendMain),
+		"applications/api-fixture/backend/lifecycle/events.go": file(
+			"package lifecycle\n\nconst Ready = true\n"),
 		// Not package main, and referencing nothing the host build provides.
 		// Reaching the compiler at all would fail this test.
 		"applications/api-fixture/backend/container/cmd/agent/main.go": file(
@@ -241,8 +251,11 @@ func TestBackendWithTheAPILayoutCompilesAndServes(t *testing.T) {
 	if !ok {
 		t.Fatal("no backend source")
 	}
-	if _, err := fs.Stat(source, "main.go"); err != nil {
-		t.Errorf("backend source is not rooted at backend/api: %v", err)
+	if _, err := fs.Stat(source, "api/main.go"); err != nil {
+		t.Errorf("backend source has no api entry point: %v", err)
+	}
+	if _, err := fs.Stat(source, "lifecycle/events.go"); err != nil {
+		t.Errorf("backend source omitted its lifecycle package: %v", err)
 	}
 	if _, err := fs.Stat(source, "container"); err == nil {
 		t.Error("container source reached the host build tree")

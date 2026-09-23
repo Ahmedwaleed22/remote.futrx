@@ -216,7 +216,7 @@ a missing process and completes its capability handshake before delivery.
 
 The public declaration, SDK API, payload constraints, and exact scope matrix
 are documented in
-[Installable applications: Backend events](installable-applications/18-application-events.md).
+[Installable applications: Backend event lifecycle](installable-applications/18-application-events.md).
 
 ## Typed delivery contract
 
