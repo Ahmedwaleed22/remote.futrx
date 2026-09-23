@@ -404,9 +404,10 @@ func (rnr *Service) runPromptAs(
 	}
 
 	run := func(runPrompt, runResumeID string) error {
-		var notification notificationSummaryFilter
-		terminalSeen := false
-		lastMessageID := ""
+		relay := runEventRelay{
+			service: rnr, ctx: ctx, chatID: id, providerID: providerID,
+			ledger: ledger, emit: emit,
+		}
 		runErr := provider.Run(ctx, agent.RunRequest{
 			Provider:       providerID,
 			ConversationID: string(id),
@@ -427,39 +428,8 @@ func (rnr *Service) runPromptAs(
 			EnableScheduleTools:  enableScheduleTools,
 			RuntimeEnv:           runtimeEnv,
 			InteractionResponses: interactionResponses,
-		}, func(ev agent.Event) {
-			if ev.Type == agent.EventAssistantTextDelta {
-				lastMessageID = agentEventMessageID(ev)
-				ev.Text = notification.text(ev.Text)
-				if ev.Text == "" {
-					return
-				}
-			}
-			if ev.Type == agent.EventRunCompleted || ev.Type == agent.EventRunFailed || ev.Type == agent.EventError {
-				terminalSeen = true
-				visible, summary := notification.finish()
-				if visible != "" {
-					rnr.emitAgentEvent(ctx, id, providerID, agent.Event{
-						T: ev.T, Type: agent.EventAssistantTextDelta, Text: visible,
-						Provider: ev.Provider, MessageID: lastMessageID,
-					}, emit)
-				}
-				if ev.Type == agent.EventRunCompleted {
-					ev.NotificationSummary = summary
-				}
-			}
-			rnr.emitAgentEvent(ctx, id, providerID, ev, emit)
-			rnr.recordRunUsage(ctx, ledger, ev)
-		})
-		if !terminalSeen {
-			visible, _ := notification.finish()
-			if visible != "" {
-				rnr.emitAgentEvent(ctx, id, providerID, agent.Event{
-					Type: agent.EventAssistantTextDelta, Text: visible,
-					Provider: providerID, MessageID: lastMessageID,
-				}, emit)
-			}
-		}
+		}, relay.forward)
+		relay.finish()
 		return runErr
 	}
 
