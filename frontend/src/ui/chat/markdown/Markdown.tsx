@@ -1,5 +1,6 @@
+import { cloneElement } from "preact";
 import { memo } from "preact/compat";
-import { useMemo, useState } from "preact/hooks";
+import { useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { parseMarkdown } from "./blockParser";
 import { highlightCode } from "./highlight";
 import { renderInline } from "./inlineParser";
@@ -36,7 +37,40 @@ const StableMarkdownBlock = memo(function StableMarkdownBlock({ block, chatId, c
   streaming: boolean;
 }) {
   const [animate] = useState(streaming);
-  return renderBlock(block, "block", { chatId, cwd }, animate);
+  const elementRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const element = elementRef.current;
+    if (!animate || !element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    // Measure the real block before the first paint, then grow its own box.
+    // The existing opacity transition runs independently, so a long list or
+    // code block creates space gradually instead of moving the thread at once.
+    const height = element.getBoundingClientRect().height;
+    if (height <= 0) return;
+    element.style.height = "0px";
+    element.style.overflow = "hidden";
+    // Commit the zero-height state before the next frame sets the target.
+    // Otherwise both writes are coalesced and the block still jumps in.
+    void element.offsetHeight;
+    const frame = requestAnimationFrame(() => {
+      element.style.height = `${height}px`;
+    });
+    const finish = (event: TransitionEvent) => {
+      if (event.target !== element || event.propertyName !== "height") return;
+      element.style.height = "";
+      element.style.overflow = "";
+      element.removeEventListener("transitionend", finish);
+    };
+    element.addEventListener("transitionend", finish);
+    return () => {
+      cancelAnimationFrame(frame);
+      element.removeEventListener("transitionend", finish);
+    };
+  }, []);
+
+  const rendered = renderBlock(block, "block", { chatId, cwd }, animate);
+  return animate ? cloneElement(rendered, { ref: elementRef }) : rendered;
 }, (previous, next) => previous.chatId === next.chatId && previous.cwd === next.cwd &&
   JSON.stringify(previous.block) === JSON.stringify(next.block));
 
