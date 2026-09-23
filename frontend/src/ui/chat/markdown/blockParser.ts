@@ -22,7 +22,19 @@ export function parseStreamingMarkdown(markdown: string, settled = false): Markd
   const last = blocks[blocks.length - 1];
   const separated = !lastOpenFence && /\n[ \t]*\n$/.test(complete);
   const singleLineComplete = last.type === "heading" || last.type === "hr";
-  return lastClosedFence || separated || singleLineComplete ? blocks : blocks.slice(0, -1);
+  if (lastClosedFence || separated || singleLineComplete) return blocks;
+  if (last.type === "table") {
+    // The delimiter establishes the table; each newline-terminated row is
+    // complete and can be shown without waiting for the final blank line.
+    return blocks;
+  }
+  if (last.type === "list") {
+    // Each item is stable once the next complete item starts. Publish those
+    // items now while keeping the final item buffered for continuation lines.
+    const items = last.items.slice(0, -1);
+    return items.length ? [...blocks.slice(0, -1), { ...last, items }] : blocks.slice(0, -1);
+  }
+  return blocks.slice(0, -1);
 }
 
 function parseMarkdownWithEnding(markdown: string): {

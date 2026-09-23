@@ -37,29 +37,77 @@ const StableMarkdownBlock = memo(function StableMarkdownBlock({ block, chatId, c
   streaming: boolean;
 }) {
   const [animate] = useState(streaming);
-  const elementRef = useRef<HTMLElement>(null);
+  const contentVersion = block.type === "list" ? block.items.length
+    : block.type === "table" ? block.rows.length + 1 : 0;
+  const elementRef = useRevealHeight<HTMLElement>(animate, contentVersion);
+
+  const rendered = renderBlock(block, "block", { chatId, cwd }, animate);
+  return animate ? cloneElement(rendered, { ref: elementRef }) : rendered;
+}, (previous, next) => previous.chatId === next.chatId && previous.cwd === next.cwd &&
+  JSON.stringify(previous.block) === JSON.stringify(next.block));
+
+function useRevealHeight<T extends HTMLElement>(animate: boolean, contentVersion: number) {
+  const elementRef = useRef<T>(null);
+  const initialized = useRef(false);
+  const targetHeight = useRef(0);
+  const animating = useRef(false);
 
   useLayoutEffect(() => {
     const element = elementRef.current;
-    if (!animate || !element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!animate || !element) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      targetHeight.current = element.getBoundingClientRect().height;
+      initialized.current = true;
+      animating.current = false;
+      element.style.height = "";
+      element.style.overflow = "";
+      element.style.maskImage = "";
+      element.style.removeProperty("--stream-reveal-feather");
+      return;
+    }
 
-    // Measure the real block before the first paint, then grow its own box.
-    // The existing opacity transition runs independently, so a long list or
-    // code block creates space gradually instead of moving the thread at once.
-    const height = element.getBoundingClientRect().height;
-    if (height <= 0) return;
-    element.style.height = "0px";
+    // Lists can gain items after mounting. Start from the visible height, then
+    // measure the new natural height so one clean edge opens below the text.
+    const from = !initialized.current ? 0
+      : animating.current ? element.getBoundingClientRect().height : targetHeight.current;
+    initialized.current = true;
+    element.style.height = "auto";
+    const to = element.getBoundingClientRect().height;
+    targetHeight.current = to;
+    if (to <= from + 0.5) {
+      animating.current = false;
+      element.style.height = "";
+      element.style.overflow = "";
+      element.style.maskImage = "";
+      element.style.removeProperty("--stream-reveal-feather");
+      return;
+    }
+    // Match duration to the remaining distance. With a linear transition,
+    // repeated item arrivals keep roughly the same visual speed instead of
+    // restarting a slow ease at every row.
+    const duration = Math.min(1200, Math.max(80, ((to - from) / 900) * 1000));
+    element.style.setProperty("--stream-reveal-duration", `${duration}ms`);
+    const softenEdge = element.matches("ul, ol") || element.querySelector(":scope > table") !== null
+      || to - from > 80 || !!element.style.maskImage;
+    if (softenEdge) {
+      element.style.maskImage = "linear-gradient(to bottom, black calc(100% - var(--stream-reveal-feather)), transparent 100%)";
+      element.style.setProperty("--stream-reveal-feather", "18px");
+    }
+    animating.current = true;
+    element.style.height = `${from}px`;
     element.style.overflow = "hidden";
-    // Commit the zero-height state before the next frame sets the target.
-    // Otherwise both writes are coalesced and the block still jumps in.
     void element.offsetHeight;
     const frame = requestAnimationFrame(() => {
-      element.style.height = `${height}px`;
+      element.style.height = `${to}px`;
+      if (softenEdge) element.style.setProperty("--stream-reveal-feather", "0px");
     });
     const finish = (event: TransitionEvent) => {
       if (event.target !== element || event.propertyName !== "height") return;
       element.style.height = "";
       element.style.overflow = "";
+      element.style.maskImage = "";
+      element.style.removeProperty("--stream-reveal-feather");
+      animating.current = false;
       element.removeEventListener("transitionend", finish);
     };
     element.addEventListener("transitionend", finish);
@@ -67,12 +115,9 @@ const StableMarkdownBlock = memo(function StableMarkdownBlock({ block, chatId, c
       cancelAnimationFrame(frame);
       element.removeEventListener("transitionend", finish);
     };
-  }, []);
-
-  const rendered = renderBlock(block, "block", { chatId, cwd }, animate);
-  return animate ? cloneElement(rendered, { ref: elementRef }) : rendered;
-}, (previous, next) => previous.chatId === next.chatId && previous.cwd === next.cwd &&
-  JSON.stringify(previous.block) === JSON.stringify(next.block));
+  }, [animate, contentVersion]);
+  return elementRef;
+}
 
 interface MarkdownRenderContext {
   chatId?: string;

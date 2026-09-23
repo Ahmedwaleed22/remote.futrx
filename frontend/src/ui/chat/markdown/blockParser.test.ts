@@ -21,7 +21,12 @@ test("reveals completed blocks while keeping the next block buffered", () => {
 
 test("does not reveal an incomplete table header as a paragraph", () => {
   assert.deepEqual(parseStreamingMarkdown("Name | Value\n--- | --"), []);
-  assert.deepEqual(parseStreamingMarkdown("Name | Value\n--- | ---\nA | 1"), []);
+  assert.deepEqual(parseStreamingMarkdown("Name | Value\n--- | ---\nA | 1"), [
+    { type: "table", header: ["Name", "Value"], rows: [] },
+  ]);
+  assert.deepEqual(parseStreamingMarkdown("Name | Value\n--- | ---\nA | 1\nB | 2"), [
+    { type: "table", header: ["Name", "Value"], rows: [["A", "1"]] },
+  ]);
   assert.deepEqual(parseStreamingMarkdown("Name | Value\n--- | ---\nA | 1\n\n"), [
     { type: "table", header: ["Name", "Value"], rows: [["A", "1"]] },
   ]);
@@ -66,7 +71,20 @@ test("visible blocks never retract during character-by-character streaming", () 
     let previous = [] as ReturnType<typeof parseStreamingMarkdown>;
     for (let end = 0; end <= document.length; end++) {
       const blocks = parseStreamingMarkdown(document.slice(0, end));
-      assert.deepEqual(blocks.slice(0, previous.length), previous, `retracted at ${JSON.stringify(document.slice(0, end))}`);
+      assert.ok(blocks.length >= previous.length, `retracted at ${JSON.stringify(document.slice(0, end))}`);
+      previous.forEach((block, index) => {
+        const current = blocks[index];
+        if (block.type === "list" && current.type === "list") {
+          assert.equal(current.ordered, block.ordered);
+          assert.equal(current.start, block.start);
+          assert.deepEqual(current.items.slice(0, block.items.length), block.items);
+        } else if (block.type === "table" && current.type === "table") {
+          assert.deepEqual(current.header, block.header);
+          assert.deepEqual(current.rows.slice(0, block.rows.length), block.rows);
+        } else {
+          assert.deepEqual(current, block, `changed at ${JSON.stringify(document.slice(0, end))}`);
+        }
+      });
       previous = blocks;
     }
     assert.deepEqual(parseStreamingMarkdown(document, true), parseMarkdown(document));
@@ -75,7 +93,13 @@ test("visible blocks never retract during character-by-character streaming", () 
 });
 
 test("holds a list while the next marker is incomplete", () => {
-  for (const suffix of ["-", "- ", "- second", "- second\n"]) {
+  for (const suffix of ["-", "- ", "- second"]) {
     assert.deepEqual(parseStreamingMarkdown(`- first\n${suffix}`), []);
   }
+  assert.deepEqual(parseStreamingMarkdown("- first\n- second\n"), [
+    { type: "list", ordered: false, start: undefined, items: [{ text: "first" }] },
+  ]);
+  assert.deepEqual(parseStreamingMarkdown("- first\n- second\n- third\n"), [
+    { type: "list", ordered: false, start: undefined, items: [{ text: "first" }, { text: "second" }] },
+  ]);
 });
