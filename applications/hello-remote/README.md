@@ -110,11 +110,12 @@ server, open the panel, and the number is still there.
 
 Each successful counter increment also publishes the manifest-declared
 `greetings.greeted` event with a versioned JSON payload.
-`backend/lifecycle/` implements only the optional publisher contract, and the
-`backend/api/` composition root embeds that publisher into the value passed to
-`rpc.Serve`. The manifest deliberately declares no subscriptions: Remote core
-publishes its application lifecycle events automatically, independently of
-whether Hello Remote consumes them. Publication happens outside the
+`backend/lifecycle/` owns the typed `Greetings.Greeted` business trigger while
+Remote constructs and binds the actual event runtime from the manifest. The API
+does not implement or initialize a publisher. The manifest deliberately
+declares no subscriptions: Remote core publishes its application lifecycle
+events automatically, independently of whether Hello Remote consumes them.
+Emission happens outside the
 visit-counter lock and a publication failure becomes a response warning; it
 never rolls back a greeting.
 
@@ -129,10 +130,10 @@ memory, and uptime. Each has an independent **Refresh** action.
 | File | Shows |
 |---|---|
 | `application.json` | The application identity, both scopes, base image, real greeting input, port, service, install path, health check, host tool, publisher, explicit UI mapping, and backend policy. |
-| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) and the composition root that wires the `Router`, concrete inspectors, and embedded lifecycle owner into one served backend. |
-| `backend/api/greeting.go`, `backend/api/visits.go` | Greeting and echo routes, the per-instance persistent counter, and the request-side trigger that asks the lifecycle owner to publish. |
+| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) and the composition root that receives core-owned runtime capabilities and wires the API dependencies. |
+| `backend/api/greeting.go`, `backend/api/visits.go` | Greeting and echo routes, the per-instance persistent counter, and the request-side business trigger for the greeting event. |
 | `backend/api/container.go`, `backend/api/service.go` | Bounded host calls into the installed inspection command and the proxied HTTP service. |
-| `backend/lifecycle/publisher.go` | Publisher/event identity, `InitPublisher`, and greeting publication. It is imported by `backend/api`; it is not another process. |
+| `backend/lifecycle/greetings.go` | The typed `greetings.greeted` identity and payload. It emits through `Runtime.Events`; publisher registration and validation remain core-owned. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
 | `backend/container/cmd/hello-remote-service/` | A supervised HTTP service with separate command dispatch, configuration decoding, serving, and health-probe owners. |
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without backend-owned shell. |

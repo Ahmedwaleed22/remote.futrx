@@ -16,9 +16,10 @@ publishes typed catalog and installed-copy transitions inside
 `backend/internal/lifecycle`. `ApplicationEventBridge` translates those facts
 into the public dynamic `applications.Event` envelope.
 
-Application backends publish and consume only the dynamic contract. Event code
-is conventionally owned by an importable `backend/lifecycle/` package, but the
-API composition root serves it as part of the same backend process:
+Application backends emit and consume only the dynamic contract. Event code is
+conventionally owned by an importable `backend/lifecycle/` package. The API and
+lifecycle packages may run in the same backend process, but the API backend
+does not implement the publisher runtime:
 
 ```text
 Application service
@@ -29,8 +30,9 @@ Application service
     -> matching running backends
 
 Application backend process
-    -> backend/lifecycle owner composed by backend/api
-    -> validated EventPublisher
+    -> backend/lifecycle business event
+    -> core-owned Runtime.Events emitter
+    -> manifest validation and trusted source stamping
     -> bounded EventBus queue
     -> bounded application delivery queue
     -> matching running backends
@@ -115,9 +117,9 @@ HTTP package does not become the owner of two unrelated concerns:
 ```text
 backend/
   api/
-    main.go       required executable; calls rpc.Serve
+    main.go       required executable; calls rpc.ServeWithRuntime
   lifecycle/
-    events.go     importable publisher/subscriber implementation
+    jobs.go       typed business-event triggers
   container/      excluded from the host module and built in LXD
 ```
 
@@ -126,48 +128,45 @@ builds `./api`. Its module path is
 `futrx.local/catalog/applications/<application-id>/backend`, matching the
 catalog module used in this checkout. `go.mod`, `go.sum`, `go.work`, and
 `go.work.sum` are forbidden throughout the host tree so an application cannot
-replace that generated boundary. The API entry point can therefore compose the
-lifecycle owner directly:
+replace that generated boundary. The executable asks the RPC runtime to supply
+core-owned capabilities, then composes the API and lifecycle layers:
 
 ```go
-// backend/api/main.go
-import appLifecycle "futrx.local/catalog/applications/job-runner/backend/lifecycle"
-
-type backend struct {
-	appLifecycle.Events
-	router *applications.Router
+func main() {
+	rpc.ServeWithRuntime(func(runtime applications.Runtime) applications.Backend {
+		jobs := appLifecycle.NewJobs(runtime.Events)
+		return newBackend(jobs)
+	})
 }
 ```
 
-Embedding promotes the lifecycle owner's `InitPublisher` and `OnEvent` methods
-onto the value passed to `rpc.Serve`; explicit delegation works too. This is one
-binary, one per-instance process, and one RPC handshake. The sibling directory
-is a source-ownership boundary, not an independently detected capability.
+`Runtime.Events` is implemented and initialized by Remote, not by the API or
+lifecycle package. This remains one binary, one per-instance process, and one
+RPC handshake. The sibling directory is a source-ownership boundary, not an
+independently launched process.
 
-## Publish from the lifecycle owner
+## Emit from the lifecycle owner
 
-Implement the optional `applications.PublisherBackend` capability on the
-lifecycle owner and retain the host-owned publisher:
+Retain the core-owned emitter behind a typed business-event method:
 
 ```go
-// backend/lifecycle/events.go
+// backend/lifecycle/jobs.go
 package lifecycle
 
-type Events struct {
-	events applications.EventPublisher
+type Jobs struct {
+	events applications.EventEmitter
 }
 
-func (e *Events) InitPublisher(events applications.EventPublisher) error {
-	e.events = events
-	return nil
+func NewJobs(events applications.EventEmitter) *Jobs {
+	return &Jobs{events: events}
 }
 
-func (e *Events) PublishCompleted(jobID string) error {
+func (j *Jobs) Completed(jobID string) error {
 	payload, err := json.Marshal(map[string]string{"jobId": jobID})
 	if err != nil {
 		return err
 	}
-	return e.events.Publish(applications.Publication{
+	return j.events.Emit(applications.Publication{
 		Publisher: "jobs",
 		Event:     "completed",
 		Version:   1,
@@ -176,14 +175,15 @@ func (e *Events) PublishCompleted(jobID string) error {
 }
 ```
 
-Remote calls the promoted `InitPublisher` after the required `Backend.Init`
-handshake. The publisher is valid for that backend process's lifetime. Stop and
-uninstall terminate the one process; a later start performs the handshake and
-supplies a new publisher.
+The manifest is the only publisher registry. During startup, Remote constructs
+an authorization registry from its validated declarations and binds
+`Runtime.Events` before calling `Backend.Init`. The application neither
+implements nor initializes a publisher. Stop and uninstall terminate the one
+process; a later start binds a fresh emitter before initialization.
 
 Every publication must exactly match a declared local publisher, event name,
 and version. The payload must be a valid, non-null JSON object no larger than
-64 KiB. The SDK's RPC publisher rejects oversized payloads before transport,
+64 KiB. The SDK's RPC emitter rejects oversized payloads before transport,
 and the host independently validates size and shape at its trust boundary. An
 omitted payload is normalized to `{}`. Arrays, strings, numbers, booleans,
 `null`, malformed JSON, and oversized objects are rejected before they reach
@@ -194,7 +194,7 @@ application ID, instance ID, scope, project ID, and canonical publisher. Treat
 those source fields as trusted routing metadata; treat the publisher-defined
 payload as untrusted input.
 
-`EventPublisher.Publish` returning nil means Remote validated and submitted the
+`EventEmitter.Emit` returning nil means Remote validated and submitted the
 event to its best-effort in-memory dispatcher. It does not wait for subscribers,
 cannot report their result, and does not guarantee delivery when an overload
 queue is full.

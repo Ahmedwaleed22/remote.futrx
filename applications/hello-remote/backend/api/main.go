@@ -12,11 +12,10 @@ import (
 )
 
 type api struct {
-	appLifecycle.Publisher
-
 	router           *applications.Router
 	inspectContainer func(string) (containerFacts, error)
 	inspectService   func(int) (serviceHealth, error)
+	greetings        greetingEvents
 
 	mu       sync.Mutex
 	instance applications.Instance
@@ -24,13 +23,14 @@ type api struct {
 }
 
 var (
-	_ applications.Backend          = (*api)(nil)
-	_ applications.PublisherBackend = (*api)(nil)
+	_ applications.Backend = (*api)(nil)
 )
 
 // REQUIRED — main must serve a value implementing applications.Backend.
 func main() {
-	rpc.Serve(handler())
+	rpc.ServeWithRuntime(func(runtime applications.Runtime) applications.Backend {
+		return handler(appLifecycle.NewGreetings(runtime.Events))
+	})
 }
 
 // REQUIRED — Describe runs once when the host connects. APIVersion must use
@@ -61,14 +61,19 @@ func (b *api) Handle(request applications.Request) (applications.Response, error
 	return b.router.Serve(request), nil
 }
 
+type greetingEvents interface {
+	Greeted(int) error
+}
+
 // handler is the composition root for the example backend. It owns concrete
-// integrations, the lifecycle publisher, and route registration so production
-// and tests use one assembly rather than subtly different backends.
-func handler() *api {
+// integrations, application lifecycle events, and route registration so
+// production and tests use one assembly rather than subtly different backends.
+func handler(greetings greetingEvents) *api {
 	h := &api{
 		router:           applications.NewRouter(),
 		inspectContainer: readContainerFacts,
 		inspectService:   readServiceHealth,
+		greetings:        greetings,
 	}
 
 	h.router.GET("hello", "Greet the calling user", h.hello)

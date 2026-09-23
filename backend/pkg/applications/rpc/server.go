@@ -10,6 +10,7 @@ import (
 
 type server struct {
 	impl   applications.Backend
+	events *runtimeEvents
 	broker *goplugin.MuxBroker
 }
 
@@ -17,9 +18,10 @@ func (s *server) Describe(_ DescribeArgs, reply *DescribeReply) error {
 	descriptor, err := recovered(func() (applications.Descriptor, error) {
 		return s.impl.Describe()
 	})
-	// Capability discovery reflects the implementation, never mutable values a
-	// backend happened to return from Describe.
-	_, descriptor.PublishesEvents = s.impl.(applications.PublisherBackend)
+	// Publishing is manifest-owned and the host fills it after this handshake.
+	// Subscription remains an optional backend implementation capability. Never
+	// trust mutable values a backend happened to return from Describe.
+	descriptor.PublishesEvents = false
 	_, descriptor.SubscribesEvents = s.impl.(applications.EventSubscriber)
 	reply.Descriptor = descriptor
 	reply.Error = errorText(err)
@@ -43,27 +45,26 @@ func (s *server) Handle(args HandleArgs, reply *HandleReply) error {
 	return nil
 }
 
-func (s *server) InitPublisher(args InitPublisherArgs, reply *InitPublisherReply) error {
-	backend, ok := s.impl.(applications.PublisherBackend)
-	if !ok {
-		reply.Error = "backend does not implement applications.PublisherBackend"
+func (s *server) BindEvents(args BindEventsArgs, reply *BindEventsReply) error {
+	if s.events == nil {
+		reply.Error = "backend did not request application runtime events"
 		return nil
 	}
 	if s.broker == nil {
-		reply.Error = "publisher callback broker is unavailable"
+		reply.Error = "event callback broker is unavailable"
 		return nil
 	}
 	connection, err := s.broker.Dial(args.BrokerID)
 	if err != nil {
-		reply.Error = fmt.Sprintf("connect publisher callback: %v", err)
+		reply.Error = fmt.Sprintf("connect event callback: %v", err)
 		return nil
 	}
-	publisher := &eventPublisherClient{client: rpc.NewClient(connection)}
+	emitter := &eventEmitterClient{client: rpc.NewClient(connection)}
 	_, err = recovered(func() (struct{}, error) {
-		return struct{}{}, backend.InitPublisher(publisher)
+		return struct{}{}, s.events.bind(emitter)
 	})
 	if err != nil {
-		_ = publisher.client.Close()
+		_ = emitter.client.Close()
 	}
 	reply.Error = errorText(err)
 	return nil
@@ -82,15 +83,15 @@ func (s *server) OnEvent(args OnEventArgs, reply *OnEventReply) error {
 	return nil
 }
 
-// eventPublisherServer exposes the host-owned publisher on the callback
-// connection initiated during InitPublisher.
-type eventPublisherServer struct {
-	impl applications.EventPublisher
+// eventEmitterServer exposes the host-owned emitter on the callback connection
+// initiated while core binds the application runtime.
+type eventEmitterServer struct {
+	impl applications.EventEmitter
 }
 
-func (s *eventPublisherServer) Publish(args PublishArgs, reply *PublishReply) error {
+func (s *eventEmitterServer) Emit(args EmitArgs, reply *EmitReply) error {
 	_, err := recovered(func() (struct{}, error) {
-		return struct{}{}, s.impl.Publish(args.Publication)
+		return struct{}{}, s.impl.Emit(args.Publication)
 	})
 	reply.Error = errorText(err)
 	return nil

@@ -8,16 +8,17 @@ import (
 	"sync"
 	"testing"
 
+	appLifecycle "futrx.local/catalog/applications/hello-remote/backend/lifecycle"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
-type recordingEventPublisher struct {
+type recordingEventEmitter struct {
 	mu           sync.Mutex
 	publications []applications.Publication
 	err          error
 }
 
-func (p *recordingEventPublisher) Publish(publication applications.Publication) error {
+func (p *recordingEventEmitter) Emit(publication applications.Publication) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	publication.Payload = append(json.RawMessage(nil), publication.Payload...)
@@ -25,7 +26,7 @@ func (p *recordingEventPublisher) Publish(publication applications.Publication) 
 	return p.err
 }
 
-func (p *recordingEventPublisher) recorded() []applications.Publication {
+func (p *recordingEventEmitter) recorded() []applications.Publication {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return append([]applications.Publication(nil), p.publications...)
@@ -36,8 +37,17 @@ func (p *recordingEventPublisher) recorded() []applications.Publication {
 // and call Handle. Nothing here needs a server, a container, or the backend
 // host.
 func newTestBackend(t *testing.T, dataDir string, env map[string]string) *api {
+	return newTestBackendWithEvents(t, dataDir, env, &recordingEventEmitter{})
+}
+
+func newTestBackendWithEvents(
+	t *testing.T,
+	dataDir string,
+	env map[string]string,
+	events applications.EventEmitter,
+) *api {
 	t.Helper()
-	b := handler()
+	b := handler(appLifecycle.NewGreetings(events))
 	if err := b.Init(applications.Instance{
 		ID: "test", ApplicationID: "hello-remote", Scope: "global",
 		DataDir: dataDir, Env: env,
@@ -82,7 +92,7 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 			Status:             "ok",
 			Message:            "Hello from the container service.",
 			Version:            "build-id",
-			ProvisionedVersion: "12",
+			ProvisionedVersion: "13",
 		}, nil
 	}
 
@@ -96,8 +106,8 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 	if got := body["externalPort"]; got != float64(4781) {
 		t.Errorf("external port = %v, want 4781", got)
 	}
-	if got := body["provisionedVersion"]; got != "12" {
-		t.Errorf("provisionedVersion = %v, want 12", got)
+	if got := body["provisionedVersion"]; got != "13" {
+		t.Errorf("provisionedVersion = %v, want 13", got)
 	}
 }
 
@@ -184,18 +194,15 @@ func TestVisitsWithoutADataDirStillAnswer(t *testing.T) {
 	}
 }
 
-func TestGreetingVisitPublishesTheDeclaredEvent(t *testing.T) {
-	b := newTestBackend(t, t.TempDir(), nil)
-	publisher := &recordingEventPublisher{}
-	if err := b.InitPublisher(publisher); err != nil {
-		t.Fatalf("init publisher: %v", err)
-	}
+func TestGreetingVisitEmitsTheDeclaredEvent(t *testing.T) {
+	emitter := &recordingEventEmitter{}
+	b := newTestBackendWithEvents(t, t.TempDir(), nil, emitter)
 
 	body := call(t, b, http.MethodPost, "visits")
 	if body["warning"] != nil {
 		t.Fatalf("successful greeting warning = %v", body["warning"])
 	}
-	publications := publisher.recorded()
+	publications := emitter.recorded()
 	if len(publications) != 1 {
 		t.Fatalf("publications = %d, want 1", len(publications))
 	}
@@ -214,10 +221,12 @@ func TestGreetingVisitPublishesTheDeclaredEvent(t *testing.T) {
 }
 
 func TestGreetingVisitSucceedsWhenPublicationFails(t *testing.T) {
-	b := newTestBackend(t, t.TempDir(), nil)
-	if err := b.InitPublisher(&recordingEventPublisher{err: errors.New("bus unavailable")}); err != nil {
-		t.Fatalf("init publisher: %v", err)
-	}
+	b := newTestBackendWithEvents(
+		t,
+		t.TempDir(),
+		nil,
+		&recordingEventEmitter{err: errors.New("bus unavailable")},
+	)
 
 	body := call(t, b, http.MethodPost, "visits")
 	if body["visits"] != float64(1) {
@@ -229,10 +238,10 @@ func TestGreetingVisitSucceedsWhenPublicationFails(t *testing.T) {
 	}
 }
 
-func TestBackendPublishesWithoutSubscribing(t *testing.T) {
+func TestBackendDoesNotOwnEventRuntimeContracts(t *testing.T) {
 	b := newTestBackend(t, t.TempDir(), nil)
-	if _, ok := any(b).(applications.PublisherBackend); !ok {
-		t.Fatal("backend does not implement applications.PublisherBackend")
+	if _, ok := any(b).(applications.EventEmitter); ok {
+		t.Fatal("backend unexpectedly implements applications.EventEmitter")
 	}
 	if _, ok := any(b).(applications.EventSubscriber); ok {
 		t.Fatal("backend unexpectedly implements applications.EventSubscriber")

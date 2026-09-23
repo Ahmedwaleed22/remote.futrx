@@ -52,11 +52,11 @@ go build ./... && go vet ./...
 | `service/applications/ui_extensions_test.go` | which extensions a caller may load, and their install scope |
 | `service/applications/backend_test.go` | who may call a backend, when, and what lifecycle does to its process |
 | `applications/host_test.go` | compiling, launching, one process per instance, restart, timeout, panic isolation, data retention |
-| `applications/events_test.go` | publication authorization, host-stamped identity, payload limits, optional capability handshake, and delivery |
+| `applications/events_test.go` | publication authorization, host-stamped identity, payload limits, runtime binding, and delivery |
 | `applications/builder_test.go` | fingerprinting and the generated module files |
 | `applications/catalog_test.go` | an API importing a sibling lifecycle package, with container source excluded, compiled and called end to end |
 | `pkg/applications/mux_test.go` | route matching, method fallbacks, request helpers |
-| `pkg/applications/rpc/events_test.go` | publisher callback and subscriber delivery across the backend RPC boundary |
+| `pkg/applications/rpc/events_test.go` | core-owned emitter binding and subscriber delivery across the backend RPC boundary |
 | `lifecycle/event_bus_test.go`, `application_event_bridge_test.go` | defensive payload copies and canonical version-1 core event envelopes |
 | `handlers/applications_backend_handler_test.go` | which headers cross the boundary in each direction |
 

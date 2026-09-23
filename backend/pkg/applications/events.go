@@ -97,19 +97,13 @@ type Event struct {
 	Payload json.RawMessage `json:"payload,omitempty"`
 }
 
-// EventPublisher is the host capability handed to a publishing backend. A
-// publication is synchronous only through validation and submission: nil does
-// not mean an asynchronous subscriber completed or that a best-effort overload
-// queue could not drop the event.
-type EventPublisher interface {
-	Publish(Publication) error
-}
-
-// PublisherBackend is an optional capability. Remote calls InitPublisher
-// after the required Backend.Init handshake when the implementation exposes
-// it. The backend should retain the publisher for the lifetime of the process.
-type PublisherBackend interface {
-	InitPublisher(EventPublisher) error
+// EventEmitter is the core-owned runtime capability an application uses to
+// submit one manifest-declared event. Remote validates the publication and
+// stamps its trusted source identity before dispatch. A nil error means the
+// event was accepted by core; it does not mean an asynchronous subscriber
+// completed or that a best-effort overload queue could not later drop it.
+type EventEmitter interface {
+	Emit(Publication) error
 }
 
 // EventSubscriber is an optional capability implemented by a backend that

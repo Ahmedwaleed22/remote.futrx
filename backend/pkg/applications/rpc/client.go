@@ -19,7 +19,6 @@ type Client struct {
 }
 
 var _ applications.Backend = (*Client)(nil)
-var _ applications.PublisherBackend = (*Client)(nil)
 var _ applications.EventSubscriber = (*Client)(nil)
 
 func (c *Client) Describe() (applications.Descriptor, error) {
@@ -55,24 +54,25 @@ func (c *Client) Handle(request applications.Request) (applications.Response, er
 	return reply.Response, nil
 }
 
-// InitPublisher opens a brokered callback connection that lets the backend
-// publish into the host without reversing the primary Backend RPC interface.
-func (c *Client) InitPublisher(publisher applications.EventPublisher) error {
-	if publisher == nil {
-		return fmt.Errorf("init publisher: publisher is nil")
+// BindEvents opens the core-owned callback connection used by Runtime.Events.
+// It is transport plumbing called by the host, not an application backend
+// capability.
+func (c *Client) BindEvents(emitter applications.EventEmitter) error {
+	if emitter == nil {
+		return fmt.Errorf("bind events: emitter is nil")
 	}
 	if c.broker == nil {
-		return fmt.Errorf("init publisher: callback broker is unavailable")
+		return fmt.Errorf("bind events: callback broker is unavailable")
 	}
 	id := c.broker.NextId()
-	go c.broker.AcceptAndServe(id, &eventPublisherServer{impl: publisher})
+	go c.broker.AcceptAndServe(id, &eventEmitterServer{impl: emitter})
 
-	var reply InitPublisherReply
-	if err := c.client.Call("Plugin.InitPublisher", InitPublisherArgs{BrokerID: id}, &reply); err != nil {
-		return fmt.Errorf("init publisher: %w", err)
+	var reply BindEventsReply
+	if err := c.client.Call("Plugin.BindEvents", BindEventsArgs{BrokerID: id}, &reply); err != nil {
+		return fmt.Errorf("bind events: %w", err)
 	}
 	if reply.Error != "" {
-		return fmt.Errorf("init publisher: %s", reply.Error)
+		return fmt.Errorf("bind events: %s", reply.Error)
 	}
 	return nil
 }
@@ -89,26 +89,26 @@ func (c *Client) OnEvent(event applications.Event) error {
 	return nil
 }
 
-// eventPublisherClient is the backend side of the callback connection.
-type eventPublisherClient struct {
+// eventEmitterClient is the application side of the core-owned callback.
+type eventEmitterClient struct {
 	client *rpc.Client
 }
 
-var _ applications.EventPublisher = (*eventPublisherClient)(nil)
+var _ applications.EventEmitter = (*eventEmitterClient)(nil)
 
-func (c *eventPublisherClient) Publish(publication applications.Publication) error {
+func (c *eventEmitterClient) Emit(publication applications.Publication) error {
 	if len(publication.Payload) > applications.MaxEventPayloadBytes {
 		return fmt.Errorf(
-			"publish event: payload exceeds %d bytes",
+			"emit event: payload exceeds %d bytes",
 			applications.MaxEventPayloadBytes,
 		)
 	}
-	var reply PublishReply
-	if err := c.client.Call("Plugin.Publish", PublishArgs{Publication: publication}, &reply); err != nil {
-		return fmt.Errorf("publish event: %w", err)
+	var reply EmitReply
+	if err := c.client.Call("Plugin.Emit", EmitArgs{Publication: publication}, &reply); err != nil {
+		return fmt.Errorf("emit event: %w", err)
 	}
 	if reply.Error != "" {
-		return fmt.Errorf("publish event: %s", reply.Error)
+		return fmt.Errorf("emit event: %s", reply.Error)
 	}
 	return nil
 }

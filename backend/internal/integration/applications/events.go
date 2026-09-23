@@ -11,21 +11,21 @@ import (
 
 const maxEventPayloadBytes = applicationapi.MaxEventPayloadBytes
 
-// instancePublisher is the only publishing capability handed into one child
-// process. It authorizes against that process's validated manifest and stamps
-// identity the child cannot forge before an event reaches the shared bus.
+// instancePublisher is the core-owned emitter bound into one child process. It
+// authorizes against that process's validated manifest and stamps identity the
+// child cannot forge before an event reaches the shared bus.
 type instancePublisher struct {
 	instance applicationapi.Instance
 	events   EventSink
 }
 
-var _ applicationapi.EventPublisher = (*instancePublisher)(nil)
+var _ applicationapi.EventEmitter = (*instancePublisher)(nil)
 
 func newInstancePublisher(instance applicationapi.Instance, events EventSink) *instancePublisher {
 	return &instancePublisher{instance: instance, events: events}
 }
 
-func (p *instancePublisher) Publish(publication applicationapi.Publication) error {
+func (p *instancePublisher) Emit(publication applicationapi.Publication) error {
 	if p.events == nil {
 		return fmt.Errorf("event bus unavailable")
 	}

@@ -33,15 +33,9 @@ func (*requiredBackend) Handle(applications.Request) (applications.Response, err
 
 type eventBackend struct {
 	requiredBackend
-	publisher applications.EventPublisher
-	events    []applications.Event
-	err       error
-	panic     bool
-}
-
-func (b *eventBackend) InitPublisher(publisher applications.EventPublisher) error {
-	b.publisher = publisher
-	return b.err
+	events []applications.Event
+	err    error
+	panic  bool
 }
 
 func (b *eventBackend) OnEvent(event applications.Event) error {
@@ -66,9 +60,9 @@ func TestDescribeDerivesEventCapabilities(t *testing.T) {
 			}},
 		},
 		{
-			name:             "optional interfaces are discovered",
+			name:             "subscriber interface is discovered",
 			backend:          &eventBackend{},
-			publishesEvents:  true,
+			publishesEvents:  false,
 			subscribesEvents: true,
 		},
 	} {
@@ -163,19 +157,19 @@ func TestEventSubscriberErrorsAndPanicsStayRPCFailures(t *testing.T) {
 	}
 }
 
-type recordingPublisher struct {
+type recordingEmitter struct {
 	publications []applications.Publication
 	err          error
 }
 
-func (p *recordingPublisher) Publish(publication applications.Publication) error {
-	p.publications = append(p.publications, publication)
-	return p.err
+func (e *recordingEmitter) Emit(publication applications.Publication) error {
+	e.publications = append(e.publications, publication)
+	return e.err
 }
 
-func TestEventPublisherCrossesCallbackRPCConnection(t *testing.T) {
-	publisher := &recordingPublisher{}
-	client, closeClient := rpcClientFor(t, &eventPublisherServer{impl: publisher})
+func TestEventEmitterCrossesCallbackRPCConnection(t *testing.T) {
+	emitter := &recordingEmitter{}
+	client, closeClient := rpcClientFor(t, &eventEmitterServer{impl: emitter})
 	defer closeClient()
 
 	publication := applications.Publication{
@@ -184,30 +178,48 @@ func TestEventPublisherCrossesCallbackRPCConnection(t *testing.T) {
 		Version:   1,
 		Payload:   []byte(`{"count":2}`),
 	}
-	if err := (&eventPublisherClient{client: client}).Publish(publication); err != nil {
-		t.Fatalf("Publish() error: %v", err)
+	if err := (&eventEmitterClient{client: client}).Emit(publication); err != nil {
+		t.Fatalf("Emit() error: %v", err)
 	}
-	if !reflect.DeepEqual(publisher.publications, []applications.Publication{publication}) {
-		t.Fatalf("publications = %#v, want %#v", publisher.publications, []applications.Publication{publication})
+	if !reflect.DeepEqual(emitter.publications, []applications.Publication{publication}) {
+		t.Fatalf("publications = %#v, want %#v", emitter.publications, []applications.Publication{publication})
 	}
 }
 
-func TestEventPublisherRejectsOversizedPayloadBeforeCallbackRPC(t *testing.T) {
-	publisher := &recordingPublisher{}
-	client, closeClient := rpcClientFor(t, &eventPublisherServer{impl: publisher})
+func TestEventEmitterRejectsOversizedPayloadBeforeCallbackRPC(t *testing.T) {
+	emitter := &recordingEmitter{}
+	client, closeClient := rpcClientFor(t, &eventEmitterServer{impl: emitter})
 	defer closeClient()
 
-	err := (&eventPublisherClient{client: client}).Publish(applications.Publication{
+	err := (&eventEmitterClient{client: client}).Emit(applications.Publication{
 		Publisher: "greetings",
 		Event:     "greeted",
 		Version:   1,
 		Payload:   make([]byte, applications.MaxEventPayloadBytes+1),
 	})
 	if err == nil || !strings.Contains(err.Error(), "payload exceeds 65536 bytes") {
-		t.Fatalf("Publish() error = %v, want payload size rejection", err)
+		t.Fatalf("Emit() error = %v, want payload size rejection", err)
 	}
-	if len(publisher.publications) != 0 {
-		t.Fatalf("callback received %d publications, want none", len(publisher.publications))
+	if len(emitter.publications) != 0 {
+		t.Fatalf("callback received %d publications, want none", len(emitter.publications))
+	}
+}
+
+func TestRuntimeEventsForwardsOnlyAfterCoreBindsIt(t *testing.T) {
+	events := &runtimeEvents{}
+	publication := applications.Publication{Publisher: "greetings", Event: "greeted", Version: 1}
+	if err := events.Emit(publication); err == nil || !strings.Contains(err.Error(), "not initialized") {
+		t.Fatalf("Emit() before bind error = %v", err)
+	}
+	emitter := &recordingEmitter{}
+	if err := events.bind(emitter); err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	if err := events.Emit(publication); err != nil {
+		t.Fatalf("Emit() after bind: %v", err)
+	}
+	if !reflect.DeepEqual(emitter.publications, []applications.Publication{publication}) {
+		t.Fatalf("publications = %#v", emitter.publications)
 	}
 }
 
@@ -226,43 +238,43 @@ func (b *recordingBroker) AcceptAndServe(id uint32, server any) {
 	b.served <- brokeredServer{id: id, server: server}
 }
 
-type initPublisherRPC struct {
+type bindEventsRPC struct {
 	mu   sync.Mutex
-	args []InitPublisherArgs
+	args []BindEventsArgs
 }
 
-func (s *initPublisherRPC) InitPublisher(args InitPublisherArgs, _ *InitPublisherReply) error {
+func (s *bindEventsRPC) BindEvents(args BindEventsArgs, _ *BindEventsReply) error {
 	s.mu.Lock()
 	s.args = append(s.args, args)
 	s.mu.Unlock()
 	return nil
 }
 
-func TestInitPublisherOffersHostCallbackThroughBroker(t *testing.T) {
-	remote := &initPublisherRPC{}
+func TestBindEventsOffersCoreEmitterThroughBroker(t *testing.T) {
+	remote := &bindEventsRPC{}
 	client, closeClient := rpcClientFor(t, remote)
 	defer closeClient()
 	broker := &recordingBroker{served: make(chan brokeredServer, 1)}
 
-	if err := (&Client{client: client, broker: broker}).InitPublisher(&recordingPublisher{}); err != nil {
-		t.Fatalf("InitPublisher() error: %v", err)
+	if err := (&Client{client: client, broker: broker}).BindEvents(&recordingEmitter{}); err != nil {
+		t.Fatalf("BindEvents() error: %v", err)
 	}
 	remote.mu.Lock()
-	args := append([]InitPublisherArgs(nil), remote.args...)
+	args := append([]BindEventsArgs(nil), remote.args...)
 	remote.mu.Unlock()
-	if !reflect.DeepEqual(args, []InitPublisherArgs{{BrokerID: 41}}) {
-		t.Fatalf("InitPublisher args = %#v", args)
+	if !reflect.DeepEqual(args, []BindEventsArgs{{BrokerID: 41}}) {
+		t.Fatalf("BindEvents args = %#v", args)
 	}
 	select {
 	case offered := <-broker.served:
 		if offered.id != 41 {
 			t.Fatalf("broker id = %d, want 41", offered.id)
 		}
-		if _, ok := offered.server.(*eventPublisherServer); !ok {
-			t.Fatalf("broker server = %T, want *eventPublisherServer", offered.server)
+		if _, ok := offered.server.(*eventEmitterServer); !ok {
+			t.Fatalf("broker server = %T, want *eventEmitterServer", offered.server)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("publisher callback was not offered through the broker")
+		t.Fatal("event callback was not offered through the broker")
 	}
 }
 

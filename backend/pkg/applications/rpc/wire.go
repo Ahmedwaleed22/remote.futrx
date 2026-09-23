@@ -30,22 +30,22 @@ type HandleReply struct {
 	Error    string
 }
 
-// InitPublisherArgs carries the broker stream on which the backend can call
-// the host's EventPublisher. The publisher itself cannot be encoded by
-// net/rpc, so go-plugin's MuxBroker supplies a second RPC connection.
-type InitPublisherArgs struct {
+// BindEventsArgs carries the broker stream backing the core-owned event
+// runtime. The emitter itself cannot be encoded by net/rpc, so go-plugin's
+// MuxBroker supplies a second RPC connection.
+type BindEventsArgs struct {
 	BrokerID uint32
 }
 
-type InitPublisherReply struct {
+type BindEventsReply struct {
 	Error string
 }
 
-type PublishArgs struct {
+type EmitArgs struct {
 	Publication applications.Publication
 }
 
-type PublishReply struct {
+type EmitReply struct {
 	Error string
 }
 

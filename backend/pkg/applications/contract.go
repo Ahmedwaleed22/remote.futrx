@@ -43,11 +43,19 @@ type Descriptor struct {
 	// APIVersion is the applications.APIVersion the backend was compiled against.
 	APIVersion int     `json:"apiVersion"`
 	Routes     []Route `json:"routes,omitempty"`
-	// PublishesEvents and SubscribesEvents are derived by the RPC server from
-	// the optional PublisherBackend and EventSubscriber interfaces. A backend
-	// does not set them itself.
+	// PublishesEvents is derived by Remote from the installed manifest.
+	// SubscribesEvents is derived by the RPC server from EventSubscriber. A
+	// backend does not set either value itself.
 	PublishesEvents  bool `json:"publishesEvents,omitempty"`
 	SubscribesEvents bool `json:"subscribesEvents,omitempty"`
+}
+
+// Runtime contains capabilities supplied and owned by Remote. It is created
+// by rpc.ServeWithRuntime before the backend is constructed. Applications may
+// retain these concurrency-safe capabilities and use them from any business
+// layer; they do not implement or initialize them.
+type Runtime struct {
+	Events EventEmitter
 }
 
 // Caller is the signed-in user the host resolved for a request. It is supplied

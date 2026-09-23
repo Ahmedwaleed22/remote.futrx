@@ -137,11 +137,13 @@ lifecycle events and another application's events:
 ```
 
 This package must also contain `backend/api/`: event declarations without a
-host backend are rejected. Keep the publisher and subscriber implementation in
-the importable sibling package `backend/lifecycle/`, then compose it into the
-backend value served by `backend/api/main.go`. Both packages compile into the
-same process. See [18 — Backend event lifecycle](18-application-events.md) for
-the Go interfaces, routing, and delivery guarantees.
+host backend are rejected. Keep typed business-event triggers and subscriber
+behavior in the importable sibling package `backend/lifecycle/`.
+`backend/api/main.go` receives the core-owned event runtime and composes those
+dependencies; it does not implement a publisher. Both packages compile into
+the same process. See
+[18 — Backend event lifecycle](18-application-events.md) for the runtime API,
+routing, and delivery guarantees.
 
 An application that provisions into a project's container without exposing a port:
 
@@ -343,10 +345,12 @@ Each event declaration has:
 
 Publication is checked against all three manifest values: local publisher,
 event name, and version. Declaring a publisher does not publish anything by
-itself. Conventionally `backend/lifecycle/` owns the
-`applications.PublisherBackend` implementation and calls the host-provided
-publisher; `backend/api/` composes that implementation into the single backend
-value it serves.
+itself. Core constructs `Runtime.Events` from the installed manifest and binds
+it before `Backend.Init`; application code does not implement or initialize a
+publisher. Conventionally a typed wrapper in `backend/lifecycle/` calls
+`EventEmitter.Emit` wherever the application's business logic recognizes that
+an event occurred. Every emission is checked again against the installed
+manifest before core stamps its source and dispatches it.
 
 ### `subscriptions[]`
 

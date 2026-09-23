@@ -53,7 +53,7 @@ func TestInstancePublisherValidatesAndStampsPublication(t *testing.T) {
 	publisher := newInstancePublisher(publishingInstance(), sink)
 	payload := json.RawMessage(`{"message":"hello"}`)
 
-	if err := publisher.Publish(applicationapi.Publication{
+	if err := publisher.Emit(applicationapi.Publication{
 		Publisher: "greetings",
 		Event:     "greeted",
 		Version:   1,
@@ -135,7 +135,7 @@ func TestInstancePublisherRejectsUndeclaredOrInvalidPublications(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			sink := &recordingEventSink{}
-			err := newInstancePublisher(publishingInstance(), sink).Publish(test.publication)
+			err := newInstancePublisher(publishingInstance(), sink).Emit(test.publication)
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("error = %v, want %q", err, test.want)
 			}
@@ -148,7 +148,7 @@ func TestInstancePublisherRejectsUndeclaredOrInvalidPublications(t *testing.T) {
 
 func TestInstancePublisherUsesEmptyObjectForAnOmittedPayload(t *testing.T) {
 	sink := &recordingEventSink{}
-	err := newInstancePublisher(publishingInstance(), sink).Publish(applicationapi.Publication{
+	err := newInstancePublisher(publishingInstance(), sink).Emit(applicationapi.Publication{
 		Publisher: "greetings",
 		Event:     "greeted",
 		Version:   1,
@@ -175,21 +175,26 @@ import (
 )
 
 type backend struct {
-	publisher applications.EventPublisher
+	emitter applications.EventEmitter
 	mu sync.Mutex
-	events []applications.Event
+	received []applications.Event
 }
 
 func (b *backend) Describe() (applications.Descriptor, error) {
 	return applications.Descriptor{APIVersion: applications.APIVersion}, nil
 }
 
-func (b *backend) Init(applications.Instance) error { return nil }
+func (b *backend) Init(applications.Instance) error {
+	return b.emitter.Emit(applications.Publication{
+		Publisher: "greetings", Event: "greeted", Version: 1,
+		Payload: json.RawMessage("{\"stage\":\"init\"}"),
+	})
+}
 
 func (b *backend) Handle(request applications.Request) (applications.Response, error) {
 	switch request.Path {
 	case "publish":
-		err := b.publisher.Publish(applications.Publication{
+		err := b.emitter.Emit(applications.Publication{
 			Publisher: "greetings", Event: "greeted", Version: 1,
 			Payload: json.RawMessage("{\"message\":\"hello\"}"),
 		})
@@ -198,27 +203,26 @@ func (b *backend) Handle(request applications.Request) (applications.Response, e
 	case "received":
 		b.mu.Lock()
 		defer b.mu.Unlock()
-		return applications.JSON(http.StatusOK, b.events), nil
+		return applications.JSON(http.StatusOK, b.received), nil
 	case "pid":
 		return applications.JSON(http.StatusOK, map[string]any{"pid": os.Getpid()}), nil
 	}
 	return applications.Errorf(http.StatusNotFound, "not found"), nil
 }
 
-func (b *backend) InitPublisher(publisher applications.EventPublisher) error {
-	b.publisher = publisher
-	return nil
-}
-
 func (b *backend) OnEvent(event applications.Event) error {
 	if event.Name == "hang" { select {} }
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.events = append(b.events, event)
+	b.received = append(b.received, event)
 	return nil
 }
 
-func main() { rpc.Serve(&backend{}) }
+func main() {
+	rpc.ServeWithRuntime(func(runtime applications.Runtime) applications.Backend {
+		return &backend{emitter: runtime.Events}
+	})
+}
 `
 
 func TestHostCarriesEventsBothWaysAcrossTheBackendProcess(t *testing.T) {
@@ -248,6 +252,10 @@ func TestHostCarriesEventsBothWaysAcrossTheBackendProcess(t *testing.T) {
 	if !descriptor.PublishesEvents || !descriptor.SubscribesEvents {
 		t.Fatalf("capabilities = %+v", descriptor)
 	}
+	initialized, ok := sink.last()
+	if !ok || string(initialized.Payload) != `{"stage":"init"}` {
+		t.Fatalf("event runtime was not bound before Backend.Init: %+v", initialized)
+	}
 
 	response, err := host.Call(ctx, spec, applicationapi.Request{Path: "publish"})
 	if err != nil || response.Status != httpStatusNoContent {
@@ -268,6 +276,27 @@ func TestHostCarriesEventsBothWaysAcrossTheBackendProcess(t *testing.T) {
 	response, err = host.Call(ctx, spec, applicationapi.Request{Path: "received"})
 	if err != nil || !strings.Contains(string(response.Body), `"name":"started"`) {
 		t.Fatalf("received response = %s, error = %v", response.Body, err)
+	}
+}
+
+func TestHostRejectsDeclaredPublishersWithoutRuntimeEvents(t *testing.T) {
+	if testing.Short() {
+		t.Skip("compiles a backend with the Go toolchain")
+	}
+	host := New(
+		sharedRoot(t),
+		fakeCatalog{"missing-event-runtime": sourceFS(testBackendSource)},
+		Options{GoTool: testGoToolOverride(), Events: &recordingEventSink{}},
+	)
+	t.Cleanup(host.Shutdown)
+	spec := testInstance("missing-event-runtime", "missing-event-runtime-instance")
+	spec.Publishers = publishingInstance().Publishers
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	_, err := host.Ensure(ctx, spec)
+	if err == nil || !strings.Contains(err.Error(), "did not request application runtime events") {
+		t.Fatalf("ensure error = %v, want missing runtime rejection", err)
 	}
 }
 

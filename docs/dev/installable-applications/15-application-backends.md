@@ -141,9 +141,9 @@ backend implements three methods.
 | `Init(Instance)` | once, before the first request | The install this process serves. Returning an error fails the app's install or start. |
 | `Handle(Request)` | per request | May be called concurrently. |
 
-Event publishing and subscription are optional capabilities layered on these
-three required methods. They do not change the `Backend` interface; see
-[Optional event capabilities](#optional-event-capabilities).
+Event emission is supplied through `Runtime.Events`; event subscription is an
+optional capability layered on these three required methods. Neither changes
+the `Backend` interface; see [Application events](#application-events).
 
 ### `Instance`
 
@@ -167,75 +167,48 @@ with them is a review question — see [13 — Security model](13-security-model
 `DataDir` survives stop and start, and is deleted on uninstall. It is the only
 storage the platform gives a backend.
 
-### Optional event capabilities
+### Application events
 
-A backend can implement either or both of these interfaces in addition to the
-required `Backend` methods:
+`application.json` is the only publisher registry. Remote validates every
+publisher, event, and version while loading the package and builds a scoped
+authorization registry for each installed instance. Application code does not
+implement a publisher or an initialization hook.
 
-```go
-type PublisherBackend interface {
-	InitPublisher(applications.EventPublisher) error
-}
-
-type EventSubscriber interface {
-	OnEvent(applications.Event) error
-}
-```
-
-Those interfaces still belong to the one value served by `backend/api/` and
-run in the same process as `Handle`. They do not belong in the API package's
-request-routing implementation, however. Put their state and behavior in an
-importable `backend/lifecycle/` package, then embed or delegate to that owner
-from the API composition root:
+When an application declares publishers, construct its backend with
+`rpc.ServeWithRuntime`. Core binds `Runtime.Events` before `Backend.Init`:
 
 ```go
 // backend/api/main.go
-import appLifecycle "futrx.local/catalog/applications/job-runner/backend/lifecycle"
-
-type backend struct {
-	appLifecycle.Events
-	router *applications.Router
+func main() {
+	rpc.ServeWithRuntime(func(runtime applications.Runtime) applications.Backend {
+		jobs := appLifecycle.NewJobs(runtime.Events)
+		return newBackend(jobs)
+	})
 }
 ```
 
-The import path is stable because Remote's generated module is named
-`futrx.local/catalog/applications/<application-id>/backend`, matching the
-catalog module used in this checkout. Embedding promotes `InitPublisher` and
-`OnEvent` onto the value passed to `rpc.Serve`; explicit delegation is equally
-valid. `backend/lifecycle/` is an ownership boundary inside the generated
-module, not a separately discovered capability or a second process.
-
-The corresponding `publishers` or `subscriptions` declaration in
-`application.json` is mandatory. Remote validates the declaration, detects the
-implemented interface during the handshake, and fails install or start when a
-declaration has no matching implementation. `Descriptor.PublishesEvents` and
-`Descriptor.SubscribesEvents` are derived by the RPC server; do not set them in
-`Describe`.
-
-#### Publishing
-
-Retain the capability Remote supplies after the required `Init` call in the
-lifecycle owner:
+Put event identity and payload construction in an importable
+`backend/lifecycle/` package. The API may trigger this business behavior, but it
+does not implement the runtime capability:
 
 ```go
-// backend/lifecycle/events.go
+// backend/lifecycle/jobs.go
 package lifecycle
 
-type Events struct {
-	events applications.EventPublisher
+type Jobs struct {
+	events applications.EventEmitter
 }
 
-func (e *Events) InitPublisher(events applications.EventPublisher) error {
-	e.events = events
-	return nil
+func NewJobs(events applications.EventEmitter) *Jobs {
+	return &Jobs{events: events}
 }
 
-func (e *Events) PublishCompleted(jobID string) error {
+func (j *Jobs) Completed(jobID string) error {
 	payload, err := json.Marshal(map[string]string{"jobId": jobID})
 	if err != nil {
 		return err
 	}
-	return e.events.Publish(applications.Publication{
+	return j.events.Emit(applications.Publication{
 		Publisher: "jobs", // local manifest name
 		Event:     "completed",
 		Version:   1,
@@ -244,6 +217,11 @@ func (e *Events) PublishCompleted(jobID string) error {
 }
 ```
 
+The import path is stable because Remote's generated module is named
+`futrx.local/catalog/applications/<application-id>/backend`, matching the
+catalog module used in this checkout. `backend/lifecycle/` is an ownership
+boundary inside that module, not a second process.
+
 Remote accepts a publication only when publisher, event, and version exactly
 match the manifest. `Payload` must be a non-null JSON object no larger than 64
 KiB; an omitted payload becomes `{}`. The backend supplies no source identity.
@@ -251,12 +229,16 @@ Remote stamps application ID, installed-copy ID, scope, project, and the
 canonical publisher before dispatch, so one backend cannot impersonate
 another.
 
-A nil error from `Publish` means the event was validated and submitted to the
+A nil error from `Emit` means the event was validated and submitted to the
 best-effort in-memory dispatcher. Subscriber work happens asynchronously;
 completion or failure is not reported to the producer, and a full bounded queue
 may drop the event under overload.
 
 #### Subscribing
+
+Subscriptions remain an optional backend capability. Declare them in the
+manifest and implement `applications.EventSubscriber` on the served backend or
+on an embedded lifecycle owner:
 
 Handle the event envelope delivered by Remote:
 
@@ -395,9 +377,9 @@ Then, on install — and on start, and on the first call after a restart:
                    sdk/             pkg/applications, as a generated module
 5. compile       go build -trimpath ./api, offline first, network only as a fallback
 6. launch        one process per instance, over hashicorp/go-plugin
-7. Describe      version and optional-capability check
-8. Init          the instance
-9. InitPublisher when the manifest declares publishers
+7. Describe      version and subscriber-capability check
+8. BindEvents    core binds Runtime.Events when the manifest declares publishers
+9. Init          the instance
 ```
 
 Steps 4–5 happen once per source change; every later start is a `stat` and a

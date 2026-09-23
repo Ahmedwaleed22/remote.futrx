@@ -39,10 +39,9 @@ func (b *api) countVisit(applications.Request) applications.Response {
 		warnings = append(warnings, fmt.Sprintf("not persisted: %v", persistErr))
 	}
 
-	// Never hold application state locks across host/RPC publication. Publishing
-	// crosses back into Remote and may cause callbacks into this process; that
-	// boundary does not belong inside the counter's critical section.
-	publicationErr := b.Publisher.PublishGreeting(visits)
+	// Never hold application state locks while emitting an event into core. The
+	// runtime boundary does not belong inside the counter's critical section.
+	publicationErr := b.greetings.Greeted(visits)
 	if publicationErr != nil {
 		// Publishing is an observable side effect, not the greeting operation's
 		// transaction. The count remains successful and the warning tells the UI

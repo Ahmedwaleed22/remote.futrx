@@ -85,7 +85,7 @@ optional and independent:
 | Infrastructure | `infra/install.sh`, an `install` path inside `infra/`, `backend/container/`, or a manifest `service` | Provisions software in a container |
 | Network exposure | infrastructure plus `port.internal` | Allocates a host port and adds an LXD proxy device |
 | Backend | `backend/api/`; optional imported sibling host packages such as `backend/lifecycle/` | Generates one host module, builds `./api`, and runs one backend process |
-| Backend event lifecycle | manifest `publishers` / `subscriptions` plus `backend/api/`; conventionally implemented in `backend/lifecycle/` | Validates publications and routes matching events through that same backend process |
+| Backend event lifecycle | manifest `publishers` / `subscriptions` plus `backend/api/`; business event behavior conventionally lives in `backend/lifecycle/` | Builds a core-owned runtime from the manifest, validates emissions, and routes matching events |
 | UI | `ui/` | Loads the browser extension |
 | Skills | `skills/*/SKILL.md` | Publishes skills to the target project |
 

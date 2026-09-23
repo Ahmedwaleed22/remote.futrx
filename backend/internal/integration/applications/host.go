@@ -33,6 +33,13 @@ type EventSink interface {
 	Publish(context.Context, applications.Event)
 }
 
+// eventRuntimeBinder is implemented by the RPC transport. It is deliberately
+// not part of applications.Backend: core binds its own runtime capability,
+// while application API implementations remain unaware of transport setup.
+type eventRuntimeBinder interface {
+	BindEvents(applications.EventEmitter) error
+}
+
 // Host runs one backend process per installed instance.
 //
 // The unit is the instance, not the application: an application installed globally and in
@@ -315,8 +322,8 @@ func (h *Host) launch(
 		started = result.process
 	case <-ctx.Done():
 		// go-plugin's net/rpc calls cannot be canceled individually. Killing the
-		// child closes every transport connection and releases a Describe, Init,
-		// or InitPublisher call that ignored its deadline.
+		// child closes every transport connection and releases a Describe, event
+		// runtime binding, or Init call that ignored its deadline.
 		client.Kill()
 		return nil, fmt.Errorf("initialize backend %s timed out: %w", applicationID, ctx.Err())
 	}
@@ -367,14 +374,8 @@ func (h *Host) connect(client *goplugin.Client, instance applications.Instance, 
 	// the same name and version in Describe only creates values that can drift.
 	descriptor.Name = instance.ApplicationName
 	descriptor.Version = instance.ApplicationVersion
-	if len(instance.Publishers) > 0 && !descriptor.PublishesEvents {
-		return nil, fmt.Errorf(
-			"backend %s declares publishers but does not implement applications.PublisherBackend",
-			applicationID,
-		)
-	}
 	if len(instance.Publishers) > 0 && h.events == nil {
-		return nil, fmt.Errorf("initialize publisher for backend %s: event bus unavailable", applicationID)
+		return nil, fmt.Errorf("bind events for backend %s: event bus unavailable", applicationID)
 	}
 	if len(instance.Subscriptions) > 0 && !descriptor.SubscribesEvents {
 		return nil, fmt.Errorf(
@@ -382,18 +383,19 @@ func (h *Host) connect(client *goplugin.Client, instance applications.Instance, 
 			applicationID,
 		)
 	}
+	if len(instance.Publishers) > 0 {
+		runtime, ok := backend.(eventRuntimeBinder)
+		if !ok {
+			return nil, fmt.Errorf("backend %s event runtime transport is unavailable", applicationID)
+		}
+		if err := runtime.BindEvents(newInstancePublisher(instance, h.events)); err != nil {
+			return nil, fmt.Errorf("bind events for backend %s: %w", applicationID, err)
+		}
+	}
 	if err := backend.Init(instanceWithDataDir(instance, dataDir)); err != nil {
 		return nil, fmt.Errorf("initialize backend %s: %w", applicationID, err)
 	}
-	if len(instance.Publishers) > 0 {
-		publisher, ok := backend.(applications.PublisherBackend)
-		if !ok {
-			return nil, fmt.Errorf("backend %s publisher transport is unavailable", applicationID)
-		}
-		if err := publisher.InitPublisher(newInstancePublisher(instance, h.events)); err != nil {
-			return nil, fmt.Errorf("initialize publisher for backend %s: %w", applicationID, err)
-		}
-	}
+	descriptor.PublishesEvents = len(instance.Publishers) > 0
 	return &backendProcess{client: client, backend: backend, descriptor: descriptor}, nil
 }
 

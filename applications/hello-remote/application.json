@@ -3,7 +3,7 @@
   "name": "Hello Remote",
   "description": "Reference example: custom infrastructure, service, port, host tool, skill, container commands, Go backend, an application event publisher, and every frontend extension slot.",
   "category": "development",
-  "version": "12",
+  "version": "13",
   "icon": "ui/assets/logo.svg",
   "scopes": ["global", "project"],
   "base": "ubuntu:24.04",
