@@ -24,6 +24,9 @@ var (
 // DescribeBackend starts the instance's backend if needed and returns what it says
 // about itself, including the routes an extension may call.
 func (s *Service) DescribeBackend(ctx context.Context, id string, caller applications.Caller) (BackendDescriptor, error) {
+	unlock := s.instanceLocks.rlock(id)
+	defer unlock()
+
 	instance, application, err := s.backendInstance(ctx, id, caller)
 	if err != nil {
 		return BackendDescriptor{}, err
@@ -54,6 +57,9 @@ func (s *Service) CallBackend(
 	request applications.Request,
 	caller applications.Caller,
 ) (applications.Response, error) {
+	unlock := s.instanceLocks.rlock(id)
+	defer unlock()
+
 	instance, application, err := s.backendInstance(ctx, id, caller)
 	if err != nil {
 		return applications.Response{}, err
@@ -152,6 +158,8 @@ func backendInstanceDetails(application Application, instance Instance) applicat
 		ApplicationID:      instance.ApplicationID,
 		ApplicationName:    application.Name,
 		ApplicationVersion: application.Version,
+		Publishers:         application.Publishers,
+		Subscriptions:      application.Subscriptions,
 		Service:            application.ServiceName(),
 		Scope:              string(instance.Scope),
 		ProjectID:          instance.ProjectID,

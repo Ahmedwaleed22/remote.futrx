@@ -74,6 +74,25 @@ export interface AppApplicationBackend {
   timeoutMs?: number;
 }
 
+/** One versioned event a manifest publisher allows its backend to emit. */
+export interface AppEventDeclaration {
+  name: string;
+  version: number;
+  description?: string;
+}
+
+/** A publisher name is local to its application until Remote qualifies it. */
+export interface AppPublisherDeclaration {
+  name: string;
+  events: AppEventDeclaration[];
+}
+
+/** Event names consumed from a canonical publisher such as `remote.applications`. */
+export interface AppEventSubscription {
+  publisher: string;
+  events: string[];
+}
+
 /** One endpoint a running backend advertises. */
 export interface AppBackendRoute {
   method: string;
@@ -90,6 +109,10 @@ export interface AppBackendDescriptor {
     version?: string;
     apiVersion: number;
     routes?: AppBackendRoute[];
+    /** Derived from whether the backend implements the optional event capability. */
+    publishesEvents?: boolean;
+    /** Derived from whether the backend implements the optional event capability. */
+    subscribesEvents?: boolean;
   };
   access: AppBackendAccess;
   timeoutMs: number;
@@ -140,6 +163,10 @@ export interface AppApplication {
   ui?: AppApplicationUI;
   /** Set when the application ships a `backend/` Go backend. */
   backend?: AppApplicationBackend;
+  /** Event families this application's backend may publish. */
+  publishers?: AppPublisherDeclaration[];
+  /** Canonically named event families delivered to running backend instances. */
+  subscriptions?: AppEventSubscription[];
 }
 
 /**

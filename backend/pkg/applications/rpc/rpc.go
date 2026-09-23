@@ -31,7 +31,7 @@ const BackendName = "backend"
 // version a backend was compiled against is reported separately in its
 // Descriptor.
 var Handshake = goplugin.HandshakeConfig{
-	ProtocolVersion:  1,
+	ProtocolVersion:  2,
 	MagicCookieKey:   "REMOTE_FUTRX_APPLICATION_BACKEND",
 	MagicCookieValue: "b0f2b4b6-remote-futrx-application-backend",
 }
@@ -60,10 +60,10 @@ type Adapter struct {
 
 var _ goplugin.Plugin = (*Adapter)(nil)
 
-func (p *Adapter) Server(*goplugin.MuxBroker) (any, error) {
-	return &server{impl: p.Impl}, nil
+func (p *Adapter) Server(broker *goplugin.MuxBroker) (any, error) {
+	return &server{impl: p.Impl, broker: broker}, nil
 }
 
-func (p *Adapter) Client(_ *goplugin.MuxBroker, client *rpc.Client) (any, error) {
-	return &Client{client: client}, nil
+func (p *Adapter) Client(broker *goplugin.MuxBroker, client *rpc.Client) (any, error) {
+	return &Client{client: client, broker: broker}, nil
 }

@@ -14,11 +14,12 @@ import (
 // policy — who may call, when, and with what stamped on the request — so what
 // the host does with a call matters far less than whether it was reached.
 type recordingHost struct {
-	ensured  []string
-	stopped  []string
-	removed  []string
-	requests []applications.Request
-	deadline bool
+	ensured     []string
+	stopped     []string
+	removed     []string
+	invalidated []string
+	requests    []applications.Request
+	deadline    bool
 
 	ensureErr error
 	response  applications.Response
@@ -43,6 +44,14 @@ func (h *recordingHost) Call(
 	return h.response, nil
 }
 
+func (h *recordingHost) Notify(
+	context.Context,
+	applications.Instance,
+	applications.Event,
+) error {
+	return nil
+}
+
 func (h *recordingHost) Stop(_ context.Context, instanceID string) error {
 	h.stopped = append(h.stopped, instanceID)
 	return nil
@@ -51,6 +60,10 @@ func (h *recordingHost) Stop(_ context.Context, instanceID string) error {
 func (h *recordingHost) Remove(_ context.Context, instanceID string) error {
 	h.removed = append(h.removed, instanceID)
 	return nil
+}
+
+func (h *recordingHost) InvalidateApplication(applicationID string) {
+	h.invalidated = append(h.invalidated, applicationID)
 }
 
 func backendImage(mutate func(*Application)) Application {
@@ -95,6 +108,15 @@ func TestBackendInstanceCarriesManifestMetadata(t *testing.T) {
 		application.Name = "Manifest Name"
 		application.Version = "3.2.1"
 		application.Service = &ApplicationService{Name: "manifest", Command: []string{"/usr/local/bin/manifest"}}
+		application.Publishers = []applications.PublisherDeclaration{{
+			Name: "greetings",
+			Events: []applications.EventDeclaration{{
+				Name: "sent", Version: 1,
+			}},
+		}}
+		application.Subscriptions = []applications.Subscription{{
+			Publisher: "remote.applications", Events: []string{"started"},
+		}}
 	})
 	instance := backendInstanceDetails(application, runningInstance())
 	if instance.ApplicationName != "Manifest Name" {
@@ -105,6 +127,12 @@ func TestBackendInstanceCarriesManifestMetadata(t *testing.T) {
 	}
 	if instance.Service != "manifest" {
 		t.Fatalf("service = %q, want manifest", instance.Service)
+	}
+	if len(instance.Publishers) != 1 || instance.Publishers[0].Name != "greetings" {
+		t.Fatalf("publishers = %+v", instance.Publishers)
+	}
+	if len(instance.Subscriptions) != 1 || instance.Subscriptions[0].Publisher != "remote.applications" {
+		t.Fatalf("subscriptions = %+v", instance.Subscriptions)
 	}
 }
 

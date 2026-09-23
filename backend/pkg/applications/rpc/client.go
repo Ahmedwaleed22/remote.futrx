@@ -12,9 +12,15 @@ import (
 // implements one.
 type Client struct {
 	client *rpc.Client
+	broker interface {
+		NextId() uint32
+		AcceptAndServe(uint32, any)
+	}
 }
 
 var _ applications.Backend = (*Client)(nil)
+var _ applications.PublisherBackend = (*Client)(nil)
+var _ applications.EventSubscriber = (*Client)(nil)
 
 func (c *Client) Describe() (applications.Descriptor, error) {
 	var reply DescribeReply
@@ -47,4 +53,62 @@ func (c *Client) Handle(request applications.Request) (applications.Response, er
 		return applications.Response{}, fmt.Errorf("handle: %s", reply.Error)
 	}
 	return reply.Response, nil
+}
+
+// InitPublisher opens a brokered callback connection that lets the backend
+// publish into the host without reversing the primary Backend RPC interface.
+func (c *Client) InitPublisher(publisher applications.EventPublisher) error {
+	if publisher == nil {
+		return fmt.Errorf("init publisher: publisher is nil")
+	}
+	if c.broker == nil {
+		return fmt.Errorf("init publisher: callback broker is unavailable")
+	}
+	id := c.broker.NextId()
+	go c.broker.AcceptAndServe(id, &eventPublisherServer{impl: publisher})
+
+	var reply InitPublisherReply
+	if err := c.client.Call("Plugin.InitPublisher", InitPublisherArgs{BrokerID: id}, &reply); err != nil {
+		return fmt.Errorf("init publisher: %w", err)
+	}
+	if reply.Error != "" {
+		return fmt.Errorf("init publisher: %s", reply.Error)
+	}
+	return nil
+}
+
+// OnEvent delivers one event over the backend's primary RPC connection.
+func (c *Client) OnEvent(event applications.Event) error {
+	var reply OnEventReply
+	if err := c.client.Call("Plugin.OnEvent", OnEventArgs{Event: event}, &reply); err != nil {
+		return fmt.Errorf("on event: %w", err)
+	}
+	if reply.Error != "" {
+		return fmt.Errorf("on event: %s", reply.Error)
+	}
+	return nil
+}
+
+// eventPublisherClient is the backend side of the callback connection.
+type eventPublisherClient struct {
+	client *rpc.Client
+}
+
+var _ applications.EventPublisher = (*eventPublisherClient)(nil)
+
+func (c *eventPublisherClient) Publish(publication applications.Publication) error {
+	if len(publication.Payload) > applications.MaxEventPayloadBytes {
+		return fmt.Errorf(
+			"publish event: payload exceeds %d bytes",
+			applications.MaxEventPayloadBytes,
+		)
+	}
+	var reply PublishReply
+	if err := c.client.Call("Plugin.Publish", PublishArgs{Publication: publication}, &reply); err != nil {
+		return fmt.Errorf("publish event: %w", err)
+	}
+	if reply.Error != "" {
+		return fmt.Errorf("publish event: %s", reply.Error)
+	}
+	return nil
 }

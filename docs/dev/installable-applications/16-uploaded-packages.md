@@ -32,6 +32,14 @@ and leaves every uploaded application in place — along with the instances
 installed from it and their settings, which were already stored beside it under
 `$DATA_DIR`.
 
+Persisted packages first use the current strict schema and then, when needed,
+a frozen pre-events `encoding/json` schema for ignored, case-aliased, and
+response-only manifest fields. That fallback deliberately cannot activate
+publishers or subscriptions that did not exist when the package was accepted.
+Current semantic validation still runs, and Remote always recomputes derived
+fields. Every new or replacement upload must satisfy the current strict
+manifest decoder.
+
 The layout is chosen so the directory **is** a catalog filesystem: `os.DirFS`
 over `app-packages/` has the same `applications/<id>/` shape the embedded catalog
 has, and loads through the same `loadApplication` the built-in one does. There is no
@@ -255,6 +263,6 @@ catalog.
 { "id": "s3disk", "name": "s3disk", "source": "uploaded", … }
 ```
 
-`builtin` or `uploaded`. It is decided by the registry and overwrites whatever
-`application.json` declared, so a package cannot describe itself as built in. The UI
-uses it to badge uploaded applications and to offer removing them.
+`builtin` or `uploaded`. It is decided by the registry; declaring `source` in
+`application.json` is rejected, so a package cannot describe itself as built
+in. The UI uses it to badge uploaded applications and to offer removing them.

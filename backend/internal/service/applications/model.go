@@ -9,7 +9,11 @@
 // and realized in a container through Installer.
 package applications
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	applicationapi "github.com/futrx-com/remote.futrx.com/pkg/applications"
+)
 
 // Scope selects where an application runs.
 type Scope string
@@ -176,8 +180,8 @@ type ApplicationUI struct {
 }
 
 // ApplicationSource says where a catalog entry came from. It is decided by the
-// registry that loaded the entry and overwrites anything application.json declares,
-// so a package cannot describe itself as built in.
+// registry that loaded the entry; application.json cannot declare it, so a
+// package cannot describe itself as built in.
 type ApplicationSource string
 
 const (
@@ -202,9 +206,9 @@ type Application struct {
 	// "cache", …) or a path to an image inside the application's own ui/ directory
 	// ("ui/assets/logo.svg"), which lets an application ship its own mark.
 	Icon string `json:"icon,omitempty"`
-	// Source is filled in by the registry, not by application.json: it says whether
-	// this entry is built into the server or came from an uploaded package,
-	// which is what tells the UI whether it can be removed.
+	// Source is filled in by the registry, not accepted from application.json:
+	// it says whether this entry is built into the server or came from an
+	// uploaded package, which is what tells the UI whether it can be removed.
 	Source ApplicationSource `json:"source,omitempty"`
 	Scopes []Scope           `json:"scopes"`
 	Port   Port              `json:"port"`
@@ -227,6 +231,13 @@ type Application struct {
 	// backend/). Nil means the
 	// application has no Go backend and nothing is compiled or run for it.
 	Backend *ApplicationBackend `json:"backend,omitempty"`
+	// Publishers are the event families this application's backend may emit.
+	// Their names are local to the application; Remote qualifies them with the
+	// application ID so one package cannot claim another package's namespace.
+	Publishers []applicationapi.PublisherDeclaration `json:"publishers,omitempty"`
+	// Subscriptions are the canonical event families delivered to this
+	// application's backend while an installed copy is running.
+	Subscriptions []applicationapi.Subscription `json:"subscriptions,omitempty"`
 	// Container is set when the application ships backend/container/. Nil means
 	// it has no core-built container program.
 	Container *ApplicationContainer `json:"container,omitempty"`

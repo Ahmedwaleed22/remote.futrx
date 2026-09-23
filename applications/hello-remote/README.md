@@ -11,6 +11,8 @@ The catalog's reference example. It combines broad application capabilities:
   one command inspects the container and another serves HTTP.
 - **`backend/api/`** — Go source the server compiles and runs as a child process,
   reachable at `/api/applications/<instance>/backend/<path>`.
+- **Application events** — a declared `greetings.greeted` publisher plus
+  subscriptions to Remote's application lifecycle and its own published event.
 - **`ui/`** — assets the SPA loads for users who installed the application, which
   call that backend through `remote.backend.call(...)`.
 - **`skills/`** — an agent skill published into project workspaces.
@@ -80,7 +82,7 @@ directory is a visual catalog of the frontend extension API:
 | Every project row | A context-aware icon with that project's id and name |
 | Chat header and composer | Icons that receive the active project, chat, and working directory context |
 | This application's card | Labeled `ui.addButton` controls, scoped with `when` |
-| A panel below the applications list | Shows the greeting, counter, supervised service, port mapping, and live container facts |
+| A panel below the applications list | Shows the greeting, counter, backend event activity, supervised service, port mapping, and live container facts |
 | Project settings | A custom panel mounted through `ui.register` with cleanup |
 
 Every API icon opens the same capability explorer. It displays `apiVersion`,
@@ -103,6 +105,16 @@ on uninstall, and on server restart, and is started again lazily by the next
 call — so a count that survives is a count that reached `DataDir`. Restart the
 server, open the panel, and the number is still there.
 
+Each successful counter increment also publishes the manifest-declared
+`greetings.greeted` event with a versioned JSON payload. Hello Remote subscribes
+to that event through its canonical
+`applications.hello-remote.greetings` name and to all seven events from
+`remote.applications`. The backend implements the optional publisher and
+subscriber contracts below its required methods, records received events under
+the same mutex as its other process state, and exposes that activity through
+`GET events`. Publication happens outside the state lock and a publication
+failure becomes a response warning; it never rolls back a greeting.
+
 The service section crosses the allocated host proxy and reports the systemd
 unit, build version, custom-provisioning version, port mapping, and greeting
 response. The container section reports
@@ -113,9 +125,9 @@ memory, and uptime. Each has an independent **Refresh** action.
 
 | File | Shows |
 |---|---|
-| `application.json` | The application identity, both scopes, base image, real greeting input, port, service, install path, health check, host tool, explicit UI mapping, and backend policy. |
-| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) and the composition root that wires the optional `Router` and concrete inspectors. |
-| `backend/api/greeting.go`, `backend/api/visits.go` | Greeting and echo routes, plus the per-instance persistent counter. |
+| `application.json` | The application identity, both scopes, base image, real greeting input, port, service, install path, health check, host tool, publishers, subscriptions, explicit UI mapping, and backend policy. |
+| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`), optional event hooks, and the composition root that wires the `Router` and concrete inspectors. |
+| `backend/api/greeting.go`, `backend/api/visits.go`, `backend/api/events.go` | Greeting and echo routes, the per-instance persistent counter and event publication, and received-event inspection. |
 | `backend/api/container.go`, `backend/api/service.go` | Bounded host calls into the installed inspection command and the proxied HTTP service. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
 | `backend/container/cmd/hello-remote-service/` | A supervised HTTP service with separate command dispatch, configuration decoding, serving, and health-probe owners. |
@@ -124,7 +136,7 @@ memory, and uptime. Each has an independent **Refresh** action.
 | `infra/install.sh` | Idempotent service-account and persistent-state provisioning using platform-supplied install metadata. |
 | `skills/hello-remote-inspector/SKILL.md` | A project-scoped agent workflow that verifies the service and its runtime metadata. |
 | `ui/scripts/main.js` | The entry module: activates the showcase, card action, applications panel, and cleanup. |
-| `ui/scripts/containerPanel.js`, `ui/scripts/servicePanel.js`, `ui/scripts/inspectionRefresh.js` | Container/service presentation with one disposal-safe refresh lifecycle. |
+| `ui/scripts/containerPanel.js`, `ui/scripts/servicePanel.js`, `ui/scripts/eventPanel.js`, `ui/scripts/inspectionRefresh.js` | Container, service, and event presentation with one disposal-safe refresh lifecycle. |
 | `ui/scripts/showcase.js`, `ui/scripts/showcaseExplorer.js` | Slot registration and the live explorer for the complete frontend API. |
 | `ui/scripts/uploadTracker.js` | Cohesive upload observation and one-shot pass-through claim state. |
 | `ui/views/panel.html`, `ui/style/hello.css` | The two conventions — views loaded by name, CSS written against the platform's theme tokens. |

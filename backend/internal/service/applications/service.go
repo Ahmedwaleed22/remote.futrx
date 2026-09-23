@@ -41,15 +41,19 @@ type Clock func() int64
 
 // Service is the policy layer for installable applications.
 type Service struct {
-	registry  Registry
-	store     Store
-	installer Installer
-	projects  ProjectContainers
-	ports     PortAllocator
-	backends  BackendHost
-	packages  PackageCatalog
-	lifecycle ApplicationLifecyclePublisher
-	now       Clock
+	registry      Registry
+	store         Store
+	installer     Installer
+	projects      ProjectContainers
+	ports         PortAllocator
+	backends      BackendHost
+	packages      PackageCatalog
+	lifecycle     ApplicationLifecyclePublisher
+	eventSource   EventSource
+	eventContext  context.Context
+	eventRouter   *applicationEventRouter
+	instanceLocks instanceLockSet
+	now           Clock
 }
 
 // Option configures optional service dependencies. Backend backend hosting is
@@ -91,6 +95,18 @@ func WithLifecyclePublisher(publisher ApplicationLifecyclePublisher) Option {
 	}
 }
 
+// WithEventSource routes process-wide events to running application backends.
+// ctx owns the subscription and worker lifetime; cancellation unsubscribes and
+// discards any events still queued during process shutdown.
+func WithEventSource(ctx context.Context, source EventSource) Option {
+	return func(s *Service) {
+		if source != nil {
+			s.eventContext = ctx
+			s.eventSource = source
+		}
+	}
+}
+
 // New builds the applications service. installer/projects may be nil-backed on
 // hosts without a container runtime; List/catalog still work.
 func New(
@@ -112,6 +128,7 @@ func New(
 	for _, option := range options {
 		option(service)
 	}
+	service.startEventRouter()
 	return service
 }
 

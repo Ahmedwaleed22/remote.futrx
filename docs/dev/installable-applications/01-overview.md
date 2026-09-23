@@ -51,10 +51,12 @@ into the server binary with `//go:embed applications` in
 `go:embed` reaches only downwards, so a catalog at the root needs the directive
 at the root — and
 [`registry.go`](../../../backend/internal/integration/containers/applications/registry.go)
-validates and serves what it embedded. There is no runtime backend directory, no
-upload endpoint, and no way to add an application to a running server: adding one
-means adding a directory and rebuilding. That single fact drives most of the
-design, and the whole of the [security model](13-security-model.md).
+validates and serves what it embedded. There is no loose runtime source
+directory, and no package is loaded without the same catalog validation.
+Built-in applications arrive by adding a directory and rebuilding;
+an administrator can also add a validated application ZIP at runtime. See
+[16 — Uploaded packages](16-uploaded-packages.md) and the
+[security model](13-security-model.md).
 
 Adding an application requires **no code changes**. `NewRegistry()` walks the
 directory at startup, validates every entry, and the new app appears in the
@@ -79,6 +81,7 @@ optional and independent:
 | Infrastructure | `infra/install.sh`, an `install` path inside `infra/`, `backend/container/`, or a manifest `service` | Provisions software in a container |
 | Network exposure | infrastructure plus `port.internal` | Allocates a host port and adds an LXD proxy device |
 | Backend | `backend/api/` | Compiles and runs the Go backend on the host |
+| Backend events | manifest `publishers` / `subscriptions` plus `backend/api/` | Validates publications and routes matching events between running backends |
 | UI | `ui/` | Loads the browser extension |
 | Skills | `skills/*/SKILL.md` | Publishes skills to the target project |
 
@@ -95,7 +98,8 @@ discriminator to keep synchronized with the package layout.
 
 The layout supplies these capabilities directly — see
 [03 — Application capabilities](03-application-capabilities.md). `backend/` is covered in full by
-[15 — Application backends](15-application-backends.md).
+[15 — Application backends](15-application-backends.md), including its optional
+[event contract](18-application-events.md).
 
 ## The moving parts
 

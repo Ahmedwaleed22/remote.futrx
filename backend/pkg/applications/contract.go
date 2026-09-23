@@ -42,6 +42,11 @@ type Descriptor struct {
 	// APIVersion is the applications.APIVersion the backend was compiled against.
 	APIVersion int     `json:"apiVersion"`
 	Routes     []Route `json:"routes,omitempty"`
+	// PublishesEvents and SubscribesEvents are derived by the RPC server from
+	// the optional PublisherBackend and EventSubscriber interfaces. A backend
+	// does not set them itself.
+	PublishesEvents  bool `json:"publishesEvents,omitempty"`
+	SubscribesEvents bool `json:"subscribesEvents,omitempty"`
 }
 
 // Caller is the signed-in user the host resolved for a request. It is supplied
@@ -61,6 +66,12 @@ type Instance struct {
 	ApplicationID      string `json:"applicationId"`
 	ApplicationName    string `json:"applicationName"`
 	ApplicationVersion string `json:"applicationVersion"`
+	// Publishers and Subscriptions are the validated manifest declarations for
+	// this application. They cross the process boundary so the host can
+	// authorize publications from this exact installed package and the backend
+	// can understand the event capabilities with which it was initialized.
+	Publishers    []PublisherDeclaration `json:"publishers,omitempty"`
+	Subscriptions []Subscription         `json:"subscriptions,omitempty"`
 	// Service is the systemd unit declared by application.json, if any.
 	Service string `json:"service,omitempty"`
 	// Scope is "global" or "project".

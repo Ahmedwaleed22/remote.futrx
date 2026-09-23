@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
@@ -25,19 +26,55 @@ func (b *api) readVisits(applications.Request) applications.Response {
 
 func (b *api) countVisit(applications.Request) applications.Response {
 	b.mu.Lock()
-	defer b.mu.Unlock()
-
 	b.visits++
-	if err := writeVisits(b.instance.DataDir, b.visits); err != nil {
+	visits := b.visits
+	publisher := b.publisher
+	persistErr := writeVisits(b.instance.DataDir, visits)
+	b.mu.Unlock()
+
+	warnings := make([]string, 0, 2)
+	if persistErr != nil {
 		// The count is still correct in memory, so the call succeeds and the
 		// browser sees it; only its survival across a restart is lost. A
 		// backend's errors are its own to grade — the host only forwards them.
-		return applications.JSON(http.StatusOK, map[string]any{
-			"visits":  b.visits,
-			"warning": fmt.Sprintf("not persisted: %v", err),
-		})
+		warnings = append(warnings, fmt.Sprintf("not persisted: %v", persistErr))
 	}
-	return applications.JSON(http.StatusOK, map[string]int{"visits": b.visits})
+
+	// Never hold application state locks across host/RPC publication. Publishing
+	// crosses back into Remote and may cause callbacks into this process; that
+	// boundary does not belong inside the counter's critical section.
+	publicationErr := publishGreeting(publisher, visits)
+	if publicationErr != nil {
+		// Publishing is an observable side effect, not the greeting operation's
+		// transaction. The count remains successful and the warning tells the UI
+		// exactly which secondary action was lost.
+		warnings = append(warnings, fmt.Sprintf("event not published: %v", publicationErr))
+	}
+
+	body := map[string]any{"visits": visits}
+	if len(warnings) > 0 {
+		body["warning"] = strings.Join(warnings, "; ")
+	}
+	return applications.JSON(http.StatusOK, body)
+}
+
+func publishGreeting(publisher applications.EventPublisher, visits int) error {
+	if publisher == nil {
+		return fmt.Errorf("publisher is not initialized")
+	}
+	payload, err := json.Marshal(map[string]int{"visits": visits})
+	if err != nil {
+		return fmt.Errorf("encode greeted event: %w", err)
+	}
+	if err := publisher.Publish(applications.Publication{
+		Publisher: greetingPublisher,
+		Event:     greetedEvent,
+		Version:   greetedVersion,
+		Payload:   payload,
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 // readVisits tolerates every kind of missing: no DataDir, no file, or a file

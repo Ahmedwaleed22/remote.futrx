@@ -34,6 +34,9 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 	}
 
 	id := newInstanceID()
+	unlock := s.instanceLocks.lock(id)
+	defer unlock()
+
 	inst := Instance{
 		ID:                    id,
 		ApplicationID:         application.ID,

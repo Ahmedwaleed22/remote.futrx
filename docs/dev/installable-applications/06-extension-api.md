@@ -311,9 +311,14 @@ The URL a call would use, for an `<iframe>`, a download link, or your own
 Not what you send. The server stamps the signed-in caller onto every request
 and **withholds your cookies** from the backend, so a backend can authorize a
 caller but cannot act as them. See
-[13 — Security model](13-security-model.md#backend-backends).
+[13 — Security model](13-security-model.md#application-backends).
 
 ## `remote.events.on(name, handler)`
+
+This is the **browser-side** event helper for one extension in one tab. It is
+unrelated to the manifest `publishers` / `subscriptions` bus used by Go
+backends. Browser code cannot use this API to publish or consume backend events;
+see [18 — Backend events](18-application-events.md) for that contract.
 
 Subscribes to something the SPA finished doing, and returns a dispose
 function. Use it when your extension has to react to the app rather than to a

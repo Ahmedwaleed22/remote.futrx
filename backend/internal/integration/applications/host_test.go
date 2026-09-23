@@ -2,6 +2,8 @@ package applications
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -100,6 +102,26 @@ func (backend) Describe() (applications.Descriptor, error) {
 	return applications.Descriptor{Name: "old", APIVersion: applications.APIVersion + 1}, nil
 }
 func (backend) Init(applications.Instance) error { return nil }
+func (backend) Handle(applications.Request) (applications.Response, error) {
+	return applications.Response{}, nil
+}
+
+func main() { rpc.Serve(backend{}) }
+`
+
+const hangingInitSource = `package main
+
+import (
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications/rpc"
+)
+
+type backend struct{}
+
+func (backend) Describe() (applications.Descriptor, error) {
+	return applications.Descriptor{APIVersion: applications.APIVersion}, nil
+}
+func (backend) Init(applications.Instance) error { select {} }
 func (backend) Handle(applications.Request) (applications.Response, error) {
 	return applications.Response{}, nil
 }
@@ -268,6 +290,96 @@ func TestHostStopEndsTheProcessAndCallRestartsIt(t *testing.T) {
 	}
 }
 
+func TestHostInvalidatesOnlyProcessesFromTheReplacedApplication(t *testing.T) {
+	host := newTestHost(t, fakeCatalog{
+		"test-application":  sourceFS(testBackendSource),
+		"other-application": sourceFS(testBackendSource),
+	})
+	replaced := testInstance("test-application", "instance-invalidated")
+	other := testInstance("other-application", "instance-unrelated")
+
+	before := backendPID(t, call(t, host, replaced, applications.Request{Method: "GET", Path: "pid"}))
+	otherBefore := backendPID(t, call(t, host, other, applications.Request{Method: "GET", Path: "pid"}))
+
+	host.InvalidateApplication(replaced.ApplicationID)
+	if current := host.lookup(replaced.ID); current != nil {
+		t.Fatal("invalidated process remains published by the host")
+	}
+	if current := host.lookup(other.ID); current == nil || !current.running() {
+		t.Fatal("unrelated application process was invalidated")
+	}
+
+	after := backendPID(t, call(t, host, replaced, applications.Request{Method: "GET", Path: "pid"}))
+	otherAfter := backendPID(t, call(t, host, other, applications.Request{Method: "GET", Path: "pid"}))
+	if after == before {
+		t.Fatalf("invalidated application reused pid %d", after)
+	}
+	if otherAfter != otherBefore {
+		t.Fatalf("unrelated application moved from pid %d to %d", otherBefore, otherAfter)
+	}
+}
+
+func TestLaunchCannotSurviveApplicationInvalidation(t *testing.T) {
+	host := newTestHost(t, fakeCatalog{"test-application": sourceFS(testBackendSource)})
+	spec := testInstance("test-application", "instance-stale-launch")
+	binary, err := host.builder.Build(context.Background(), spec.ApplicationID, sourceFS(testBackendSource))
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	configuration, err := backendConfiguration(spec)
+	if err != nil {
+		t.Fatalf("configuration: %v", err)
+	}
+
+	// This launch began under generation zero; package replacement advances the
+	// application before its handshake can be published.
+	host.InvalidateApplication(spec.ApplicationID)
+	started, err := host.launch(context.Background(), spec, binary, configuration, 0)
+	if started != nil || !errors.Is(err, errBackendInvalidated) {
+		t.Fatalf("stale launch = (%v, %v), want invalidated", started, err)
+	}
+	if current := host.lookup(spec.ID); current != nil {
+		t.Fatal("stale launch was published after invalidation")
+	}
+
+	response := call(t, host, spec, applications.Request{Method: "GET", Path: "pid"})
+	if backendPID(t, response) == 0 {
+		t.Fatal("current generation did not launch")
+	}
+}
+
+func TestHostRestartsWhenInstanceConfigurationChanges(t *testing.T) {
+	host := newTestHost(t, fakeCatalog{"test-application": sourceFS(testBackendSource)})
+	spec := testInstance("test-application", "instance-reconfigured")
+
+	first := call(t, host, spec, applications.Request{Method: "GET", Path: "pid"})
+	before := backendPID(t, first)
+	spec.ProjectID = "project-2"
+	second := call(t, host, spec, applications.Request{Method: "GET", Path: "pid"})
+	after := backendPID(t, second)
+
+	if after == before {
+		t.Fatalf("changed configuration reused pid %d", after)
+	}
+	if !strings.Contains(string(second.Body), `"project":"project-2"`) {
+		t.Fatalf("backend kept stale initialization: %s", second.Body)
+	}
+}
+
+func backendPID(t *testing.T, response applications.Response) int {
+	t.Helper()
+	var body struct {
+		PID int `json:"pid"`
+	}
+	if err := json.Unmarshal(response.Body, &body); err != nil {
+		t.Fatalf("decode pid response %q: %v", response.Body, err)
+	}
+	if body.PID == 0 {
+		t.Fatalf("pid response = %s", response.Body)
+	}
+	return body.PID
+}
+
 // Stop keeps a backend's data; only Remove discards it. That split is what
 // makes stop and start safe to use freely on an app someone relies on.
 func TestStopKeepsBackendDataAndRemoveDiscardsIt(t *testing.T) {
@@ -342,6 +454,30 @@ func TestCallRespectsTheCallerDeadline(t *testing.T) {
 	}
 	if elapsed := time.Since(started); elapsed > 5*time.Second {
 		t.Errorf("the deadline was not enforced: waited %s", elapsed)
+	}
+}
+
+func TestBackendInitializationRespectsTheCallerDeadline(t *testing.T) {
+	host := newTestHost(t, fakeCatalog{"hanging-init": sourceFS(hangingInitSource)})
+	spec := testInstance("hanging-init", "instance-hanging-init")
+
+	// Populate the build cache under a generous deadline so this assertion
+	// exercises the uncancellable Init RPC rather than compiler cancellation.
+	if _, err := host.builder.Build(context.Background(), spec.ApplicationID, sourceFS(hangingInitSource)); err != nil {
+		t.Fatalf("prebuild: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	_, err := host.Ensure(ctx, spec)
+	if err == nil || !strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("ensure error = %v, want timeout", err)
+	}
+	if elapsed := time.Since(started); elapsed > 5*time.Second {
+		t.Fatalf("backend initialization ignored deadline for %s", elapsed)
+	}
+	if current := host.lookup(spec.ID); current != nil {
+		t.Fatal("timed-out backend initialization was published")
 	}
 }
 

@@ -129,6 +129,10 @@ backend implements three methods.
 | `Init(Instance)` | once, before the first request | The install this process serves. Returning an error fails the app's install or start. |
 | `Handle(Request)` | per request | May be called concurrently. |
 
+Event publishing and subscription are optional capabilities layered on these
+three required methods. They do not change the `Backend` interface; see
+[Optional event capabilities](#optional-event-capabilities).
+
 ### `Instance`
 
 What `Init` receives, fixed for the process's lifetime:
@@ -137,6 +141,7 @@ What `Init` receives, fixed for the process's lifetime:
 |---|---|
 | `ID`, `ApplicationID` | the installed copy, and the application it came from |
 | `ApplicationName`, `ApplicationVersion` | manifest metadata; do not copy it into backend constants |
+| `Publishers`, `Subscriptions` | the validated event declarations from `application.json` |
 | `Service` | the systemd unit declared by the manifest, if any |
 | `Scope`, `ProjectID` | `"global"`, or `"project"` with the project |
 | `ContainerName`, `InternalPort`, `ExternalPort` | the container half, when the application has one |
@@ -149,6 +154,98 @@ with them is a review question — see [13 — Security model](13-security-model
 
 `DataDir` survives stop and start, and is deleted on uninstall. It is the only
 storage the platform gives a backend.
+
+### Optional event capabilities
+
+A backend can implement either or both of these interfaces in addition to the
+required `Backend` methods:
+
+```go
+type PublisherBackend interface {
+	InitPublisher(applications.EventPublisher) error
+}
+
+type EventSubscriber interface {
+	OnEvent(applications.Event) error
+}
+```
+
+The corresponding `publishers` or `subscriptions` declaration in
+`application.json` is mandatory. Remote validates the declaration, detects the
+implemented interface during the handshake, and fails install or start when a
+declaration has no matching implementation. `Descriptor.PublishesEvents` and
+`Descriptor.SubscribesEvents` are derived by the RPC server; do not set them in
+`Describe`.
+
+#### Publishing
+
+Retain the capability Remote supplies after the required `Init` call:
+
+```go
+type backend struct {
+	events applications.EventPublisher
+}
+
+func (b *backend) InitPublisher(events applications.EventPublisher) error {
+	b.events = events
+	return nil
+}
+
+func (b *backend) publishCompleted(jobID string) error {
+	payload, err := json.Marshal(map[string]string{"jobId": jobID})
+	if err != nil {
+		return err
+	}
+	return b.events.Publish(applications.Publication{
+		Publisher: "jobs", // local manifest name
+		Event:     "completed",
+		Version:   1,
+		Payload:   payload,
+	})
+}
+```
+
+Remote accepts a publication only when publisher, event, and version exactly
+match the manifest. `Payload` must be a non-null JSON object no larger than 64
+KiB; an omitted payload becomes `{}`. The backend supplies no source identity.
+Remote stamps application ID, installed-copy ID, scope, project, and the
+canonical publisher before dispatch, so one backend cannot impersonate
+another.
+
+A nil error from `Publish` means the event was validated and submitted to the
+best-effort in-memory dispatcher. Subscriber work happens asynchronously;
+completion or failure is not reported to the producer, and a full bounded queue
+may drop the event under overload.
+
+#### Subscribing
+
+Handle the event envelope delivered by Remote:
+
+```go
+func (b *backend) OnEvent(event applications.Event) error {
+	if event.Source.Publisher != "remote.applications" || event.Version != 1 {
+		return nil
+	}
+	switch event.Name {
+	case "installed", "started":
+		// Decode the documented JSON object in event.Payload.
+	}
+	return nil
+}
+```
+
+`Event.Source` is trusted host metadata. `Event.Payload` is still data chosen
+by the publisher and must be decoded and validated like any other external
+input. `OnEvent` may overlap with `Handle`, so protect shared state. Returning
+an error or panicking fails only that delivery and leaves the process running.
+Event delivery uses the smaller of the manifest backend `timeoutMs` and 30
+seconds. A handler that exceeds that deadline is different: Remote terminates
+the unresponsive process so uncancellable event RPCs cannot accumulate, then
+restores it lazily for a later request or event. Subscriber failure never rolls
+back the publication or a lifecycle transition.
+
+The complete namespace, routing, lifecycle, queue, and delivery contract is in
+[18 — Backend events](18-application-events.md).
 
 ### `Request`
 
@@ -255,8 +352,9 @@ Then, on install — and on start, and on the first call after a restart:
                    sdk/   pkg/applications, as a module named after this repo
 4. compile       go build -trimpath, offline first, network only as a fallback
 5. launch        one process per instance, over hashicorp/go-plugin
-6. Describe      version check
+6. Describe      version and optional-capability check
 7. Init          the instance
+8. InitPublisher when the manifest declares publishers
 ```
 
 Steps 3–4 happen once per source change; every later start is a `stat` and a
@@ -316,9 +414,15 @@ unusual.
 | Uninstall | killed | **deleted** |
 | Server restart | started again on the next call | kept |
 | Crash | replaced on the next call | kept |
+| Uploaded-package replacement | every old process is killed; the next call compiles the current package | kept |
 
 Stop is the useful one: it is how a user turns a backend off without losing
 what it stored.
+
+Only running installed copies receive subscribed events. Install and start
+make a declared subscription eligible after the copy reaches running state;
+stop and uninstall remove that eligibility immediately. A lazily restored
+backend repeats its normal handshake before the next event is delivered.
 
 Because a backend restarts lazily, in-memory state is not durable and is not
 meant to be. Anything that must survive belongs in `DataDir`.
@@ -333,9 +437,11 @@ meant to be. Anything that must survive belongs in `DataDir`.
 | The source does not compile | install or start fails, with the compiler's output | there is no process |
 | The contract version mismatches | start fails, saying both versions | the process is killed |
 
-`timeoutMs` defaults to 15000 and is per call. A timed-out call is abandoned
-rather than interrupted — net/rpc has no cancellation — so the backend finishes
-its work unobserved and answers the next request normally.
+`timeoutMs` defaults to 15000 and is per call. Any nonnegative manifest value is
+accepted for compatibility, while the effective runtime timeout is capped at
+300000. A timed-out call is abandoned rather than interrupted — net/rpc has no
+cancellation — so the backend finishes its work unobserved and answers the next
+request normally.
 
 ## Combining capabilities
 
@@ -343,7 +449,6 @@ its work unobserved and answers the next request normally.
 container runtime. Add `backend/container/` for Go commands built in LXD, and
 `infra/install.sh` only for additional custom provisioning; the host backend can
 coordinate that software and its UI can expose it to the user.
-to.
 
 ## Why net/rpc rather than gRPC
 
@@ -371,4 +476,5 @@ contract. See [10 — Fixtures](10-fixtures.md).
 - [03 — Application capabilities](03-application-capabilities.md) — how `backend/api/` composes with the others.
 - [06 — Extension API](06-extension-api.md#remotebackend) — `remote.backend` in full.
 - [12 — HTTP API](12-http-api.md#backend-backend-routes) — the routes and their authorization.
-- [13 — Security model](13-security-model.md#backend-backends) — what a backend can do, and what stops it.
+- [13 — Security model](13-security-model.md#application-backends) — what a backend can do, and what stops it.
+- [18 — Backend events](18-application-events.md) — manifest declarations, namespaces, scope routing, and delivery guarantees.

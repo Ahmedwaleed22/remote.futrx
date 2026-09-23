@@ -53,33 +53,52 @@ type UpgradeOutcome struct {
 // already succeeded, and reporting a per-instance failure is more useful than
 // pretending the package was never stored.
 func (s *Service) upgradeInstances(ctx context.Context, applicationID string, instances []Instance) []UpgradeOutcome {
-	application, ok := s.registry.Get(applicationID)
-	if !ok {
+	if _, ok := s.registry.Get(applicationID); !ok {
 		return nil
 	}
 	var outcomes []UpgradeOutcome
-	for _, inst := range instances {
-		if inst.ApplicationID != applicationID || inst.Status == StatusStopped {
+	for _, snapshot := range instances {
+		if snapshot.ApplicationID != applicationID {
 			continue
 		}
-		if !needsUpgrade(inst, application) {
-			continue
+		if outcome, upgraded := s.upgradeInstance(ctx, applicationID, snapshot.ID); upgraded {
+			outcomes = append(outcomes, outcome)
 		}
-		outcome := UpgradeOutcome{
-			InstanceID: inst.ID,
-			Name:       inst.Name,
-			Scope:      inst.Scope,
-			ProjectID:  inst.ProjectID,
-			From:       inst.ApplicationVersion,
-			To:         application.Version,
-		}
-		if err := s.reinstall(ctx, application, &inst); err != nil {
-			outcome.Error = err.Error()
-			_ = s.saveStatus(ctx, &inst, StatusError, err.Error())
-		}
-		outcomes = append(outcomes, outcome)
 	}
 	return outcomes
+}
+
+// upgradeInstance reloads and re-evaluates the candidate under its instance
+// lock. UploadPackage supplies a ListAll snapshot, but a concurrent Stop or
+// Uninstall may have committed since that snapshot was taken; stale data must
+// never resurrect or recreate that copy.
+func (s *Service) upgradeInstance(
+	ctx context.Context,
+	applicationID, instanceID string,
+) (UpgradeOutcome, bool) {
+	unlock := s.instanceLocks.lock(instanceID)
+	defer unlock()
+
+	inst, application, err := s.load(ctx, instanceID)
+	if err != nil || inst.ApplicationID != applicationID || inst.Status == StatusStopped {
+		return UpgradeOutcome{}, false
+	}
+	if !needsUpgrade(inst, application) {
+		return UpgradeOutcome{}, false
+	}
+	outcome := UpgradeOutcome{
+		InstanceID: inst.ID,
+		Name:       inst.Name,
+		Scope:      inst.Scope,
+		ProjectID:  inst.ProjectID,
+		From:       inst.ApplicationVersion,
+		To:         application.Version,
+	}
+	if err := s.reinstall(ctx, application, &inst); err != nil {
+		outcome.Error = err.Error()
+		_ = s.saveStatus(ctx, &inst, StatusError, err.Error())
+	}
+	return outcome, true
 }
 
 // needsUpgrade reports whether an instance's container side was provisioned by

@@ -95,10 +95,11 @@ func TestUploadPackageRejectsAnEmptyArchive(t *testing.T) {
 	}
 }
 
-// Replacing a package leaves backend processes running against the binary
-// compiled from the previous version. Stopping them is what makes the upgrade
-// take effect on the next call.
-func TestUploadPackageRestartsBackendsOfTheReplacedApplication(t *testing.T) {
+// Replacing a package invalidates the application as one host operation. It
+// must not depend on enumerating persisted instances: a process may be in the
+// middle of launching, and a store read can fail after the catalog already
+// committed the replacement.
+func TestUploadPackageInvalidatesBackendsOfTheReplacedApplication(t *testing.T) {
 	store := &fakeStore{
 		global: []Instance{instance("uploaded-app", "", StatusRunning)},
 		byProject: map[string][]Instance{
@@ -107,22 +108,41 @@ func TestUploadPackageRestartsBackendsOfTheReplacedApplication(t *testing.T) {
 		},
 	}
 	host := &recordingHost{}
-	service := packageService(store, &recordingCatalog{}, host)
+	catalog := &recordingCatalog{stored: []PackageView{{Package: Package{
+		ID: "uploaded-app", Name: "Uploaded App",
+	}}}}
+	service := packageService(store, catalog, host)
 
 	if _, err := service.UploadPackage(context.Background(), PackageUpload{
 		Data: []byte("PK\x03\x04"),
 	}); err != nil {
 		t.Fatalf("upload: %v", err)
 	}
-	stopped := map[string]bool{}
-	for _, id := range host.stopped {
-		stopped[id] = true
+	if len(host.invalidated) != 1 || host.invalidated[0] != "uploaded-app" {
+		t.Fatalf("invalidated = %v, want [uploaded-app]", host.invalidated)
 	}
-	if !stopped["uploaded-app-"] || !stopped["uploaded-app-p1"] {
-		t.Fatalf("instances of the replaced application were not restarted: %v", host.stopped)
+	if len(host.stopped) != 0 {
+		t.Fatalf("package replacement stopped instances one by one: %v", host.stopped)
 	}
-	if stopped["other-app-p2"] {
-		t.Fatalf("an unrelated application was restarted: %v", host.stopped)
+}
+
+func TestUploadPackageInvalidatesBeforeAListAllFailure(t *testing.T) {
+	store := &fakeStore{listAllErr: errors.New("store unavailable")}
+	host := &recordingHost{}
+	catalog := &recordingCatalog{stored: []PackageView{{Package: Package{
+		ID: "uploaded-app", Name: "Uploaded App",
+	}}}}
+	service := packageService(store, catalog, host)
+
+	pkg, err := service.UploadPackage(context.Background(), PackageUpload{Data: []byte("PK\x03\x04")})
+	if err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	if pkg.ID != "uploaded-app" {
+		t.Fatalf("package = %+v", pkg)
+	}
+	if len(host.invalidated) != 1 || host.invalidated[0] != "uploaded-app" {
+		t.Fatalf("invalidated = %v, want [uploaded-app]", host.invalidated)
 	}
 }
 

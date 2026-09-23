@@ -100,6 +100,9 @@ type Dependencies struct {
 	// ApplicationLifecycle receives successful application catalog and
 	// installed-copy transitions. Subscribers are wired at the process root.
 	ApplicationLifecycle serviceapplications.ApplicationLifecyclePublisher
+	// ApplicationEvents is the process-wide validated event stream routed to
+	// subscribed application backends.
+	ApplicationEvents serviceapplications.EventSource
 }
 
 // ScheduleLimits mirrors the deployment's scheduled-task guardrails without
@@ -332,6 +335,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			serviceapplications.WithBackendHost(deps.AppBackends),
 			serviceapplications.WithPackageCatalog(deps.AppPackages),
 			serviceapplications.WithLifecyclePublisher(deps.ApplicationLifecycle),
+			serviceapplications.WithEventSource(ctx, deps.ApplicationEvents),
 		)
 	}
 

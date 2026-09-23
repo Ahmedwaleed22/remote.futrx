@@ -1,5 +1,6 @@
-// Owns the shared async lifecycle for the container and service inspection
-// panels: loading, disposal-safe completion, button state, and listener cleanup.
+// Owns the shared async lifecycle for the container, service, and event
+// inspection panels: loading, disposal-safe completion, button state, and
+// listener cleanup.
 export function mountInspectionRefresh({
   refresh,
   isDisposed,

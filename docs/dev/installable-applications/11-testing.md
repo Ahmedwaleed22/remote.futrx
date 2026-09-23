@@ -35,6 +35,7 @@ cd backend
 go test ./internal/integration/containers/applications/   # catalog + installer
 go test ./internal/service/applications/                  # scoping + policy
 go test ./internal/integration/applications/                # compiling and running backends
+go test -race ./internal/lifecycle/                         # typed publishers + dynamic event bus/bridge
 go test ./pkg/applications/...                               # the backend SDK
 go build ./... && go vet ./...
 ```
@@ -43,13 +44,17 @@ go build ./... && go vet ./...
 |---|---|
 | `registry_test.go` | catalog loading, capability inference, `ui/` discovery, the declared `ui` manifest, asset path traversal, reserved directories |
 | `registry_backend_test.go` | `backend/` discovery and every layout the registry refuses |
+| `registry_events_test.go` | publisher/subscription names, versions, canonical namespaces, and backend requirements |
 | `installer_test.go` | which `lxc` commands each scope issues — and, crucially, which it must **not** |
 | `service/applications/ui_extensions_test.go` | which extensions a caller may load, and their install scope |
 | `service/applications/backend_test.go` | who may call a backend, when, and what lifecycle does to its process |
 | `applications/host_test.go` | compiling, launching, one process per instance, restart, timeout, panic isolation, data retention |
+| `applications/events_test.go` | publication authorization, host-stamped identity, payload limits, optional capability handshake, and delivery |
 | `applications/builder_test.go` | fingerprinting and the generated module files |
 | `applications/catalog_test.go` | the shipped `backend-playground`, compiled and called end to end |
 | `pkg/applications/mux_test.go` | route matching, method fallbacks, request helpers |
+| `pkg/applications/rpc/events_test.go` | publisher callback and subscriber delivery across the backend RPC boundary |
+| `lifecycle/event_bus_test.go`, `application_event_bridge_test.go` | defensive payload copies and canonical version-1 core event envelopes |
 | `handlers/applications_backend_handler_test.go` | which headers cross the boundary in each direction |
 
 `applications` tests compile real backends with the Go toolchain, so they take
@@ -140,6 +145,16 @@ or start, because the build fingerprint changed.
 | Theming | Toggle light/dark; confirm your CSS follows |
 | A backend is a process | Watch `backend-playground`'s pid across stop and start |
 | A backend survives a panic | Click **panic (survivable)**, then check the pid |
+| Project event isolation | Publish from a project instance; verify only matching subscriber instances in that same project receive it, never a global instance |
+| Global/catalog event reach | Publish globally or mutate the uploaded catalog; verify every matching running subscriber scope is eligible |
+| Subscription lifecycle | Stop a subscriber, publish, start it, and confirm there is no replay of the missed event |
+| Subscriber failure isolation | Make one `OnEvent` fail or time out; verify publication succeeds and later recipients are still attempted |
+
+For a manifest event change, also test a publication with the wrong publisher,
+event, and version; primitive, `null`, malformed, and over-64-KiB payloads; and
+an empty payload normalized to `{}`. An application subscription selects an
+event name, so exercise both the version the handler understands and one it
+must ignore safely. See [18 — Backend events](18-application-events.md).
 
 ## Testing an install script
 

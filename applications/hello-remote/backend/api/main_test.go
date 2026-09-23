@@ -2,11 +2,34 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
+
+type recordingEventPublisher struct {
+	mu           sync.Mutex
+	publications []applications.Publication
+	err          error
+}
+
+func (p *recordingEventPublisher) Publish(publication applications.Publication) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	publication.Payload = append(json.RawMessage(nil), publication.Payload...)
+	p.publications = append(p.publications, publication)
+	return p.err
+}
+
+func (p *recordingEventPublisher) recorded() []applications.Publication {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]applications.Publication(nil), p.publications...)
+}
 
 // A backend is ordinary Go in the repository's module, so it is tested like
 // ordinary Go: build the backend, hand it an Instance the way the host would,
@@ -59,7 +82,7 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 			Status:             "ok",
 			Message:            "Hello from the container service.",
 			Version:            "build-id",
-			ProvisionedVersion: "10",
+			ProvisionedVersion: "11",
 		}, nil
 	}
 
@@ -73,8 +96,8 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 	if got := body["externalPort"]; got != float64(4781) {
 		t.Errorf("external port = %v, want 4781", got)
 	}
-	if got := body["provisionedVersion"]; got != "10" {
-		t.Errorf("provisionedVersion = %v, want 10", got)
+	if got := body["provisionedVersion"]; got != "11" {
+		t.Errorf("provisionedVersion = %v, want 11", got)
 	}
 }
 
@@ -158,5 +181,110 @@ func TestVisitsWithoutADataDirStillAnswer(t *testing.T) {
 	}
 	if body["warning"] == nil {
 		t.Error("expected a warning explaining the count was not persisted")
+	}
+}
+
+func TestGreetingVisitPublishesTheDeclaredEvent(t *testing.T) {
+	b := newTestBackend(t, t.TempDir(), nil)
+	publisher := &recordingEventPublisher{}
+	if err := b.InitPublisher(publisher); err != nil {
+		t.Fatalf("init publisher: %v", err)
+	}
+
+	body := call(t, b, http.MethodPost, "visits")
+	if body["warning"] != nil {
+		t.Fatalf("successful greeting warning = %v", body["warning"])
+	}
+	publications := publisher.recorded()
+	if len(publications) != 1 {
+		t.Fatalf("publications = %d, want 1", len(publications))
+	}
+	publication := publications[0]
+	if publication.Publisher != greetingPublisher || publication.Event != greetedEvent ||
+		publication.Version != greetedVersion {
+		t.Fatalf("publication identity = %+v", publication)
+	}
+	var payload map[string]int
+	if err := json.Unmarshal(publication.Payload, &payload); err != nil {
+		t.Fatalf("decode publication payload: %v", err)
+	}
+	if payload["visits"] != 1 {
+		t.Fatalf("publication payload = %v, want visits 1", payload)
+	}
+}
+
+func TestGreetingVisitSucceedsWhenPublicationFails(t *testing.T) {
+	b := newTestBackend(t, t.TempDir(), nil)
+	if err := b.InitPublisher(&recordingEventPublisher{err: errors.New("bus unavailable")}); err != nil {
+		t.Fatalf("init publisher: %v", err)
+	}
+
+	body := call(t, b, http.MethodPost, "visits")
+	if body["visits"] != float64(1) {
+		t.Fatalf("visits = %v, want 1", body["visits"])
+	}
+	warning, _ := body["warning"].(string)
+	if !strings.Contains(warning, "event not published: bus unavailable") {
+		t.Fatalf("warning = %q", warning)
+	}
+}
+
+func TestReceivedEventsAreRecordedAndExposed(t *testing.T) {
+	b := newTestBackend(t, t.TempDir(), nil)
+	if err := b.InitPublisher(&recordingEventPublisher{}); err != nil {
+		t.Fatalf("init publisher: %v", err)
+	}
+	payload := json.RawMessage(`{"applicationId":"hello-remote"}`)
+	event := applications.Event{
+		Source: applications.EventSource{
+			ApplicationID: "remote",
+			InstanceID:    "test",
+			Scope:         "global",
+			Publisher:     "remote.applications",
+		},
+		Name:    "installed",
+		Version: 1,
+		Payload: payload,
+	}
+	if err := b.OnEvent(event); err != nil {
+		t.Fatalf("receive event: %v", err)
+	}
+	payload[0] = 'x' // The recorded event must own its payload bytes.
+
+	body := call(t, b, http.MethodGet, "events")
+	if body["publisherReady"] != true || body["received"] != float64(1) {
+		t.Fatalf("event activity = %#v", body)
+	}
+	last, ok := body["lastEvent"].(map[string]any)
+	if !ok {
+		t.Fatalf("lastEvent = %#v", body["lastEvent"])
+	}
+	if last["name"] != "installed" || last["version"] != float64(1) {
+		t.Fatalf("last event identity = %#v", last)
+	}
+	lastPayload, ok := last["payload"].(map[string]any)
+	if !ok || lastPayload["applicationId"] != "hello-remote" {
+		t.Fatalf("last event payload = %#v", last["payload"])
+	}
+}
+
+func TestOnEventIsSafeForConcurrentDelivery(t *testing.T) {
+	b := newTestBackend(t, t.TempDir(), nil)
+	const deliveries = 32
+	var wait sync.WaitGroup
+	wait.Add(deliveries)
+	for index := 0; index < deliveries; index++ {
+		go func() {
+			defer wait.Done()
+			_ = b.OnEvent(applications.Event{
+				Name: "greeted", Version: 1,
+				Payload: json.RawMessage(`{"visits":1}`),
+			})
+		}()
+	}
+	wait.Wait()
+
+	if got := call(t, b, http.MethodGet, "events")["received"]; got != float64(deliveries) {
+		t.Fatalf("received = %v, want %d", got, deliveries)
 	}
 }

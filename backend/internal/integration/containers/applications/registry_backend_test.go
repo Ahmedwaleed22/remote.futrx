@@ -75,6 +75,22 @@ func TestLoadApplicationBackendKeepsDeclaredOverrides(t *testing.T) {
 	}
 }
 
+func TestLoadApplicationBackendAcceptsLegacyTimeoutAboveRuntimeMaximum(t *testing.T) {
+	declaredTimeout := svc.MaxBackendTimeoutMS + 1
+	declared := &svc.ApplicationBackend{TimeoutMS: declaredTimeout}
+	backend, err := loadApplicationBackend(
+		backendTree(map[string]string{"backend/main.go": validBackendMain}), "backend", declared)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if backend.TimeoutMS != declaredTimeout {
+		t.Errorf("declared timeout = %d, want %d", backend.TimeoutMS, declaredTimeout)
+	}
+	if backend.Timeout() != svc.MaxBackendTimeoutMS {
+		t.Errorf("effective timeout = %d, want runtime cap %d", backend.Timeout(), svc.MaxBackendTimeoutMS)
+	}
+}
+
 // Every rejection here is a compiler error the server would otherwise hit at
 // install time, on a machine where nobody is watching.
 func TestLoadApplicationBackendRejectsBrokenLayouts(t *testing.T) {

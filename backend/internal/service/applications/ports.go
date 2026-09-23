@@ -61,11 +61,25 @@ type BackendHost interface {
 	// running — which is what makes installed backends survive a server
 	// restart without a start sweep.
 	Call(ctx context.Context, instance applications.Instance, request applications.Request) (applications.Response, error)
+	// Notify delivers one subscribed event, lazily starting the backend after a
+	// Remote process restart in the same way Call does.
+	Notify(ctx context.Context, instance applications.Instance, event applications.Event) error
 	// Stop terminates the instance's backend process, keeping its data
 	// directory so a later start resumes with it.
 	Stop(ctx context.Context, instanceID string) error
 	// Remove stops the backend and deletes the instance's data directory.
 	Remove(ctx context.Context, instanceID string) error
+	// InvalidateApplication stops every process created from an application and
+	// prevents an in-flight launch from surviving a package replacement. The
+	// next call rebuilds against the registry's current source and manifest.
+	InvalidateApplication(applicationID string)
+}
+
+// EventSource is the process-wide stream of validated application and core
+// events. The service subscribes once and owns routing those events to running
+// application backend instances.
+type EventSource interface {
+	Subscribe(func(context.Context, applications.Event)) (unsubscribe func())
 }
 
 // Store persists installed instances. Global instances are keyed only by ID;

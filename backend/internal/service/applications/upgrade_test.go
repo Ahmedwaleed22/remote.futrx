@@ -149,7 +149,12 @@ func TestUploadDoesNotReinstallWhenTheVersionIsUnchanged(t *testing.T) {
 	store := &fakeStore{global: []Instance{installedAt("g1", "", "1.0.0", StatusRunning)}}
 	installer := &failingInstaller{}
 	registry := &versionedRegistry{application: serviceApplicationAt("1.0.0")}
-	catalog := &recordingCatalog{pkg: Package{ID: "db", Version: "1.0.0"}}
+	catalog := &recordingCatalog{
+		pkg: Package{ID: "db", Version: "1.0.0"},
+		stored: []PackageView{{Package: Package{
+			ID: "db", Version: "1.0.0",
+		}}},
+	}
 	host := &recordingHost{}
 	service := upgradeService(store, registry, installer, catalog, host)
 
@@ -163,10 +168,10 @@ func TestUploadDoesNotReinstallWhenTheVersionIsUnchanged(t *testing.T) {
 	if len(pkg.Upgraded) != 0 {
 		t.Fatalf("upgrade outcomes = %+v, want none", pkg.Upgraded)
 	}
-	// The backend is still refreshed: its source may have changed even when the
-	// container side did not, and restarting it costs nothing.
-	if len(host.stopped) != 1 || host.stopped[0] != "g1" {
-		t.Fatalf("backend was not refreshed: %v", host.stopped)
+	// The backend is still refreshed application-wide: its source may have
+	// changed even when the container side did not.
+	if len(host.invalidated) != 1 || host.invalidated[0] != "db" {
+		t.Fatalf("backend was not invalidated: %v", host.invalidated)
 	}
 }
 

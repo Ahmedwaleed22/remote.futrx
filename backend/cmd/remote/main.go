@@ -51,10 +51,11 @@ func main() {
 	////////////////////////////////////////
 	// Configuration
 	////////////////////////////////////////
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 	cfg := config.Load()
 
 	if runCLICommand(ctx, cfg, os.Args) {
+		cancel()
 		return
 	}
 	publicHostname, err := config.PublicHostname(cfg.BaseURL)
@@ -86,15 +87,26 @@ func main() {
 	if err != nil {
 		log.Fatalf("load application catalog: %v", err)
 	}
+	// This dynamic bus is the one process-wide boundary shared by core lifecycle
+	// publishers and manifest-declared application publishers/subscribers.
+	applicationEvents := lifecycle.NewEventBus(ctx)
 	// Application backends are compiled from the catalog's embedded Go source and
 	// run as child processes. Their binaries and per-instance data live beside
 	// the rest of the server's state so an uninstall leaves nothing behind.
 	appBackends := applicationbackends.New(
 		filepath.Join(cfg.DataDir, "applications"),
 		appRegistry,
-		applicationbackends.Options{GoTool: cfg.Applications.GoTool},
+		applicationbackends.Options{
+			GoTool: cfg.Applications.GoTool,
+			Events: applicationEvents,
+		},
 	)
+	// Service-owned workers are closed after construction below. These defers
+	// then cancel the shared lifecycle, wait for dynamic dispatch, and finally
+	// stop child backends. Defers run in last-in, first-out order.
 	defer appBackends.Shutdown()
+	defer applicationEvents.Close()
+	defer cancel()
 
 	containerStack := config.NewContainerStack(
 		lxc.New(),
@@ -123,6 +135,11 @@ func main() {
 	// publishing capability declared by their own service contract.
 	updateLifecycle := lifecycle.NewUpdatePublisher()
 	applicationLifecycle := lifecycle.NewApplicationPublisher()
+	applicationEventBridge := lifecycle.NewApplicationEventBridge(applicationEvents)
+	unsubscribeApplicationCatalog := applicationLifecycle.SubscribeCatalog(applicationEventBridge)
+	defer unsubscribeApplicationCatalog()
+	unsubscribeApplicationInstances := applicationLifecycle.SubscribeInstances(applicationEventBridge)
+	defer unsubscribeApplicationInstances()
 	selfUpdateService := serviceselfupdate.New(
 		version.Version,
 		cfg.InstallDir,
@@ -179,10 +196,16 @@ func main() {
 		AppBackends:          appBackends,
 		AppPackages:          appRegistry,
 		ApplicationLifecycle: applicationLifecycle,
+		ApplicationEvents:    applicationEvents,
 		PromptStartGate:      maintenanceGuard,
 	})
 	if err != nil {
 		log.Fatalf("init services: %v", err)
+	}
+	// This defer is registered after the bus/host defers above, so routing fully
+	// unsubscribes and exits before the bus closes and backend children stop.
+	if serviceSet.Applications != nil {
+		defer serviceSet.Applications.Close()
 	}
 	// Terminal self-update events are reconciled from disk so a backend
 	// replacement can deliver the completion started by its predecessor.

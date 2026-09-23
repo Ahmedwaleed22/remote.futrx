@@ -154,35 +154,37 @@ func (s *Service) UploadPackage(ctx context.Context, upload PackageUpload) (Pack
 		return PackageView{}, err
 	}
 	if stored.Replaced {
-		s.publishApplicationUpdated(ctx, stored.ID)
+		// AddPackage has already atomically swapped the registry view. Retire
+		// every old process before upgrading: a later call must use the new
+		// source even while container reconciliation is still in progress.
+		// Application-wide invalidation also covers launches not yet visible in
+		// the instance store and remains correct when ListAll fails below.
+		if s.backends != nil {
+			s.backends.InvalidateApplication(stored.ID)
+		}
 	} else {
 		s.publishApplicationAdded(ctx, stored.ID)
 	}
 	pkg := PackageView{Package: stored.Package}
 	// Re-provision the container side of every instance the new version made
-	// stale. This also stops each backend it touches, so those come back on the
-	// new source by itself.
+	// stale. A replacement already invalidated all of its backend processes, so
+	// every later call comes back on the current source.
 	instances, err := s.store.ListAll(ctx)
 	if err != nil {
+		if stored.Replaced {
+			s.publishApplicationUpdated(ctx, stored.ID)
+		}
 		return pkg, nil
 	}
 	pkg.Upgraded = s.upgradeInstances(ctx, pkg.ID, instances)
-
-	// Every other instance of the application still holds a backend process running
-	// the binary compiled from the previous upload. Stopping it is what makes
-	// the new code take effect: the next call rebuilds and starts fresh.
-	s.stopBackendsForApplication(ctx, pkg.ID, instances, upgradedIDs(pkg.Upgraded))
-	return pkg, nil
-}
-
-// upgradedIDs collects the instances upgradeInstances already handled, so the
-// backend sweep below does not stop the same process twice.
-func upgradedIDs(outcomes []UpgradeOutcome) map[string]bool {
-	handled := make(map[string]bool, len(outcomes))
-	for _, outcome := range outcomes {
-		handled[outcome.InstanceID] = true
+	// Publish only after every stale running copy has either converged or
+	// recorded its failure. The event may be routed back to a newly declared
+	// subscriber; it must not lazily launch that backend against old container
+	// state while an upgrade is still waiting for the same instance lock.
+	if stored.Replaced {
+		s.publishApplicationUpdated(ctx, stored.ID)
 	}
-	return handled
+	return pkg, nil
 }
 
 // RemovePackageRequest asks for a package to be deleted.
@@ -264,24 +266,40 @@ func (s *Service) uninstallForPackageRemoval(
 	case err == nil, errors.Is(err, ErrNotFound):
 		return nil
 	case errors.Is(err, ErrUnknownApplication):
-		if s.backends != nil {
-			if err := s.backends.Remove(ctx, install.InstanceID); err != nil {
-				return err
-			}
-		}
-		if err := s.store.Delete(ctx, install.InstanceID); err != nil {
-			return err
-		}
-		s.publishApplicationUninstalled(ctx, Instance{
-			ID:            install.InstanceID,
-			ApplicationID: applicationID,
-			Scope:         install.Scope,
-			ProjectID:     install.ProjectID,
-		})
-		return nil
+		return s.removeUnknownPackageInstance(ctx, applicationID, install.InstanceID)
 	default:
 		return err
 	}
+}
+
+func (s *Service) removeUnknownPackageInstance(
+	ctx context.Context,
+	applicationID, instanceID string,
+) error {
+	unlock := s.instanceLocks.lock(instanceID)
+	defer unlock()
+
+	current, found, err := s.store.Get(ctx, instanceID)
+	if err != nil || !found {
+		return err
+	}
+	if current.ApplicationID != applicationID {
+		return fmt.Errorf(
+			"instance %s no longer belongs to application %s",
+			instanceID,
+			applicationID,
+		)
+	}
+	if s.backends != nil {
+		if err := s.backends.Remove(ctx, instanceID); err != nil {
+			return err
+		}
+	}
+	if err := s.store.Delete(ctx, instanceID); err != nil {
+		return err
+	}
+	s.publishApplicationUninstalled(ctx, current)
+	return nil
 }
 
 // installsOf lists the installed copies of one application.
@@ -306,21 +324,4 @@ func describeInstall(install PackageInstall) string {
 		return fmt.Sprintf("in project %s", install.ProjectID)
 	}
 	return "globally"
-}
-
-// stopBackendsForApplication terminates the backend process of every instance created
-// from the application. Each one restarts on its next call, so this is a refresh
-// rather than a shutdown; a failure to stop one is not worth failing an upload
-// that already succeeded, so it is left to the caller's next request to retry.
-func (s *Service) stopBackendsForApplication(
-	ctx context.Context, applicationID string, instances []Instance, skip map[string]bool,
-) {
-	if s.backends == nil {
-		return
-	}
-	for _, inst := range instances {
-		if inst.ApplicationID == applicationID && !skip[inst.ID] {
-			_ = s.backends.Stop(ctx, inst.ID)
-		}
-	}
 }

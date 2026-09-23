@@ -1,8 +1,10 @@
 # 02 — `application.json` reference
 
-Every application directory contains exactly one `application.json`. It is loaded and
-validated at server startup by `registry.go:loadApplication`; a malformed file fails
-the build and the tests rather than producing a broken catalog entry.
+Every application directory contains exactly one `application.json`. Built-in
+entries are loaded and validated at server startup by
+`registry.go:loadApplication`; uploaded entries pass the same loader before
+the package is accepted. A malformed file is refused rather than producing a
+broken catalog entry.
 
 The Go type behind it is `Application` in
 [`service/applications/model.go`](../../../backend/internal/service/applications/model.go).
@@ -100,6 +102,44 @@ An application with backend and UI capabilities:
 }
 ```
 
+An application backend that publishes its own events and consumes both Remote
+lifecycle events and another application's events:
+
+```json
+{
+  "id": "event-worker",
+  "name": "Event Worker",
+  "version": "1",
+  "scopes": ["global", "project"],
+  "publishers": [
+    {
+      "name": "jobs",
+      "events": [
+        {
+          "name": "completed",
+          "version": 1,
+          "description": "A job completed successfully."
+        }
+      ]
+    }
+  ],
+  "subscriptions": [
+    {
+      "publisher": "remote.applications",
+      "events": ["installed", "uninstalled", "started", "stopped"]
+    },
+    {
+      "publisher": "applications.other-app.imports",
+      "events": ["completed"]
+    }
+  ]
+}
+```
+
+This package must also contain `backend/api/`: event declarations without a
+host backend are rejected. See [18 — Backend events](18-application-events.md)
+for the Go interfaces, routing, and delivery guarantees.
+
 An application that provisions into a project's container without exposing a port:
 
 ```json
@@ -164,7 +204,9 @@ An application with only a UI capability:
 | `healthcheck` | object | no | `{ "command": "…" }` run inside the container. Requires `port.internal`. |
 | `ui` | object | no | Overrides what is loaded from `ui/`. See below. |
 | `backend` | object | no | Overrides the defaults for the Go backend in `backend/`. See below. |
-| `source` | string | — | **Server-set, not accepted from `application.json`.** `builtin` or `uploaded`; anything declared here is overwritten. |
+| `publishers` | object[] | no | Event families the backend may publish. Publisher names are local; Remote qualifies them as `applications.<application-id>.<publisher>`. See below. |
+| `subscriptions` | object[] | no | Canonically named event families delivered to running backend instances. See below. |
+| `source` | string | — | **Response-only.** The server sets `builtin` or `uploaded`; declaring this field in `application.json` is rejected. |
 
 ### `port`
 
@@ -264,19 +306,82 @@ here because the layout is fixed: the backend is `backend/`, and it is
 | Field | Type | Default | Notes |
 |---|---|---|---|
 | `access` | string | `registered` | `registered` — any signed-in user may call the backend; `admin` — administrators only. |
-| `timeoutMs` | int | `15000` | Bounds one call. A backend that has not answered by then fails that call and keeps running. |
+| `timeoutMs` | int | `15000` | Requests the bound for one call; `0` selects the default. Any nonnegative value is accepted for compatibility, but the effective runtime maximum is `300000` (five minutes). A backend that has not answered by then fails that call and keeps running. Event delivery has a separate 30-second maximum. |
 
 `access` is the only capability control the platform enforces on a backend's
 behalf. Anything finer is the backend's own job, using `Request.Caller` — see
 [15 — Application backends](15-application-backends.md).
 
-An unknown backend `access` value or a negative `timeoutMs` fails `NewRegistry()`.
+An unknown backend `access` value or a negative `timeoutMs` fails
+`NewRegistry()`.
+
+### `publishers[]`
+
+Declares exactly what an application's backend is allowed to emit. The
+publisher `name` is local to the application manifest; for example, `jobs` on
+application `event-worker` is delivered under the canonical publisher
+`applications.event-worker.jobs`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | string | Local lowercase name, at most 128 bytes, made of alphanumeric segments separated by `.` or `-`. It cannot begin with the reserved `remote` or `applications` segment. |
+| `events` | object[] | Between 1 and 128 event declarations; names must be unique within this publisher. |
+
+Each event declaration has:
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | string | At most 128 bytes; lowercase alphanumeric segments separated by `.` or `-`. |
+| `version` | int | Payload schema version, starting at `1`. Change it when the payload contract changes. |
+| `description` | string | Optional one-line description, at most 2048 bytes. |
+
+Publication is checked against all three manifest values: local publisher,
+event name, and version. Declaring a publisher does not publish anything by
+itself; the backend must implement `applications.PublisherBackend` and call
+the host-provided publisher.
+
+### `subscriptions[]`
+
+Selects events for delivery to a running backend instance.
+
+| Field | Type | Notes |
+|---|---|---|
+| `publisher` | string | Canonical publisher, at most 256 bytes: `remote.applications`, or `applications.<application-id>.<local-publisher>`. |
+| `events` | string[] | Between 1 and 128 unique event names, each at most 128 bytes. Subscriptions select names, not versions; inspect `Event.Version` in the handler. |
+
+Only one subscription block may name a particular canonical publisher. The
+seven valid names for `remote.applications` are `added`, `updated`, `deleted`,
+`installed`, `uninstalled`, `started`, and `stopped`. An application-owned
+publisher is validated structurally here; its existence and event list may
+change independently with that package, so subscribers must handle versions
+and payloads defensively.
+
+Like `publishers`, subscriptions require `backend/api/`. A manifest declaration
+does not silently turn an ordinary backend into a subscriber: a backend with
+subscriptions must implement `applications.EventSubscriber`, or its install or
+start fails during the backend handshake.
 
 ## Validation rules
 
 Every application must declare a non-empty `version`. Loading fails without one —
 including for an uploaded package, which is refused at upload rather than
 half-added.
+
+`application.json` is limited to 256 KiB. Field names are exact and
+case-sensitive; unknown fields, duplicate object keys, and trailing JSON values
+are rejected. `source`, `container`, and `skills` are derived from the catalog
+layout and cannot be declared in the manifest.
+
+That strict decoder applies to built-in applications and every new or
+replacement upload. Packages already persisted by an older Remote release are
+first try the strict current schema, then fall back to a frozen pre-events
+`encoding/json` schema. That keeps an installed application from disappearing
+merely because its old manifest contained an ignored, case-aliased, or
+response-only field. It also prevents a formerly unknown field named
+`publishers` or `subscriptions` from unexpectedly activating a capability.
+All recognized legacy values still pass current validation, and Remote still
+recomputes `source`, `container`, and `skills`. Re-uploading such a package
+requires its manifest to satisfy the strict current contract.
 
 Enforced in `registry_validation.go:validateApplication` and
 `registry.go:loadApplication`:
@@ -295,6 +400,16 @@ Enforced in `registry_validation.go:validateApplication` and
 - A declared `backend` block requires host backend source in `backend/api/` (or
   the legacy flat `backend/` layout). Backend, infrastructure, service, port,
   and health-check capabilities may coexist in one application.
+- `publishers` and `subscriptions` require host backend source. Publisher names
+  are local and unique, events are unique per publisher and have versions of
+  at least `1`, and subscriptions use canonical publisher names with unique
+  event names.
+- A manifest may declare at most 64 publishers and 128 subscriptions. Each
+  publisher or subscription may list at most 128 events; publisher names,
+  canonical publisher names, event names, and event descriptions have the
+  byte limits documented above.
+- `remote.applications` subscriptions may name only its seven documented
+  version-1 lifecycle events.
 - Every path in the `ui` block must exist inside `ui/`.
 - A `ui/` directory that exists must contain at least one file.
 - A `backend/` directory that exists must contain at least one `package main`

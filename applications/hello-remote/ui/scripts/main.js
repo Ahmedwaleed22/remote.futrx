@@ -7,6 +7,7 @@
 // backend/api/ — is the center of the example.
 
 import { mountContainerPanel } from "./containerPanel.js";
+import { mountEventPanel } from "./eventPanel.js";
 import { mountServicePanel } from "./servicePanel.js";
 import { activateFrontendShowcase } from "./showcase.js";
 
@@ -96,7 +97,11 @@ function renderPanel(host, remote, context) {
 
     const show = (reply) => {
       if (disposed) return;
-      if (reply.message) message.textContent = reply.message;
+      if (reply.warning) {
+        message.textContent = `Greeting counted with a warning: ${reply.warning}`;
+      } else if (reply.message) {
+        message.textContent = reply.message;
+      }
       if (typeof reply.visits === "number") count.textContent = String(reply.visits);
     };
     const fail = (error) => {
@@ -128,10 +133,17 @@ function renderPanel(host, remote, context) {
       target(context),
       () => disposed
     );
+    const unmountEventPanel = mountEventPanel(
+      host,
+      remote.backend,
+      target(context),
+      () => disposed
+    );
     detach = () => {
       button.removeEventListener("click", onClick);
       unmountContainerPanel();
       unmountServicePanel();
+      unmountEventPanel();
     };
 
     remote.backend.call("hello", target(context)).then(show).catch(fail);

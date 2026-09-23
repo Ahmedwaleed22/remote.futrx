@@ -27,19 +27,35 @@ func (a BackendAccess) Valid() bool {
 type ApplicationBackend struct {
 	// Access is who may call the backend. Empty means BackendAccessRegistered.
 	Access BackendAccess `json:"access,omitempty"`
-	// TimeoutMS bounds a single call. Empty means DefaultBackendTimeoutMS.
+	// TimeoutMS requests the bound for a single call. Empty means
+	// DefaultBackendTimeoutMS; values above MaxBackendTimeoutMS remain accepted
+	// for compatibility but are capped when the timeout is applied.
 	TimeoutMS int `json:"timeoutMs,omitempty"`
 }
 
-// DefaultBackendTimeoutMS bounds one backend call when the application does not say.
-// A backend is a child process the request goroutine waits on, so an unbounded
-// call would be an unbounded held connection.
-const DefaultBackendTimeoutMS = 15000
+const (
+	// DefaultBackendTimeoutMS bounds one backend call when the application does
+	// not say. A backend is a child process the request goroutine waits on, so
+	// an unbounded call would be an unbounded held connection.
+	DefaultBackendTimeoutMS = 15000
+	// MaxBackendTimeoutMS is the largest effective per-call timeout. Manifests
+	// may contain a larger legacy value, but runtime operations cap it here so a
+	// typo or hostile uploaded package cannot retain request and process
+	// resources indefinitely.
+	MaxBackendTimeoutMS = 300000
+	// MaxEventDeliveryTimeoutMS limits one subscriber's share of the single
+	// ordered event-delivery worker. A manifest may allow longer browser calls,
+	// but it may not stall all later event recipients for that long.
+	MaxEventDeliveryTimeoutMS = 30000
+)
 
 // Timeout returns the effective per-call timeout in milliseconds.
 func (b ApplicationBackend) Timeout() int {
 	if b.TimeoutMS <= 0 {
 		return DefaultBackendTimeoutMS
+	}
+	if b.TimeoutMS > MaxBackendTimeoutMS {
+		return MaxBackendTimeoutMS
 	}
 	return b.TimeoutMS
 }

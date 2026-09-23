@@ -2,6 +2,9 @@ package applications
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -23,6 +26,13 @@ type Catalog interface {
 	BackendSource(applicationID string) (fs.FS, bool)
 }
 
+// EventSink accepts host-validated application events. The process-wide
+// lifecycle bus implements it; keeping this boundary small prevents the
+// process host from depending on subscription or routing policy.
+type EventSink interface {
+	Publish(context.Context, applications.Event)
+}
+
 // Host runs one backend process per installed instance.
 //
 // The unit is the instance, not the application: an application installed globally and in
@@ -34,16 +44,22 @@ type Host struct {
 	catalog Catalog
 	builder *Builder
 	logger  hclog.Logger
+	events  EventSink
 
-	launches keyedLocks
+	launches           keyedLocks
+	applicationChanges keyedLocks
 
 	mu      sync.Mutex
 	running map[string]*backendProcess
+	// generations prevent work built from a pre-replacement catalog snapshot
+	// from being launched after the application's source or manifest changes.
+	generations map[string]uint64
 }
 
 // Options supplies process-host settings owned by the application edge.
 type Options struct {
 	GoTool string
+	Events EventSink
 }
 
 // New builds a backend host that keeps compiled binaries, generated modules,
@@ -53,13 +69,16 @@ func New(root string, catalog Catalog, options Options) *Host {
 		root:    root,
 		catalog: catalog,
 		builder: NewBuilder(root, options.GoTool),
+		events:  options.Events,
 		logger: hclog.New(&hclog.LoggerOptions{
 			Name:   "app-backend",
 			Level:  hclog.Info,
 			Output: os.Stderr,
 		}),
-		launches: newKeyedLocks(),
-		running:  map[string]*backendProcess{},
+		launches:           newKeyedLocks(),
+		applicationChanges: newKeyedLocks(),
+		running:            map[string]*backendProcess{},
+		generations:        map[string]uint64{},
 	}
 }
 
@@ -92,6 +111,24 @@ func (h *Host) Call(
 	return current.call(ctx, request)
 }
 
+// Notify delivers one subscribed event to a running instance. Like Call, it
+// lazily restores the backend process after a server restart; the service
+// layer decides whether the instance is running and subscribed before asking.
+func (h *Host) Notify(
+	ctx context.Context,
+	instance applications.Instance,
+	event applications.Event,
+) error {
+	current, err := h.ensure(ctx, instance)
+	if err != nil {
+		return err
+	}
+	if !current.descriptor.SubscribesEvents {
+		return fmt.Errorf("backend %s does not implement applications.EventSubscriber", instance.ApplicationID)
+	}
+	return current.notify(ctx, event)
+}
+
 // Stop terminates an instance's backend, keeping its data directory so a later
 // start resumes with it.
 func (h *Host) Stop(_ context.Context, instanceID string) error {
@@ -120,6 +157,35 @@ func (h *Host) Remove(_ context.Context, instanceID string) error {
 	return nil
 }
 
+// InvalidateApplication terminates every process created from applicationID
+// and advances its generation. The application boundary waits for a process
+// already completing its handshake, then terminates it before returning; a
+// launch built from an older snapshot refuses to start and retries against the
+// current catalog.
+//
+// Package replacement calls this immediately after the registry atomically
+// swaps its view, before the application-updated event can reach subscribers.
+func (h *Host) InvalidateApplication(applicationID string) {
+	unlockApplication := h.applicationChanges.lock(applicationID)
+	defer unlockApplication()
+
+	h.mu.Lock()
+	h.generations[applicationID]++
+	var invalidated []*backendProcess
+	for instanceID, current := range h.running {
+		if current.applicationID != applicationID {
+			continue
+		}
+		delete(h.running, instanceID)
+		invalidated = append(invalidated, current)
+	}
+	h.mu.Unlock()
+
+	for _, current := range invalidated {
+		current.stop()
+	}
+}
+
 // Shutdown stops every running backend. The server calls it on the way out so
 // backend processes do not outlive it.
 func (h *Host) Shutdown() {
@@ -142,47 +208,78 @@ func (h *Host) Shutdown() {
 func (h *Host) ensure(ctx context.Context, instance applications.Instance) (*backendProcess, error) {
 	instanceID := instance.ID
 	applicationID := instance.ApplicationID
-
-	// A live process needs nothing else, and this is the path every request
-	// takes. An application's source changes only when an administrator uploads a
-	// new version of its package, and the applications service stops this
-	// instance's process when that happens — so a running process is by
-	// construction current, and re-reading and re-hashing the whole backend on
-	// every request would discover nothing while funnelling concurrent calls
-	// through the builder's per-application lock.
-	if current := h.lookup(instanceID); current != nil && current.running() {
-		return current, nil
-	}
-
-	source, ok := h.catalog.BackendSource(applicationID)
-	if !ok {
-		return nil, fmt.Errorf("%w: %s ships no backend source", svc.ErrNoBackend, applicationID)
-	}
-	// Building stays outside the launch lock so two instances of the same
-	// application share one build instead of queueing behind each other's launches.
-	binary, err := h.builder.Build(ctx, applicationID, source)
+	configuration, err := backendConfiguration(instance)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encode backend %s configuration: %w", applicationID, err)
 	}
 
-	unlock := h.launches.lock(instanceID)
-	defer unlock()
-
-	// Re-check under the lock: another caller may have launched it while this
-	// one was building.
-	if current := h.lookup(instanceID); current != nil {
-		if current.binary == binary && current.running() {
+	for {
+		generation, current := h.snapshot(applicationID, instanceID)
+		// A live process needs nothing else when it was initialized from this
+		// exact instance configuration and the application's current package
+		// generation. This remains the path every ordinary request takes.
+		if processMatches(current, applicationID, generation, configuration) && current.running() {
 			return current, nil
 		}
-		// An exited client means the backend crashed, which is answered by
-		// replacing the process — that is why a crashed backend recovers on the
-		// next call.
-		h.kill(instanceID)
+
+		source, ok := h.catalog.BackendSource(applicationID)
+		if !ok {
+			return nil, fmt.Errorf("%w: %s ships no backend source", svc.ErrNoBackend, applicationID)
+		}
+		// Building stays outside the launch lock so two instances of the same
+		// application share one build instead of queueing behind each other's launches.
+		binary, err := h.builder.Build(ctx, applicationID, source)
+		if err != nil {
+			return nil, err
+		}
+
+		// Package invalidation holds the application boundary while it advances
+		// the generation and terminates old children. Taking the same boundary
+		// here prevents a replacement process from starting before every old
+		// process has actually exited.
+		unlockApplication := h.applicationChanges.lock(applicationID)
+		unlock := h.launches.lock(instanceID)
+
+		// Re-check under the lock: another caller may have launched it while this
+		// one was building, or package replacement may have advanced the
+		// generation. Retrying after replacement re-reads the current source.
+		currentGeneration, current := h.snapshot(applicationID, instanceID)
+		if currentGeneration != generation {
+			unlock()
+			unlockApplication()
+			continue
+		}
+		if processMatches(current, applicationID, generation, configuration) &&
+			current.binary == binary && current.running() {
+			unlock()
+			unlockApplication()
+			return current, nil
+		}
+		if current != nil {
+			// An exited or differently configured client is replaced. This is
+			// what makes a crashed backend recover and changed instance metadata
+			// reach Backend.Init on the next call.
+			h.kill(instanceID)
+		}
+		started, err := h.launch(ctx, instance, binary, configuration, generation)
+		unlock()
+		unlockApplication()
+		if errors.Is(err, errBackendInvalidated) {
+			continue
+		}
+		return started, err
 	}
-	return h.launch(ctx, instance, binary)
 }
 
-func (h *Host) launch(ctx context.Context, instance applications.Instance, binary string) (*backendProcess, error) {
+var errBackendInvalidated = errors.New("application backend invalidated during launch")
+
+func (h *Host) launch(
+	ctx context.Context,
+	instance applications.Instance,
+	binary string,
+	configuration [32]byte,
+	generation uint64,
+) (*backendProcess, error) {
 	instanceID := instance.ID
 	applicationID := instance.ApplicationID
 	dataDir := h.dataDir(instanceID)
@@ -198,14 +295,42 @@ func (h *Host) launch(ctx context.Context, instance applications.Instance, binar
 		StartTimeout:    handshakeTimeout,
 	})
 
-	started, err := h.connect(client, instance, dataDir)
-	if err != nil {
-		client.Kill()
-		return nil, err
+	type connectResult struct {
+		process *backendProcess
+		err     error
 	}
+	connected := make(chan connectResult, 1)
+	go func() {
+		process, err := h.connect(client, instance, dataDir)
+		connected <- connectResult{process: process, err: err}
+	}()
+
+	var started *backendProcess
+	select {
+	case result := <-connected:
+		if result.err != nil {
+			client.Kill()
+			return nil, result.err
+		}
+		started = result.process
+	case <-ctx.Done():
+		// go-plugin's net/rpc calls cannot be canceled individually. Killing the
+		// child closes every transport connection and releases a Describe, Init,
+		// or InitPublisher call that ignored its deadline.
+		client.Kill()
+		return nil, fmt.Errorf("initialize backend %s timed out: %w", applicationID, ctx.Err())
+	}
+	started.applicationID = applicationID
 	started.binary = binary
+	started.configuration = configuration
+	started.generation = generation
 
 	h.mu.Lock()
+	if h.generations[applicationID] != generation {
+		h.mu.Unlock()
+		started.stop()
+		return nil, errBackendInvalidated
+	}
 	h.running[instanceID] = started
 	h.mu.Unlock()
 	return started, nil
@@ -242,8 +367,32 @@ func (h *Host) connect(client *goplugin.Client, instance applications.Instance, 
 	// the same name and version in Describe only creates values that can drift.
 	descriptor.Name = instance.ApplicationName
 	descriptor.Version = instance.ApplicationVersion
+	if len(instance.Publishers) > 0 && !descriptor.PublishesEvents {
+		return nil, fmt.Errorf(
+			"backend %s declares publishers but does not implement applications.PublisherBackend",
+			applicationID,
+		)
+	}
+	if len(instance.Publishers) > 0 && h.events == nil {
+		return nil, fmt.Errorf("initialize publisher for backend %s: event bus unavailable", applicationID)
+	}
+	if len(instance.Subscriptions) > 0 && !descriptor.SubscribesEvents {
+		return nil, fmt.Errorf(
+			"backend %s declares subscriptions but does not implement applications.EventSubscriber",
+			applicationID,
+		)
+	}
 	if err := backend.Init(instanceWithDataDir(instance, dataDir)); err != nil {
 		return nil, fmt.Errorf("initialize backend %s: %w", applicationID, err)
+	}
+	if len(instance.Publishers) > 0 {
+		publisher, ok := backend.(applications.PublisherBackend)
+		if !ok {
+			return nil, fmt.Errorf("backend %s publisher transport is unavailable", applicationID)
+		}
+		if err := publisher.InitPublisher(newInstancePublisher(instance, h.events)); err != nil {
+			return nil, fmt.Errorf("initialize publisher for backend %s: %w", applicationID, err)
+		}
 	}
 	return &backendProcess{client: client, backend: backend, descriptor: descriptor}, nil
 }
@@ -261,6 +410,32 @@ func (h *Host) lookup(instanceID string) *backendProcess {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.running[instanceID]
+}
+
+func (h *Host) snapshot(applicationID, instanceID string) (uint64, *backendProcess) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.generations[applicationID], h.running[instanceID]
+}
+
+func processMatches(
+	current *backendProcess,
+	applicationID string,
+	generation uint64,
+	configuration [32]byte,
+) bool {
+	return current != nil &&
+		current.applicationID == applicationID &&
+		current.generation == generation &&
+		current.configuration == configuration
+}
+
+func backendConfiguration(instance applications.Instance) ([32]byte, error) {
+	encoded, err := json.Marshal(instance)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return sha256.Sum256(encoded), nil
 }
 
 // kill terminates an instance's process. The caller holds its launch lock.
