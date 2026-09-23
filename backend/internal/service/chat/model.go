@@ -80,7 +80,10 @@ type Event struct {
 	Provider             Provider        `json:"provider,omitempty"`
 	Usage                json.RawMessage `json:"usage,omitempty"`
 	Message              string          `json:"message,omitempty"`
-	Running              bool            `json:"running,omitempty"`
+	// NotificationSummary is transient notification metadata. It is neither
+	// written to the event log nor exposed in the chat event wire format.
+	NotificationSummary string `json:"-"`
+	Running             bool   `json:"running,omitempty"`
 	// ScheduledTaskID marks events produced by a scheduled run rather than an
 	// interactive one, so consumers can tell "your turn finished" from "a task
 	// ran while you were away".

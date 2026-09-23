@@ -174,7 +174,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	// created empty here and populated once they exist — the same late
 	// binding the run hub uses above.
 	presenceService := servicepresence.New()
-	pushNotifier := &chatPushNotifier{chats: deps.Chats, presence: presenceService}
+	pushNotifier := &chatPushNotifier{chats: deps.Chats, projects: deps.Projects, presence: presenceService}
 	chats := notifyingChatRepository{
 		Repository: deps.Chats,
 		workspace:  workspace,

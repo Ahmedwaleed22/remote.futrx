@@ -404,7 +404,10 @@ func (rnr *Service) runPromptAs(
 	}
 
 	run := func(runPrompt, runResumeID string) error {
-		return provider.Run(ctx, agent.RunRequest{
+		var notification notificationSummaryFilter
+		terminalSeen := false
+		lastMessageID := ""
+		runErr := provider.Run(ctx, agent.RunRequest{
 			Provider:       providerID,
 			ConversationID: string(id),
 			Prompt:         runPrompt,
@@ -425,11 +428,39 @@ func (rnr *Service) runPromptAs(
 			RuntimeEnv:           runtimeEnv,
 			InteractionResponses: interactionResponses,
 		}, func(ev agent.Event) {
-			// qa added the provider argument; the ledger hook is this
-			// branch's and sits after the emit as before.
+			if ev.Type == agent.EventAssistantTextDelta {
+				lastMessageID = agentEventMessageID(ev)
+				ev.Text = notification.text(ev.Text)
+				if ev.Text == "" {
+					return
+				}
+			}
+			if ev.Type == agent.EventRunCompleted || ev.Type == agent.EventRunFailed || ev.Type == agent.EventError {
+				terminalSeen = true
+				visible, summary := notification.finish()
+				if visible != "" {
+					rnr.emitAgentEvent(ctx, id, providerID, agent.Event{
+						T: ev.T, Type: agent.EventAssistantTextDelta, Text: visible,
+						Provider: ev.Provider, MessageID: lastMessageID,
+					}, emit)
+				}
+				if ev.Type == agent.EventRunCompleted {
+					ev.NotificationSummary = summary
+				}
+			}
 			rnr.emitAgentEvent(ctx, id, providerID, ev, emit)
 			rnr.recordRunUsage(ctx, ledger, ev)
 		})
+		if !terminalSeen {
+			visible, _ := notification.finish()
+			if visible != "" {
+				rnr.emitAgentEvent(ctx, id, providerID, agent.Event{
+					Type: agent.EventAssistantTextDelta, Text: visible,
+					Provider: providerID, MessageID: lastMessageID,
+				}, emit)
+			}
+		}
+		return runErr
 	}
 
 	err = run(effectivePrompt, resumeID)

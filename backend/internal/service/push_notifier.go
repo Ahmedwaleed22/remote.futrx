@@ -9,6 +9,7 @@ import (
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicepresence "github.com/futrx-com/remote.futrx.com/internal/service/presence"
+	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	servicepush "github.com/futrx-com/remote.futrx.com/internal/service/push"
 )
 
@@ -27,6 +28,9 @@ const audienceTimeout = 5 * time.Second
 type chatPushNotifier struct {
 	push     *servicepush.Service
 	chats    servicechat.Repository
+	projects interface {
+		Get(context.Context, serviceproject.ID) (serviceproject.Meta, error)
+	}
 	audience chatNotificationAudience
 	presence *servicepresence.Service
 
@@ -74,7 +78,13 @@ func (n *chatPushNotifier) ChatEvent(chatID servicechat.ID, event servicechat.Ev
 		return
 	}
 
-	title, body := notificationText(kind, meta, event)
+	projectName := "Remote"
+	if meta.ProjectID != "" && n.projects != nil {
+		if project, err := n.projects.Get(ctx, serviceproject.ID(meta.ProjectID)); err == nil {
+			projectName = project.Name
+		}
+	}
+	title, body := notificationText(kind, projectName, event)
 	n.push.NotifyAsync(recipients, servicepush.Notification{
 		Kind:   kind,
 		ChatID: string(chatID),
@@ -149,38 +159,57 @@ func notificationKind(event servicechat.Event) (kind servicepush.Kind, urgent, o
 
 func notificationText(
 	kind servicepush.Kind,
-	meta servicechat.Meta,
+	projectName string,
 	event servicechat.Event,
 ) (title, body string) {
-	chatTitle := strings.TrimSpace(meta.Title)
-	if chatTitle == "" {
-		chatTitle = "Untitled chat"
+	projectName = truncatePushText(strings.TrimSpace(projectName), 120)
+	if projectName == "" {
+		projectName = "Remote"
 	}
 
 	switch kind {
 	case servicepush.KindQuestion:
-		return "The agent is asking a question", chatTitle
+		return projectName + " - Agent needs your answer", "Open the chat to answer the question."
 	case servicepush.KindComplete:
-		return "Turn finished", chatTitle
+		return projectName + " - Agent finished", completionBody(event, "Open the chat to see the result.")
 	case servicepush.KindError:
-		return "Run failed", withDetail(chatTitle, event.Message)
+		return projectName + " - Agent encountered an error", errorBody(event.Message)
 	case servicepush.KindScheduled:
 		if event.Type == "error" {
-			return "Scheduled task failed", withDetail(chatTitle, event.Message)
+			return projectName + " - Agent encountered an error", errorBody(event.Message)
 		}
-		return "Scheduled task finished", chatTitle
+		return projectName + " - Agent finished", completionBody(event, "A scheduled task finished.")
 	default:
-		return chatTitle, ""
+		return projectName, ""
 	}
 }
 
-func withDetail(chatTitle, detail string) string {
-	detail = strings.TrimSpace(strings.ReplaceAll(detail, "\n", " "))
+func errorBody(detail string) string {
+	detail = strings.Join(strings.Fields(detail), " ")
 	if detail == "" {
-		return chatTitle
+		return "Open the chat to review the error."
 	}
-	if len(detail) > 140 {
-		detail = detail[:140] + "…"
+	return truncatePushText(detail, 180)
+}
+
+func completionBody(event servicechat.Event, fallback string) string {
+	summary := strings.Join(strings.Fields(event.NotificationSummary), " ")
+	if summary == "" {
+		return fallback
 	}
-	return chatTitle + " — " + detail
+	return truncatePushText(summary, 240)
+}
+
+func truncatePushText(value string, maxBytes int) string {
+	if len(value) <= maxBytes {
+		return value
+	}
+	cut := 0
+	for index := range value {
+		if index > maxBytes-3 {
+			break
+		}
+		cut = index
+	}
+	return value[:cut] + "…"
 }
