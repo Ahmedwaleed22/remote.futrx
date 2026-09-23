@@ -29,7 +29,7 @@ func TestRegistryLoadsEventDeclarations(t *testing.T) {
 				{"publisher": "applications.audit-log.entries", "events": ["entry-created"]}
 			]
 		}`)},
-		"applications/event-source/backend/api/main.go": {Data: []byte(validBackendMain)},
+		"applications/event-source/backend/main.go": {Data: []byte(validBackendMain)},
 	}
 
 	registry, err := NewRegistry(catalog, nil)

@@ -42,8 +42,9 @@ applications/
     README.md
     application.json
     backend/
-      api/           required host entry point and composition root
-        main.go
+      main.go        required host entry point and composition root
+      api/           importable request-handling package
+        api.go
       lifecycle/     importable host package for publisher/subscriber behavior
         events.go
       container/     Go source, compiled inside the target container
@@ -54,11 +55,12 @@ applications/
 
 Keep regular files at the application root limited to `README.md` and
 `application.json`. Put custom provisioning files in `infra/`, the required
-host executable in `backend/api/`, importable host packages such as event
-ownership in sibling directories like `backend/lifecycle/`, container programs
-in `backend/container/`, and browser assets in `ui/`. Remote generates one host
-Go module from `backend/api/` and its sibling host packages, then builds
-`./api`; `backend/container/` is excluded from that module. For container Go,
+host executable at `backend/main.go`, importable host packages such as request
+handling in `backend/api/` and event ownership in `backend/lifecycle/`,
+container programs in `backend/container/`, and browser assets in `ui/`.
+Remote generates one host Go module from the `backend/` root and its child host
+packages, then builds `.`; `backend/container/` is excluded from that module.
+For container Go,
 `cmd/` itself is optional: a root main package in `backend/container/` builds
 one binary named after the application ID. Use
 `backend/container/cmd/<binary>/` when naming a binary explicitly or installing
@@ -99,19 +101,19 @@ and nothing else. Start with
    systemd process; `infra/install.sh` performs only custom provisioning;
    `backend/container/` adds core-built container commands; `port.internal`
    exposes it; `hostTools[]` installs checksum-pinned host
-   executables; `backend/api/` adds server behavior; sibling host packages such
-   as `backend/lifecycle/` keep cohesive implementation concerns out of the API
-   package; `ui/` adds browser behavior; and `skills/` publishes project-agent
-   workflows. These may be used independently or together where their
+   executables; `backend/main.go` adds server behavior; child host packages such
+   as `backend/api/` and `backend/lifecycle/` keep cohesive concerns out of the
+   composition package; `ui/` adds browser behavior; and `skills/` publishes
+   project-agent workflows. These may be used independently or together where their
    validation rules allow it.
 3. Optionally add `ui/` to contribute to the interface. The layout is the
    manifest: `scripts/main.js` is the entry, `style/*.css` are injected,
    `views/*.html` are loadable by name.
-4. Optionally add `backend/api/` for server-side work. `main.go` implements
-   `applications.Backend`; the application's `ui/` reaches it through
-   `remote.backend.call(...)`. Keep event publication and subscription in an
-   importable sibling such as `backend/lifecycle/`, then compose that owner into
-   the value passed to `rpc.Serve`. See
+4. Optionally add a `backend/` executable for server-side work. Its `main.go`
+   composes a value that implements `applications.Backend`; the application's
+   `ui/` reaches it through `remote.backend.call(...)`. Keep request handling in
+   `backend/api/` and each event publisher in `backend/lifecycle/`, then compose
+   them at the root through `rpc.ServeWithRuntime`. See
    [Application backends](../docs/dev/installable-applications/15-application-backends.md).
 5. Rebuild the backend. `NewRegistry()` validates every entry at startup, so a
    malformed application fails the build and the tests rather than 404ing in a

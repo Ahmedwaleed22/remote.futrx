@@ -1,9 +1,9 @@
 {
   "id": "hello-remote",
   "name": "Hello Remote",
-  "description": "Reference example: custom infrastructure, service, port, host tool, skill, container commands, Go backend, an application event publisher, and every frontend extension slot.",
+  "description": "Reference example: custom infrastructure, service, port, host tool, skill, container commands, Go backend, multiple application event publishers, and every frontend extension slot.",
   "category": "development",
-  "version": "13",
+  "version": "14",
   "icon": "ui/assets/logo.svg",
   "scopes": ["global", "project"],
   "base": "ubuntu:24.04",
@@ -74,6 +74,16 @@
           "name": "greeted",
           "version": 1,
           "description": "A greeting visit was counted."
+        }
+      ]
+    },
+    {
+      "name": "inspections",
+      "events": [
+        {
+          "name": "container-inspected",
+          "version": 1,
+          "description": "The application successfully inspected its container."
         }
       ]
     }

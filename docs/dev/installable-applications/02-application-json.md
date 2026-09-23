@@ -136,12 +136,11 @@ lifecycle events and another application's events:
 }
 ```
 
-This package must also contain `backend/api/`: event declarations without a
-host backend are rejected. Keep typed business-event triggers and subscriber
-behavior in the importable sibling package `backend/lifecycle/`.
-`backend/api/main.go` receives the core-owned event runtime and composes those
-dependencies; it does not implement a publisher. Both packages compile into
-the same process. See
+This package must also contain a host backend: event declarations without one
+are rejected. Keep typed business-event triggers and subscriber behavior in
+the importable child package `backend/lifecycle/`. `backend/main.go` receives
+the core-owned event runtime and composes those dependencies; it does not
+implement a publisher. All child packages compile into the same process. See
 [18 — Backend event lifecycle](18-application-events.md) for the runtime API,
 routing, and delivery guarantees.
 
@@ -208,7 +207,7 @@ An application with only a UI capability:
 | `install` | string | no | Override for the install-script path inside `infra/`. When omitted, `infra/install.sh` is detected automatically. |
 | `healthcheck` | object | no | `{ "command": "…" }` run inside the container. Requires `port.internal`. |
 | `ui` | object | no | Overrides what is loaded from `ui/`. See below. |
-| `backend` | object | no | Overrides the defaults for the Go backend whose executable entry point is `backend/api/`. See below. |
+| `backend` | object | no | Overrides the defaults for the Go backend whose executable entry point is `backend/main.go`. See below. |
 | `publishers` | object[] | no | Event families the backend may publish. Publisher names are local; Remote qualifies them as `applications.<application-id>.<publisher>`. See below. |
 | `subscriptions` | object[] | no | Canonically named event families delivered to running backend instances. See below. |
 | `source` | string | — | **Response-only.** The server sets `builtin` or `uploaded`; declaring this field in `application.json` is rejected. |
@@ -304,12 +303,12 @@ Every declared path must exist and must stay inside `ui/`. A typo fails
 ### `backend`
 
 Optional, and only meaningful when the application ships a host backend. In
-the current layout `backend/api/` is the required executable `package main` and
-composition root. Other directories directly under `backend/`, such as
-`backend/lifecycle/`, are ordinary importable packages in that same generated
-host module. They organize implementation ownership; they do not opt the
-application into an additional capability or process. The legacy flat
-`backend/` main package remains accepted for older packages.
+the current layout, the `backend/` root is the required executable
+`package main` and composition root. Child directories such as `backend/api/`
+and `backend/lifecycle/` are ordinary importable packages in that same
+generated host module. They organize implementation ownership; they do not opt
+the application into an additional capability or process. A `package main`
+under `backend/api/` remains accepted for older uploaded packages.
 
 | Field | Type | Default | Notes |
 |---|---|---|---|
@@ -368,9 +367,9 @@ publisher is validated structurally here; its existence and event list may
 change independently with that package, so subscribers must handle versions
 and payloads defensively.
 
-Like `publishers`, subscriptions require `backend/api/`. A manifest declaration
+Like `publishers`, subscriptions require a host backend. A manifest declaration
 does not silently turn an ordinary backend into a subscriber: the value served
-by the API composition root must implement `applications.EventSubscriber`, or
+by the root composition package must implement `applications.EventSubscriber`, or
 its install or start fails during the backend handshake. Put the cohesive
 implementation in `backend/lifecycle/`; embedding or delegating to it from the
 served value keeps the event contract out of the HTTP API package without
@@ -412,9 +411,9 @@ Enforced in `registry_validation.go:validateApplication` and
   `command`; its environment mappings must reference declared `env[]` keys.
 - `defaultExternal` and `healthcheck` require `port.internal`.
 - At least one of `infra/`, `backend/`, `ui/`, or `skills/` must contribute a capability.
-- A declared `backend` block requires host backend source in `backend/api/` (or
-  the legacy flat `backend/` layout). Backend, infrastructure, service, port,
-  and health-check capabilities may coexist in one application.
+- A declared `backend` block requires an executable at `backend/main.go` (or
+  the legacy `backend/api/` executable layout). Backend, infrastructure,
+  service, port, and health-check capabilities may coexist in one application.
 - `publishers` and `subscriptions` require host backend source. Publisher names
   are local and unique, events are unique per publisher and have versions of
   at least `1`, and subscriptions use canonical publisher names with unique
@@ -427,12 +426,12 @@ Enforced in `registry_validation.go:validateApplication` and
   version-1 lifecycle events.
 - Every path in the `ui` block must exist inside `ui/`.
 - A `ui/` directory that exists must contain at least one file.
-- In the current layout, `backend/api/` must contain at least one non-test
-  `package main` Go file. Sibling host directories such as
+- In the current layout, the `backend/` root must contain at least one non-test
+  `package main` Go file. Child host directories such as `backend/api/` and
   `backend/lifecycle/` are importable packages compiled into that executable.
 - The host backend tree must not contain `go.mod`, `go.sum`, `go.work`, or
   `go.work.sum`; Remote generates `go.mod` and owns the module/workspace
-  resolution used to build `./api`. `backend/container/` is excluded from the
+  resolution used to build `.`. `backend/container/` is excluded from the
   host tree and may carry module control files for its separate in-container
   build.
 

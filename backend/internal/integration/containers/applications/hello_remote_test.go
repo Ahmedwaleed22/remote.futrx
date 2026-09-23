@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	svc "github.com/futrx-com/remote.futrx.com/internal/service/applications"
+	applicationapi "github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
 // Hello Remote is the catalog's reference application. It exercises broad
@@ -67,11 +68,22 @@ func TestHelloRemoteDemonstratesApplicationCapabilities(t *testing.T) {
 		len(application.UI.Views) == 0 || application.Backend == nil {
 		t.Fatalf("UI/backend fields are incomplete: ui=%+v backend=%+v", application.UI, application.Backend)
 	}
-	if len(application.Publishers) != 1 || application.Publishers[0].Name != "greetings" ||
-		len(application.Publishers[0].Events) != 1 ||
-		application.Publishers[0].Events[0].Name != "greeted" ||
-		application.Publishers[0].Events[0].Version != 1 {
-		t.Fatalf("greeting event contract = %+v", application.Publishers)
+	if len(application.Publishers) != 2 {
+		t.Fatalf("publisher contracts = %+v", application.Publishers)
+	}
+	publishers := make(map[string]applicationapi.PublisherDeclaration, len(application.Publishers))
+	for _, publisher := range application.Publishers {
+		publishers[publisher.Name] = publisher
+	}
+	for publisher, event := range map[string]string{
+		"greetings":   "greeted",
+		"inspections": "container-inspected",
+	} {
+		declaration, ok := publishers[publisher]
+		if !ok || len(declaration.Events) != 1 ||
+			declaration.Events[0].Name != event || declaration.Events[0].Version != 1 {
+			t.Fatalf("%s event contract = %+v", publisher, declaration)
+		}
 	}
 	if len(application.Subscriptions) != 0 {
 		t.Fatalf("hello remote should publish only, subscriptions = %+v", application.Subscriptions)

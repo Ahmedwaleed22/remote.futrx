@@ -1,5 +1,5 @@
 // Package applications compiles the Go source an installable application ships in its
-// backend/api/ directory and runs the result as a child process, forwarding calls
+// backend/ composition root and runs the result as a child process, forwarding calls
 // to it over hashicorp/go-plugin.
 //
 // It is the integration half of the backend-backend feature: everything that

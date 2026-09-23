@@ -144,12 +144,12 @@ func TestLoadApplicationBackendRejectsBrokenLayouts(t *testing.T) {
 			contains: "negative",
 		},
 		{
-			name: "host source left beside backend/api",
+			name: "root entry point is not package main",
 			files: map[string]string{
 				"backend/api/main.go": validBackendMain,
-				"backend/main.go":     validBackendMain,
+				"backend/helper.go":   "package helper\n",
 			},
-			contains: "move host source into backend/api",
+			contains: "want main",
 		},
 		{
 			name: "a module file beside backend/api",
@@ -243,13 +243,13 @@ func TestRegistryBackendSource(t *testing.T) {
 	}
 }
 
-// The api/ and container/ split is what states which Go runs where. api/ and
-// its sibling packages compile on the host, while container source must stay
-// out of what the host is handed — it is built inside the target container.
-func TestLoadApplicationBackendAcceptsTheAPILayout(t *testing.T) {
+// The backend root is the host executable. api/ and lifecycle/ are importable
+// host layers, while container source is built only inside the target container.
+func TestLoadApplicationBackendAcceptsTheLayeredLayout(t *testing.T) {
 	_, err := loadApplicationBackend(backendTree(map[string]string{
-		"backend/api/main.go":                    validBackendMain,
-		"backend/api/main_test.go":               "package main\n",
+		"backend/main.go":                        validBackendMain,
+		"backend/api/api.go":                     "package api\n",
+		"backend/api/api_test.go":                "package api\n",
 		"backend/lifecycle/events.go":            "package lifecycle\n",
 		"backend/container/cmd/agent/main.go":    validBackendMain,
 		"backend/container/internal/x/helper.go": "package x\n",
@@ -259,13 +259,24 @@ func TestLoadApplicationBackendAcceptsTheAPILayout(t *testing.T) {
 	}
 }
 
-// Sibling packages belong to the same generated host module as api/. That is
-// what lets event lifecycle code have its own owner without turning api/ into
-// a grab bag or a second process.
+func TestLoadApplicationBackendAcceptsLegacyAPIExecutable(t *testing.T) {
+	_, err := loadApplicationBackend(backendTree(map[string]string{
+		"backend/api/main.go":         validBackendMain,
+		"backend/lifecycle/events.go": "package lifecycle\n",
+	}), "backend", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// Child packages belong to the same generated host module as the root
+// executable. That lets API and lifecycle code have independent owners without
+// creating extra processes.
 func TestBackendSourceIncludesHostSiblingsAndExcludesContainerSource(t *testing.T) {
 	files := backendTree(map[string]string{
 		"applications/split/application.json":            `{ "name": "Split", "version": "1", "scopes": ["global"] }`,
-		"applications/split/backend/api/main.go":         validBackendMain,
+		"applications/split/backend/main.go":             validBackendMain,
+		"applications/split/backend/api/api.go":          "package api\n",
 		"applications/split/backend/lifecycle/events.go": "package lifecycle\n",
 		"applications/split/backend/container/main.go":   validBackendMain,
 	})
@@ -277,7 +288,7 @@ func TestBackendSourceIncludesHostSiblingsAndExcludesContainerSource(t *testing.
 	if !ok {
 		t.Fatal("no host backend source")
 	}
-	for _, name := range []string{"api/main.go", "lifecycle/events.go"} {
+	for _, name := range []string{"main.go", "api/api.go", "lifecycle/events.go"} {
 		if _, err := fs.Stat(source, name); err != nil {
 			t.Errorf("host source is missing %s: %v", name, err)
 		}
@@ -290,14 +301,15 @@ func TestBackendSourceIncludesHostSiblingsAndExcludesContainerSource(t *testing.
 }
 
 // The builder fingerprints every file the registry hands it. This pins the
-// boundary at that handoff: editing a sibling host package must invalidate the
+// boundary at that handoff: editing a child host package must invalidate the
 // binary, while editing container-only code must not.
 func TestBackendSourceFingerprintInputsIncludeLifecycleNotContainer(t *testing.T) {
 	fingerprintInput := func(lifecycle, container string) [sha256.Size]byte {
 		t.Helper()
 		files := backendTree(map[string]string{
 			"applications/split/application.json":            `{ "name": "Split", "version": "1", "scopes": ["global"] }`,
-			"applications/split/backend/api/main.go":         validBackendMain,
+			"applications/split/backend/main.go":             validBackendMain,
+			"applications/split/backend/api/api.go":          "package api\n",
 			"applications/split/backend/lifecycle/events.go": lifecycle,
 			"applications/split/backend/container/main.go":   container,
 		})
@@ -340,16 +352,17 @@ func TestBackendSourceFingerprintInputsIncludeLifecycleNotContainer(t *testing.T
 	}
 }
 
-// container/ holds packages that are not main and never compile on the host.
-// Resolving the compiled root to backend/api/ is what keeps them out of the
-// package-clause check rather than having to special-case them inside it.
+// Root main is canonical; backend/api main remains the legacy fallback.
 func TestResolveBackendSourceResolvesTheCompiledRoot(t *testing.T) {
-	api := backendTree(map[string]string{"backend/api/main.go": validBackendMain})
-	if got, ok := resolveBackendSource(api, "backend"); !ok || got != "backend/api" {
-		t.Errorf("resolveBackendSource = %q, %t; want backend/api, true", got, ok)
-	}
-	flat := backendTree(map[string]string{"backend/main.go": validBackendMain})
-	if got, ok := resolveBackendSource(flat, "backend"); !ok || got != "backend" {
+	canonical := backendTree(map[string]string{
+		"backend/main.go":    validBackendMain,
+		"backend/api/api.go": "package api\n",
+	})
+	if got, ok := resolveBackendSource(canonical, "backend"); !ok || got != "backend" {
 		t.Errorf("resolveBackendSource = %q, %t; want backend, true", got, ok)
+	}
+	legacy := backendTree(map[string]string{"backend/api/main.go": validBackendMain})
+	if got, ok := resolveBackendSource(legacy, "backend"); !ok || got != "backend/api" {
+		t.Errorf("resolveBackendSource = %q, %t; want backend/api, true", got, ok)
 	}
 }

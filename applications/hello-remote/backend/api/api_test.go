@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -47,7 +47,10 @@ func newTestBackendWithEvents(
 	events applications.EventEmitter,
 ) *api {
 	t.Helper()
-	b := handler(appLifecycle.NewGreetings(events))
+	b := handler(
+		appLifecycle.NewGreetings(events),
+		appLifecycle.NewInspections(events),
+	)
 	if err := b.Init(applications.Instance{
 		ID: "test", ApplicationID: "hello-remote", Scope: "global",
 		DataDir: dataDir, Env: env,
@@ -58,7 +61,8 @@ func newTestBackendWithEvents(
 }
 
 func TestContainerReportsTheInstalledContainer(t *testing.T) {
-	b := newTestBackend(t, t.TempDir(), nil)
+	emitter := &recordingEventEmitter{}
+	b := newTestBackendWithEvents(t, t.TempDir(), nil, emitter)
 	b.instance.ContainerName = "futrx-app-test"
 	b.inspectContainer = func(name string) (containerFacts, error) {
 		if name != "futrx-app-test" {
@@ -77,6 +81,22 @@ func TestContainerReportsTheInstalledContainer(t *testing.T) {
 	if got := body["cpuCount"]; got != float64(4) {
 		t.Errorf("cpuCount = %v, want 4", got)
 	}
+	publications := emitter.recorded()
+	if len(publications) != 1 {
+		t.Fatalf("publications = %d, want 1", len(publications))
+	}
+	publication := publications[0]
+	if publication.Publisher != "inspections" ||
+		publication.Event != "container-inspected" || publication.Version != 1 {
+		t.Fatalf("publication identity = %+v", publication)
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(publication.Payload, &payload); err != nil {
+		t.Fatalf("decode publication payload: %v", err)
+	}
+	if payload["container"] != "futrx-app-test" || payload["hostname"] != "hello" {
+		t.Fatalf("publication payload = %v", payload)
+	}
 }
 
 func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
@@ -92,7 +112,7 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 			Status:             "ok",
 			Message:            "Hello from the container service.",
 			Version:            "build-id",
-			ProvisionedVersion: "13",
+			ProvisionedVersion: "14",
 		}, nil
 	}
 
@@ -106,8 +126,8 @@ func TestServiceReportsTheSupervisedContainerService(t *testing.T) {
 	if got := body["externalPort"]; got != float64(4781) {
 		t.Errorf("external port = %v, want 4781", got)
 	}
-	if got := body["provisionedVersion"]; got != "13" {
-		t.Errorf("provisionedVersion = %v, want 13", got)
+	if got := body["provisionedVersion"]; got != "14" {
+		t.Errorf("provisionedVersion = %v, want 14", got)
 	}
 }
 

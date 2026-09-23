@@ -6,9 +6,41 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
+
+func TestBackendEntryPrefersTheRootAndKeepsLegacyAPIFallback(t *testing.T) {
+	tests := []struct {
+		name  string
+		files fstest.MapFS
+		want  string
+	}{
+		{
+			name: "canonical root",
+			files: fstest.MapFS{
+				"main.go":    {Data: []byte("package main")},
+				"api/api.go": {Data: []byte("package api")},
+			},
+			want: ".",
+		},
+		{
+			name: "legacy api executable",
+			files: fstest.MapFS{
+				"api/main.go": {Data: []byte("package main")},
+			},
+			want: "./api",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := backendEntry(test.files); got != test.want {
+				t.Fatalf("backendEntry() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
 
 // The fallback is used when build info is unavailable, which is exactly the
 // case under `go test` — so a stale constant would be invisible until a backend

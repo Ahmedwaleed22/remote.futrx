@@ -8,7 +8,7 @@ application does from its files and manifest fields.
 |---|---|---|
 | Infrastructure | `infra/install.sh` exists, `install` names another script inside `infra/`, `backend/container/` exists, or `service` is declared | Provisions the target container |
 | Network port | Infrastructure exists and `port.internal` is greater than zero | Allocates a host port and creates an LXD proxy device |
-| Backend | `backend/api/` exists (legacy flat `backend/` is accepted) | Generates one host module from the API and sibling host packages, excludes `backend/container/`, and runs the API executable |
+| Backend | `backend/main.go` exists (`backend/api/` as an executable is accepted for compatibility) | Generates one host module from the root and child host packages, excludes `backend/container/`, and runs the backend executable |
 | UI | `ui/` exists | Loads the browser extension |
 | Skills | `skills/*/SKILL.md` exists | Publishes the skills into the target project |
 
@@ -17,9 +17,10 @@ expose it on a port, run a backend, extend the UI, and publish skills. Removing
 one folder removes only that capability; no manifest discriminator needs to be
 kept in sync with the package layout.
 
-Directories such as `backend/lifecycle/` are packages within the backend
-capability, not capabilities of their own. `backend/api/` imports and composes
-them, and Remote runs the result as one per-instance process.
+Directories such as `backend/api/` and `backend/lifecycle/` are packages within
+the backend capability, not capabilities of their own. `backend/main.go`
+imports and composes them, and Remote runs the result as one per-instance
+process.
 
 ## Infrastructure and scope
 

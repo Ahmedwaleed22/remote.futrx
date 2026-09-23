@@ -8,7 +8,7 @@ import (
 
 // backendModuleFile is the go.mod compiled for an application's backend. Its
 // module path matches the application's location in the catalog module so
-// imports between api/ and sibling host packages resolve both in this checkout
+// imports between the composition root and child host packages resolve both in this checkout
 // and in the generated build directory. The SDK keeps its canonical import
 // path through the replace below.
 func (b *Builder) backendModuleFile(applicationID string) string {

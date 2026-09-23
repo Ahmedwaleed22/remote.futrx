@@ -44,7 +44,7 @@ type Installer interface {
 	Expose(ctx context.Context, spec InstallSpec) error
 }
 
-// BackendHost compiles an application's backend/api/ source and runs it as a child
+// BackendHost compiles an application's backend/ source and runs it as a child
 // process, one per instance, forwarding calls to it. It owns everything
 // go-plugin-facing, so the service layer never launches a process itself.
 //

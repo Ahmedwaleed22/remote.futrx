@@ -202,11 +202,10 @@ func decode(t *testing.T, host *Host, instance applications.Instance, request ap
 	return payload
 }
 
-// The same proof for the split host/container layout: the registry presents
-// backend/ as one generated host module, api/ imports its lifecycle sibling,
-// and container/ — source meant for the target container — stays out of the
-// host build entirely.
-func TestBackendWithTheAPILayoutCompilesAndServes(t *testing.T) {
+// The same proof for the layered host/container layout: backend/main.go is the
+// composition root, api/ and lifecycle/ are importable siblings, and
+// container/ stays out of the host build entirely.
+func TestBackendWithTheLayeredLayoutCompilesAndServes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("compiles a backend with the Go toolchain")
 	}
@@ -214,14 +213,40 @@ func TestBackendWithTheAPILayoutCompilesAndServes(t *testing.T) {
 		t.Skipf("no Go toolchain available: %v", err)
 	}
 	file := func(data string) *fstest.MapFile { return &fstest.MapFile{Data: []byte(data)} }
-	apiBackendMain := strings.Replace(
-		catalogBackendMain,
-		`"net/http"`,
-		`"net/http"
+	rootMain := `package main
 
-	_ "futrx.local/catalog/applications/api-fixture/backend/lifecycle"`,
-		1,
-	)
+import (
+	appapi "futrx.local/catalog/applications/api-fixture/backend/api"
+	_ "futrx.local/catalog/applications/api-fixture/backend/lifecycle"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications/rpc"
+)
+
+func main() { rpc.Serve(appapi.New()) }
+`
+	apiSource := `package api
+
+import (
+	"net/http"
+	"github.com/futrx-com/remote.futrx.com/pkg/applications"
+)
+
+type backend struct{}
+
+func New() applications.Backend { return &backend{} }
+func (*backend) Describe() (applications.Descriptor, error) {
+	return applications.Descriptor{
+		APIVersion: applications.APIVersion,
+		Routes: []applications.Route{{Method: "GET", Path: "health"}},
+	}, nil
+}
+func (*backend) Init(applications.Instance) error { return nil }
+func (*backend) Handle(request applications.Request) (applications.Response, error) {
+	if request.Path == "health" {
+		return applications.JSON(http.StatusOK, map[string]any{"ok": true}), nil
+	}
+	return applications.Errorf(http.StatusNotFound, "not found"), nil
+}
+`
 	registry, err := containerapplications.NewRegistry(fstest.MapFS{
 		"applications/api-fixture/application.json": file(`{
 			"name": "API Fixture",
@@ -229,7 +254,8 @@ func TestBackendWithTheAPILayoutCompilesAndServes(t *testing.T) {
 			"scopes": ["global", "project"],
 			"backend": {"access": "registered", "timeoutMs": 10000}
 		}`),
-		"applications/api-fixture/backend/api/main.go": file(apiBackendMain),
+		"applications/api-fixture/backend/main.go":    file(rootMain),
+		"applications/api-fixture/backend/api/api.go": file(apiSource),
 		"applications/api-fixture/backend/lifecycle/events.go": file(
 			"package lifecycle\n\nconst Ready = true\n"),
 		// Not package main, and referencing nothing the host build provides.
@@ -251,8 +277,11 @@ func TestBackendWithTheAPILayoutCompilesAndServes(t *testing.T) {
 	if !ok {
 		t.Fatal("no backend source")
 	}
-	if _, err := fs.Stat(source, "api/main.go"); err != nil {
-		t.Errorf("backend source has no api entry point: %v", err)
+	if _, err := fs.Stat(source, "main.go"); err != nil {
+		t.Errorf("backend source has no composition root: %v", err)
+	}
+	if _, err := fs.Stat(source, "api/api.go"); err != nil {
+		t.Errorf("backend source omitted its API package: %v", err)
 	}
 	if _, err := fs.Stat(source, "lifecycle/events.go"); err != nil {
 		t.Errorf("backend source omitted its lifecycle package: %v", err)

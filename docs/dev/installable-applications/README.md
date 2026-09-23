@@ -15,11 +15,11 @@ Four things live here, and the differences matter:
   runs in the browser and contributes to defined places in the Remote
   interface: a button in the chat header, a panel, a popup.
 - **An application backend** is a `backend/` directory of Go source. The server
-  compiles `backend/api/` with its imported sibling host packages and runs one
+  compiles its root composition package with imported child packages and runs one
   process, which the application's `ui/` calls. It is how an application adds a
   server-side feature rather than only a button. A backend may also publish or
   subscribe to declared server-side events, conventionally owned by
-  `backend/lifecycle/` and composed by the API entry point.
+  `backend/lifecycle/` and composed by `backend/main.go`.
 
 One application can be any of these, or several at once. A MySQL application can ship a "Connect"
 button alongside the database it provisions and a backend that runs the queries

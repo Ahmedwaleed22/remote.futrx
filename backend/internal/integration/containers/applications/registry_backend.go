@@ -16,13 +16,10 @@ import (
 // defaults, so a application cannot be declared without shipping one.
 const backendDir = "backend"
 
-// An application's backend/ holds Go for two different machines, and the
-// directory names are the only thing that says which is which.
-//
-// backendAPIDir is the host process entry point. Its sibling packages are also
-// host source and may be imported by api/; backendContainerDir is the one
-// exception. It is packed and built inside the target LXD container, for that
-// container's own architecture, and reached over lxc exec.
+// An application's backend/ holds Go for two different machines. The root is
+// the host executable and composition layer; api/, lifecycle/, and other
+// siblings are importable host packages. backendContainerDir is the one
+// exception: it is packed and built inside the target LXD container.
 const (
 	backendAPIDir       = "api"
 	backendContainerDir = "container"
@@ -31,21 +28,28 @@ const (
 // resolveBackendSource resolves which directory under backend/ the host
 // compiles and reports whether the application carries host source at all.
 //
-// backend/api/ is the current layout. Go at backend/'s own root is the original
-// flat layout, still resolved so that packages uploaded before the split keep
-// building across a server update — uploaded packages outlive the binary that
-// installed them, so dropping the fallback would break them in place.
+// backend/ is the current layout. A package main under backend/api/ remains a
+// legacy fallback so uploaded packages created before the composition root
+// moved keep building across a server update.
 //
 // backend/container/ is an independent capability and does not, by itself,
 // opt the application into a host RPC process.
 func resolveBackendSource(fsys fs.FS, root string) (string, bool) {
-	api := path.Join(root, backendAPIDir)
-	if info, err := fs.Stat(fsys, api); err == nil && info.IsDir() {
-		return api, true
-	}
 	entries, err := fs.ReadDir(fsys, root)
 	if err != nil {
 		return "", false
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") ||
+			strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		return root, true
+	}
+
+	api := path.Join(root, backendAPIDir)
+	if info, err := fs.Stat(fsys, api); err == nil && info.IsDir() {
+		return api, true
 	}
 	for _, entry := range entries {
 		if entry.Name() != backendContainerDir {
@@ -92,7 +96,7 @@ func loadApplicationBackend(fsys fs.FS, root string, declared *svc.ApplicationBa
 }
 
 // validateBackendLayout checks the generated host module as a whole, then its
-// executable entry-point directory.
+// canonical or legacy executable entry-point directory.
 func validateBackendLayout(fsys fs.FS, root, source string) error {
 	if err := rejectHostModuleControlFiles(fsys, root); err != nil {
 		return err
@@ -106,7 +110,7 @@ func validateBackendLayout(fsys fs.FS, root, source string) error {
 }
 
 // rejectHostModuleControlFiles keeps the generated module authoritative across
-// api/ and every sibling host package. backend/container is a separate build
+// the root and every child host package. backend/container is a separate build
 // context and may intentionally carry its own module.
 func rejectHostModuleControlFiles(fsys fs.FS, root string) error {
 	container := path.Join(root, backendContainerDir)
@@ -133,10 +137,8 @@ func isModuleControlFile(name string) bool {
 	}
 }
 
-// rejectStrayBackendRoot enforces that backend/'s own root carries no build
-// inputs once backend/api/ exists. Go source left there is never compiled and
-// never runs, which reads as live code to everyone who opens it; a module file
-// there is never used at all. Both are silent mistakes, so both are errors.
+// rejectStrayBackendRoot enforces that a legacy backend/api executable has no
+// competing root Go source. Module files are forbidden in either layout.
 func rejectStrayBackendRoot(fsys fs.FS, root string) error {
 	entries, err := fs.ReadDir(fsys, root)
 	if err != nil {
@@ -153,8 +155,8 @@ func rejectStrayBackendRoot(fsys fs.FS, root string) error {
 		}
 		if strings.HasSuffix(name, ".go") {
 			return fmt.Errorf(
-				"%s/%s is ignored when %s exists: move host source into %s",
-				root, name, path.Join(root, backendAPIDir), path.Join(root, backendAPIDir))
+				"%s/%s conflicts with legacy executable %s",
+				root, name, path.Join(root, backendAPIDir))
 		}
 	}
 	return nil
@@ -209,9 +211,9 @@ func packageName(fsys fs.FS, name string) (string, error) {
 }
 
 // BackendSource returns the Go source the application backend host compiles,
-// rooted at backend/. For the current layout api/ is the executable package and
-// sibling directories are importable support packages. In the legacy flat
-// layout the backend root itself remains the executable package. Unlike ui/
+// rooted at backend/. The root is the current executable composition layer and
+// its child directories are importable support packages. A legacy api/
+// executable remains accepted. Unlike ui/
 // assets these bytes are never served, so there is no path-traversal surface
 // here: a caller gets the host subtree or nothing.
 //

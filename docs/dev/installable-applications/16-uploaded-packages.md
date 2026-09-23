@@ -56,8 +56,9 @@ application.json     required — and it must set "id" and "version"
 infra/install.sh     optional container provisioning
 infra/payload.tar.gz optional infra payload (see 04 — Install scripts)
 ui/…                  optional browser extension
-backend/api/…         optional host Go backend
-backend/lifecycle/…   optional host package imported by backend/api for events
+backend/main.go       optional host Go executable and composition root
+backend/api/…         optional request-handling package imported by main
+backend/lifecycle/…   optional event package imported by main
 backend/container/…   optional Go programs built inside the target container
 ```
 
@@ -66,7 +67,7 @@ folder — which is what "compress this folder" produces on a desktop. macOS
 bookkeeping (`__MACOSX/`, `.DS_Store`, `._*`) is ignored.
 
 So any zip tool will do. For the host backend, Remote generates one module from
-`backend/api/` and its sibling host packages, then builds `./api` as the single
+the `backend/` root and its child host packages, then builds `.` as the single
 process; `backend/container/` is excluded from those source bytes and the host
 build fingerprint. Module-control files (`go.mod`, `go.sum`, `go.work`, and
 `go.work.sum`) are therefore refused in the host tree. Container-side Go ships

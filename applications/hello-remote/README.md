@@ -9,13 +9,16 @@ The catalog's reference example. It combines broad application capabilities:
   dedicated service account and persistent application state directory.
 - **`backend/container/`** — Go source Remote copies into and builds inside LXD;
   one command inspects the container and another serves HTTP.
-- **`backend/api/`** — the required Go executable and composition root the
+- **`backend/main.go`** — the required Go executable and composition root the
   server compiles and runs as a child process, reachable at
   `/api/applications/<instance>/backend/<path>`.
-- **`backend/lifecycle/`** — the importable sibling package that owns event
+- **`backend/api/`** — the importable request-handling package composed by the
+  root executable.
+- **`backend/lifecycle/`** — the importable child package that owns event
   publication inside that same process.
-- **Application events** — a declared `greetings.greeted` publisher. Hello
-  Remote does not subscribe to core or application events.
+- **Application events** — separate `greetings.greeted` and
+  `inspections.container-inspected` publishers. Hello Remote does not
+  subscribe to core or application events.
 - **`ui/`** — assets the SPA loads for users who installed the application, which
   call that backend through `remote.backend.call(...)`.
 - **`skills/`** — an agent skill published into project workspaces.
@@ -108,11 +111,13 @@ on uninstall, and on server restart, and is started again lazily by the next
 call — so a count that survives is a count that reached `DataDir`. Restart the
 server, open the panel, and the number is still there.
 
-Each successful counter increment also publishes the manifest-declared
-`greetings.greeted` event with a versioned JSON payload.
-`backend/lifecycle/` owns the typed `Greetings.Greeted` business trigger while
-Remote constructs and binds the actual event runtime from the manifest. The API
-does not implement or initialize a publisher. The manifest deliberately
+Each successful counter increment publishes the manifest-declared
+`greetings.greeted` event, and each successful container inspection publishes
+`inspections.container-inspected`. Both carry versioned JSON payloads.
+`backend/lifecycle/` owns the two typed publisher interfaces and their concrete
+emitters while Remote constructs and binds the event runtime from the manifest.
+The API depends on those interfaces; it does not implement or initialize a
+publisher. The manifest deliberately
 declares no subscriptions: Remote core publishes its application lifecycle
 events automatically, independently of whether Hello Remote consumes them.
 Emission happens outside the
@@ -129,11 +134,13 @@ memory, and uptime. Each has an independent **Refresh** action.
 
 | File | Shows |
 |---|---|
-| `application.json` | The application identity, both scopes, base image, real greeting input, port, service, install path, health check, host tool, publisher, explicit UI mapping, and backend policy. |
-| `backend/api/main.go` | The required host contract (`main`, `Describe`, `Init`, `Handle`) and the composition root that receives core-owned runtime capabilities and wires the API dependencies. |
+| `application.json` | The application identity, both scopes, base image, real greeting input, port, service, install path, health check, host tool, two publishers, explicit UI mapping, and backend policy. |
+| `backend/main.go` | The required executable and composition root. It receives core-owned runtime capabilities and wires the API to the lifecycle publishers. |
+| `backend/api/api.go` | The host backend contract (`Describe`, `Init`, `Handle`) and request router. |
 | `backend/api/greeting.go`, `backend/api/visits.go` | Greeting and echo routes, the per-instance persistent counter, and the request-side business trigger for the greeting event. |
 | `backend/api/container.go`, `backend/api/service.go` | Bounded host calls into the installed inspection command and the proxied HTTP service. |
 | `backend/lifecycle/greetings.go` | The typed `greetings.greeted` identity and payload. It emits through `Runtime.Events`; publisher registration and validation remain core-owned. |
+| `backend/lifecycle/inspections.go` | The independent `inspections.container-inspected` publisher contract and payload. |
 | `backend/container/cmd/hello-remote-info/main.go` | The container program. Only `package main` and `func main()` are required. |
 | `backend/container/cmd/hello-remote-service/` | A supervised HTTP service with separate command dispatch, configuration decoding, serving, and health-probe owners. |
 | `backend/container/internal/containerinfo/` | Container-only inspection code and tests. Remote packages and builds it without backend-owned shell. |

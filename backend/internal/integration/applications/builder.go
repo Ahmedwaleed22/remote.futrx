@@ -16,7 +16,7 @@ import (
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
-// Builder turns an application's backend/api/ entry point and its sibling host
+// Builder turns an application's backend/ composition root and its host
 // packages into an executable, caching the result by a fingerprint of
 // everything that went into it.
 //
@@ -105,10 +105,7 @@ func (b *Builder) Build(ctx context.Context, applicationID string, source fs.FS)
 
 	backendModule := b.backendModuleFile(applicationID)
 	fingerprint := fingerprintWith(files, backendModule, shared.fingerprint)
-	entry := "."
-	if info, statErr := fs.Stat(source, "api"); statErr == nil && info.IsDir() {
-		entry = "./api"
-	}
+	entry := backendEntry(source)
 	binary := filepath.Join(b.binaryDir(), fmt.Sprintf("%s-%s", applicationID, fingerprint))
 	plan := buildPlan{
 		applicationID: applicationID,
@@ -134,6 +131,24 @@ func (b *Builder) Build(ctx context.Context, applicationID string, source fs.FS)
 	}
 	b.pruneStale(applicationID, filepath.Base(binary))
 	return binary, nil
+}
+
+// backendEntry selects the canonical root executable when root Go source is
+// present. api/ remains a compatibility entry point for older uploaded apps.
+func backendEntry(source fs.FS) string {
+	entries, err := fs.ReadDir(source, ".")
+	if err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".go") &&
+				!strings.HasSuffix(entry.Name(), "_test.go") {
+				return "."
+			}
+		}
+	}
+	if info, err := fs.Stat(source, "api"); err == nil && info.IsDir() {
+		return "./api"
+	}
+	return "."
 }
 
 // buildPlan is the immutable set of materialized inputs for one compile. It

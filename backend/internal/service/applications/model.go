@@ -227,8 +227,9 @@ type Application struct {
 	// UI is set when the application ships a ui/ directory. Nil means the application has
 	// no browser-side extension and the SPA loads nothing for it.
 	UI *ApplicationUI `json:"ui,omitempty"`
-	// Backend is set when the application ships backend/api/ (or a legacy flat
-	// backend/). Nil means the
+	// Backend is set when the application ships a backend/ executable. The
+	// current layout uses backend/main.go; backend/api/ remains a legacy entry.
+	// Nil means the
 	// application has no Go backend and nothing is compiled or run for it.
 	Backend *ApplicationBackend `json:"backend,omitempty"`
 	// Publishers are the event families this application's backend may emit.

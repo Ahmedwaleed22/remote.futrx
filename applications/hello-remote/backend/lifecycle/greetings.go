@@ -16,6 +16,13 @@ const (
 	greetedVersion     = 1
 )
 
+// GreetingEvents is the API-facing contract owned by the greetings publisher.
+// Consumers depend on the business event they can trigger, not its concrete
+// implementation or Remote's runtime transport.
+type GreetingEvents interface {
+	Greeted(int) error
+}
+
 // Greetings exposes typed triggers for the manifest-declared greetings
 // publisher. It neither registers nor implements a publisher: Remote creates
 // and owns the emitter from application.json, and this layer only submits
@@ -23,6 +30,8 @@ const (
 type Greetings struct {
 	events applications.EventEmitter
 }
+
+var _ GreetingEvents = (*Greetings)(nil)
 
 func NewGreetings(events applications.EventEmitter) *Greetings {
 	return &Greetings{events: events}

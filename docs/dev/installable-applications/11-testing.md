@@ -13,13 +13,13 @@ cd backend && go test ./internal/integration/containers/applications/
 This catches: a mismatched `id`, a missing `name`, an invalid capability layout or
 `scopes`, a `service` application with no port or no install script, a `ui` or
 `backend` application declaring a port, a `ui` block naming a file that does not
-exist, an empty `ui/` directory, a `backend/api/` that is not a `package main`
+exist, an empty `ui/` directory, a `backend/` root that is not a `package main`
 program, or a host backend tree that carries `go.mod`, `go.sum`, `go.work`, or
 `go.work.sum` instead of using Remote's generated module.
 
 Backend source is also compiled by the repository's own build. The catalog is
-a Go module: `backend/api/` is the executable package and sibling host
-directories such as `backend/lifecycle/` are normal importable packages:
+a Go module: `backend/` is the executable package and child host directories
+such as `backend/api/` and `backend/lifecycle/` are normal importable packages:
 
 ```bash
 go build ./... && go vet ./...
@@ -27,7 +27,7 @@ go build ./... && go vet ./...
 
 A backend or one of its imported host siblings that does not compile fails
 there, not on someone's server. The runtime build reproduces that layout in a
-generated module, compiles `./api`, and omits `backend/container/` entirely.
+generated module, compiles `.`, and omits `backend/container/` entirely.
 
 A malformed application fails the build — it never reaches a browser as a 404.
 

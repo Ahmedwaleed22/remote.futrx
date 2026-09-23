@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -33,6 +33,7 @@ type containerInfo struct {
 	CPUCount         int    `json:"cpuCount"`
 	MemoryTotalBytes int64  `json:"memoryTotalBytes"`
 	UptimeSeconds    int64  `json:"uptimeSeconds"`
+	Warning          string `json:"warning,omitempty"`
 }
 
 // readContainerFacts invokes the inspector built from backend/container/ in the target
@@ -76,6 +77,10 @@ func (b *api) container(applications.Request) applications.Response {
 			"error": fmt.Sprintf("could not inspect the LXD container: %v", err),
 		})
 	}
+	warning := ""
+	if err := b.inspections.ContainerInspected(name, facts.Hostname); err != nil {
+		warning = fmt.Sprintf("event not published: %v", err)
+	}
 	return applications.JSON(http.StatusOK, containerInfo{
 		Name:             name,
 		Hostname:         facts.Hostname,
@@ -85,5 +90,6 @@ func (b *api) container(applications.Request) applications.Response {
 		CPUCount:         facts.CPUCount,
 		MemoryTotalBytes: facts.MemoryTotalBytes,
 		UptimeSeconds:    facts.UptimeSeconds,
+		Warning:          warning,
 	})
 }

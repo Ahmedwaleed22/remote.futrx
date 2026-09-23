@@ -21,8 +21,8 @@ Common causes:
 | `application has no infra, backend, ui, or skills` | add at least one capability directory |
 | `ui: entry: … not found` | the `ui` block names a file that does not exist |
 | `ui: … exists but is empty` | `ui/` has no files at all |
-| `backend: … contains no package main source` | `backend/api/` needs an executable Go program; a sibling library such as `backend/lifecycle/` is not an entry point |
-| `backend: … declares package "helper", want main` | every non-test `.go` file directly in `backend/api/` must be `package main`; sibling host packages may use their own package name |
+| `backend: … contains no package main source` | the `backend/` root needs an executable Go program; child libraries such as `backend/api/` and `backend/lifecycle/` are not entry points |
+| `backend: … declares package "helper", want main` | every non-test `.go` file directly in `backend/` must be `package main`; child host packages may use their own package name |
 | `backend: backend/…/go.mod is not supported` | the server generates the host backend module; remove `go.mod`, `go.sum`, `go.work`, and `go.work.sum` from the host tree |
 | `backend: invalid access "everyone"` | `access` is `registered` or `admin` |
 
@@ -193,11 +193,11 @@ fails the install.
 | `start backend x: … handshake` | the backend exited before completing the handshake. It is almost always a `panic` in `main` before `rpc.Serve`, or a `Serve` call that was never reached. |
 | `initialize backend x: …` | your `Init` returned an error. |
 
-Compile the executable once locally before installing. Its sibling host
-packages are ordinary imports in the catalog module at the repository root:
+Compile the executable once locally before installing. Its child host packages
+are ordinary imports in the catalog module at the repository root:
 
 ```bash
-go build ./applications/<id>/backend/api
+go build ./applications/<id>/backend
 ```
 
 ## My backend runs but calls fail

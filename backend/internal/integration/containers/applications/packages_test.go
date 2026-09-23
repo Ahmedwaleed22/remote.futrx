@@ -164,12 +164,13 @@ func TestUploadedBackendSourceIncludesLifecycleAndExcludesContainer(t *testing.T
 			"version": "1.0.0",
 			"scopes": ["global"]
 		}`,
-		"backend/api/main.go": `package main
+		"backend/main.go": `package main
 
 import _ "futrx.local/catalog/applications/uploaded-lifecycle/backend/lifecycle"
 
 func main() {}
 `,
+		"backend/api/api.go":          "package api\n",
 		"backend/lifecycle/events.go": "package lifecycle\n\nconst Event = \"greeted\"\n",
 		"backend/container/main.go":   "package main\n\nfunc main() {}\n",
 		"backend/container/go.mod":    "module example.com/container\n",
@@ -179,7 +180,7 @@ func main() {}
 	if !ok {
 		t.Fatal("BackendSource not available for the uploaded application")
 	}
-	for _, name := range []string{"api/main.go", "lifecycle/events.go"} {
+	for _, name := range []string{"main.go", "api/api.go", "lifecycle/events.go"} {
 		if _, err := fs.Stat(source, name); err != nil {
 			t.Errorf("host source is missing %s: %v", name, err)
 		}
@@ -200,7 +201,7 @@ func TestUploadedBackendRejectsLifecycleModuleFile(t *testing.T) {
 			"version": "1.0.0",
 			"scopes": ["global"]
 		}`,
-		"backend/api/main.go":         "package main\n\nfunc main() {}\n",
+		"backend/main.go":             "package main\n\nfunc main() {}\n",
 		"backend/lifecycle/events.go": "package lifecycle\n",
 		"backend/lifecycle/go.mod":    "module example.com/lifecycle\n",
 	})})

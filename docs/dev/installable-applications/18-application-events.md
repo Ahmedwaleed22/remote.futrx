@@ -50,7 +50,7 @@ subscriber must apply any audience policy its own side effect requires.
 
 ## Declare publishers and subscriptions
 
-An event-capable application needs a `backend/api/` executable and declarations
+An event-capable application needs a `backend/` executable and declarations
 in `application.json`:
 
 ```json
@@ -110,21 +110,22 @@ The complete field-level validation is in
 
 ## Own event behavior in `backend/lifecycle`
 
-`backend/api/` remains the required `package main` and composition root. Keep
-publisher, subscriber, and event-state behavior in an importable sibling so the
-HTTP package does not become the owner of two unrelated concerns:
+The `backend/` root is the required `package main` and composition root. Keep
+publisher, subscriber, and event-state behavior in importable child packages
+so the request package does not become the owner of unrelated concerns:
 
 ```text
 backend/
+  main.go         required executable; calls rpc.ServeWithRuntime
   api/
-    main.go       required executable; calls rpc.ServeWithRuntime
+    api.go        request handling and backend contract
   lifecycle/
     jobs.go       typed business-event triggers
   container/      excluded from the host module and built in LXD
 ```
 
 Remote generates one module rooted at `backend/`, excludes `container/`, and
-builds `./api`. Its module path is
+builds `.`. Its module path is
 `futrx.local/catalog/applications/<application-id>/backend`, matching the
 catalog module used in this checkout. `go.mod`, `go.sum`, `go.work`, and
 `go.work.sum` are forbidden throughout the host tree so an application cannot
@@ -135,14 +136,14 @@ core-owned capabilities, then composes the API and lifecycle layers:
 func main() {
 	rpc.ServeWithRuntime(func(runtime applications.Runtime) applications.Backend {
 		jobs := appLifecycle.NewJobs(runtime.Events)
-		return newBackend(jobs)
+		return appAPI.New(jobs)
 	})
 }
 ```
 
 `Runtime.Events` is implemented and initialized by Remote, not by the API or
 lifecycle package. This remains one binary, one per-instance process, and one
-RPC handshake. The sibling directory is a source-ownership boundary, not an
+RPC handshake. Each child directory is a source-ownership boundary, not an
 independently launched process.
 
 ## Emit from the lifecycle owner
@@ -152,6 +153,11 @@ Retain the core-owned emitter behind a typed business-event method:
 ```go
 // backend/lifecycle/jobs.go
 package lifecycle
+
+// JobEvents is the consumer-facing contract owned by this publisher.
+type JobEvents interface {
+	Completed(jobID string) error
+}
 
 type Jobs struct {
 	events applications.EventEmitter
@@ -174,6 +180,13 @@ func (j *Jobs) Completed(jobID string) error {
 	})
 }
 ```
+
+The publisher package owns both `JobEvents` and `Jobs`. The API accepts the
+interface, while `backend/main.go` constructs the concrete implementation. For
+multiple publishers, give each publisher its own interface and concrete type,
+construct each from the same core-owned `Runtime.Events`, and pass them to the
+API separately. Hello Remote demonstrates this with `GreetingEvents` and
+`InspectionEvents`.
 
 The manifest is the only publisher registry. During startup, Remote constructs
 an authorization registry from its validated declarations and binds
