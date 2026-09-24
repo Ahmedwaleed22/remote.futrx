@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"futrx.local/catalog/applications/s3disk/backend/attachments"
 	appLifecycle "futrx.local/catalog/applications/s3disk/backend/lifecycle"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
@@ -49,8 +48,8 @@ func (b *backend) push(r applications.Request) applications.Response {
 
 	ctx, cancel := context.WithTimeout(context.Background(), pushTimeout)
 	defer cancel()
-	batch, err := b.attachments.Push(ctx, request.Names)
-	if errors.Is(err, attachments.ErrNotMounted) {
+	batch, err := b.attachments.push(ctx, request.Names)
+	if errors.Is(err, errNotMounted) {
 		return applications.Errorf(http.StatusConflict, "Nothing is mounted at %s", b.target.mountpoint)
 	}
 	if err != nil {

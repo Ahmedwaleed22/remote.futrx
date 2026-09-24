@@ -6,7 +6,6 @@ import (
 	"context"
 	"strings"
 
-	"futrx.local/catalog/applications/s3disk/backend/attachments"
 	appLifecycle "futrx.local/catalog/applications/s3disk/backend/lifecycle"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
@@ -21,7 +20,7 @@ type backend struct {
 	run         func(context.Context, string, ...string) commandResult
 	operations  appLifecycle.MountOperations
 	pushes      appLifecycle.PushEvents
-	attachments *attachments.Copier
+	attachments *attachmentCopier
 }
 
 func newBackend(operations appLifecycle.MountOperations, pushes appLifecycle.PushEvents) *backend {
@@ -48,7 +47,7 @@ func (b *backend) Init(instance applications.Instance) error {
 		return err
 	}
 	b.target = target
-	b.attachments = attachments.New(target.mountpoint, target.uploadsDir, target.asyncWriteback,
+	b.attachments = newAttachmentCopier(target.mountpoint, target.uploadsDir, target.asyncWriteback,
 		func(ctx context.Context, args ...string) (string, string) {
 			result := b.command(ctx, args...)
 			return result.Output, result.Error

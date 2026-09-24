@@ -1,5 +1,4 @@
-// Package attachments moves completed chat uploads into an S3Disk mount.
-package attachments
+package api
 
 import (
 	"context"
@@ -14,25 +13,25 @@ const uploadsSource = "/workspace/.uploads"
 
 const maxFailureText = 500
 
-var ErrNotMounted = errors.New("mountpoint is not mounted")
+var errNotMounted = errors.New("mountpoint is not mounted")
 
-// Run executes one command inside the installed project's container. The
-// caller supplies an adapter that redacts credentials before returning output.
-type Run func(context.Context, ...string) (output, errorText string)
+// attachmentRun executes one command inside the installed project's container.
+// The caller supplies an adapter that redacts credentials before returning output.
+type attachmentRun func(context.Context, ...string) (output, errorText string)
 
-// Copier owns the order of the mount check, copy, and source deletion.
-type Copier struct {
+// attachmentCopier owns the order of the mount check, copy, and source deletion.
+type attachmentCopier struct {
 	mountpoint     string
 	uploadsDir     string
 	asyncWriteback bool
-	run            Run
+	run            attachmentRun
 }
 
-func New(mountpoint, uploadsDir string, asyncWriteback bool, run Run) *Copier {
-	return &Copier{mountpoint: mountpoint, uploadsDir: uploadsDir, asyncWriteback: asyncWriteback, run: run}
+func newAttachmentCopier(mountpoint, uploadsDir string, asyncWriteback bool, run attachmentRun) *attachmentCopier {
+	return &attachmentCopier{mountpoint: mountpoint, uploadsDir: uploadsDir, asyncWriteback: asyncWriteback, run: run}
 }
 
-type Result struct {
+type attachmentResult struct {
 	Name    string
 	Path    string
 	Stored  bool
@@ -41,26 +40,26 @@ type Result struct {
 	Error   string
 }
 
-type Batch struct {
+type attachmentBatch struct {
 	Directory string
 	Stored    int
 	Removed   int
-	Results   []Result
+	Results   []attachmentResult
 }
 
-func (c *Copier) Push(ctx context.Context, names []string) (Batch, error) {
+func (c *attachmentCopier) push(ctx context.Context, names []string) (attachmentBatch, error) {
 	// A copy into the plain directory beneath an unmounted mount would appear
 	// stored while never reaching the bucket.
 	if _, commandError := c.run(ctx, "mountpoint", "-q", "--", c.mountpoint); commandError != "" {
-		return Batch{}, ErrNotMounted
+		return attachmentBatch{}, errNotMounted
 	}
 
 	destination := path.Join(c.mountpoint, c.uploadsDir)
 	if output, commandError := c.run(ctx, "mkdir", "-p", "--", destination); commandError != "" {
-		return Batch{}, fmt.Errorf("Could not create %s: %s", destination, failureText(output, commandError))
+		return attachmentBatch{}, fmt.Errorf("Could not create %s: %s", destination, failureText(output, commandError))
 	}
 
-	batch := Batch{Directory: destination, Results: make([]Result, 0, len(names))}
+	batch := attachmentBatch{Directory: destination, Results: make([]attachmentResult, 0, len(names))}
 	for _, name := range names {
 		result := c.pushOne(ctx, destination, name)
 		if result.Stored {
@@ -76,12 +75,12 @@ func (c *Copier) Push(ctx context.Context, names []string) (Batch, error) {
 
 // pushOne copies first, then deletes the upload only after the mount confirms
 // the object is stored. A synchronous writeback makes that order safe.
-func (c *Copier) pushOne(ctx context.Context, destination, name string) Result {
+func (c *attachmentCopier) pushOne(ctx context.Context, destination, name string) attachmentResult {
 	if err := validUploadName(name); err != nil {
-		return Result{Name: name, Error: err.Error()}
+		return attachmentResult{Name: name, Error: err.Error()}
 	}
 	source := path.Join(uploadsSource, name)
-	result := Result{Name: name, Path: path.Join(destination, name)}
+	result := attachmentResult{Name: name, Path: path.Join(destination, name)}
 
 	// cp -n would silently skip an existing object; probe it so the caller can
 	// distinguish an existing object from a new copy.
