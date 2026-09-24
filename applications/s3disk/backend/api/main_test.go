@@ -3,12 +3,13 @@ package api
 import (
 	"testing"
 
+	appLifecycle "futrx.local/catalog/applications/s3disk/backend/lifecycle"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
 func testBackend(t *testing.T) *backend {
 	t.Helper()
-	b := newBackend()
+	b := newBackend(appLifecycle.NewOperations())
 	if err := b.Init(testInstance()); err != nil {
 		t.Fatal(err)
 	}

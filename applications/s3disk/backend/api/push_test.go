@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	appLifecycle "futrx.local/catalog/applications/s3disk/backend/lifecycle"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
@@ -101,7 +102,7 @@ func TestPushKeepsTheUploadWhenTheCopyFails(t *testing.T) {
 func TestPushKeepsTheUploadWhenWritebackIsAsynchronous(t *testing.T) {
 	// With --async-writeback a closed file may still be only in the local
 	// cache, so .uploads is not a redundant copy yet.
-	b := newBackend()
+	b := newBackend(appLifecycle.NewOperations())
 	instance := testInstance()
 	instance.Env["S3DISK_MOUNT_ARGS"] = "--exclusive --async-writeback"
 	if err := b.Init(instance); err != nil {

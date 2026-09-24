@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	appLifecycle "futrx.local/catalog/applications/s3disk/backend/lifecycle"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
@@ -43,16 +44,12 @@ func (b *backend) diagnostics(applications.Request) applications.Response {
 }
 
 func (b *backend) progress(applications.Request) applications.Response {
-	return applications.JSON(http.StatusOK, b.operations.snapshot())
+	return applications.JSON(http.StatusOK, b.operations.Snapshot())
 }
 
 func (b *backend) start(r applications.Request) applications.Response {
 	action := r.Path
-	started, ok := b.operations.begin(action)
-	if !ok {
-		return applications.Errorf(http.StatusConflict, "A mount operation is already running")
-	}
-	go func() {
+	started, ok := b.operations.Start(action, func() appLifecycle.Result {
 		timeout := syncTimeout
 		args := []string{b.target.binary, "sync", b.target.mountpoint}
 		if action == "restart" {
@@ -62,7 +59,10 @@ func (b *backend) start(r applications.Request) applications.Response {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		result := b.command(ctx, args...)
-		b.operations.finish(action, result)
-	}()
+		return appLifecycle.Result{Output: result.Output, Error: result.Error}
+	})
+	if !ok {
+		return applications.Errorf(http.StatusConflict, "A mount operation is already running")
+	}
 	return applications.JSON(http.StatusAccepted, started)
 }

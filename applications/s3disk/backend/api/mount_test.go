@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	appLifecycle "futrx.local/catalog/applications/s3disk/backend/lifecycle"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
@@ -54,7 +55,7 @@ func TestOperationsSerializeAndReportFailures(t *testing.T) {
 	close(release)
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
-		op := b.operations.snapshot()
+		op := b.operations.Snapshot()
 		if !op.Running {
 			if op.Result.Error != "upload failed" {
 				t.Fatalf("lost failure: %+v", op)
@@ -68,7 +69,7 @@ func TestOperationsSerializeAndReportFailures(t *testing.T) {
 
 func TestRejectsInvalidTargetsAndUnknownActions(t *testing.T) {
 	for _, name := range []string{"", "--help", "remote:other", "a;sh"} {
-		b := newBackend()
+		b := newBackend(appLifecycle.NewOperations())
 		instance := testInstance()
 		instance.ContainerName = name
 		if b.Init(instance) == nil {

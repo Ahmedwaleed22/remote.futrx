@@ -8,7 +8,7 @@ Upload the ZIP in **Settings → Applications**, then install S3Disk in the proj
 
 For an uploaded ZIP, Remote builds `backend/container/cmd/s3disk` before running `infra/install.sh`. For the built-in catalog, Go omits S3Disk's nested Go module from the embedded files, so the shell installer builds the same pinned source snapshot when the binary is missing. Run `bash infra/embed-source.sh` after changing `backend/container/`; `bash infra/embed-source.sh --check` verifies the snapshot. The installer also installs FUSE and creates the mountpoint. Remote writes and starts the systemd service declared in `application.json`, including its base64-mapped settings and idle lifecycle. The installer writes no unit or credential file.
 
-The host composition root in `backend/main.go` serves the request handlers in `backend/api/`. They expose mount status, diagnostics, sync, restart, operation progress, and attachment-copy actions to the UI. The project skill `s3disk-inspector` provides safe runtime checks.
+The host composition root in `backend/main.go` wires the request handlers in `backend/api/` to the per-instance mount operation lifecycle in `backend/lifecycle/`. The API exposes mount status, diagnostics, sync, restart, operation progress, and attachment-copy actions to the UI. Remote owns the systemd service lifecycle declared in `application.json`; S3Disk declares no backend event publishers. The project skill `s3disk-inspector` provides safe runtime checks.
 
 ## Verify
 

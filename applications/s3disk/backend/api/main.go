@@ -7,21 +7,22 @@ import (
 	"strings"
 
 	"futrx.local/catalog/applications/s3disk/backend/attachments"
+	appLifecycle "futrx.local/catalog/applications/s3disk/backend/lifecycle"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
-func New() applications.Backend { return newBackend() }
+func New(operations appLifecycle.MountOperations) applications.Backend { return newBackend(operations) }
 
 type backend struct {
 	router      *applications.Router
 	target      backendTarget
 	run         func(context.Context, string, ...string) commandResult
-	operations  operationState
+	operations  appLifecycle.MountOperations
 	attachments *attachments.Copier
 }
 
-func newBackend() *backend {
-	b := &backend{router: applications.NewRouter(), run: runContainer}
+func newBackend(operations appLifecycle.MountOperations) *backend {
+	b := &backend{router: applications.NewRouter(), run: runContainer, operations: operations}
 	b.router.GET("status", "Mount and service status", b.status)
 	b.router.GET("diagnostics", "Version, FUSE availability and service journal", b.diagnostics)
 	b.router.GET("operation", "Latest sync or restart progress", b.progress)
