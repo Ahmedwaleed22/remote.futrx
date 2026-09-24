@@ -11,18 +11,21 @@ import (
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
-func New(operations appLifecycle.MountOperations) applications.Backend { return newBackend(operations) }
+func New(operations appLifecycle.MountOperations, pushes appLifecycle.PushEvents) applications.Backend {
+	return newBackend(operations, pushes)
+}
 
 type backend struct {
 	router      *applications.Router
 	target      backendTarget
 	run         func(context.Context, string, ...string) commandResult
 	operations  appLifecycle.MountOperations
+	pushes      appLifecycle.PushEvents
 	attachments *attachments.Copier
 }
 
-func newBackend(operations appLifecycle.MountOperations) *backend {
-	b := &backend{router: applications.NewRouter(), run: runContainer, operations: operations}
+func newBackend(operations appLifecycle.MountOperations, pushes appLifecycle.PushEvents) *backend {
+	b := &backend{router: applications.NewRouter(), run: runContainer, operations: operations, pushes: pushes}
 	b.router.GET("status", "Mount and service status", b.status)
 	b.router.GET("diagnostics", "Version, FUSE availability and service journal", b.diagnostics)
 	b.router.GET("operation", "Latest sync or restart progress", b.progress)

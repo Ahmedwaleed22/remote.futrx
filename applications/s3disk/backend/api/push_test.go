@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"reflect"
 	"strings"
@@ -51,6 +52,8 @@ func TestPushMovesUploadsIntoTheMountInsideTheContainer(t *testing.T) {
 		}
 		return commandResult{}
 	})
+	events := &recordingPushEvents{}
+	b.pushes = events
 	response, decoded := pushNames(t, b, "shot-a8ho.png")
 	if response.Status != http.StatusOK {
 		t.Fatalf("status %d: %s", response.Status, response.Body)
@@ -60,6 +63,9 @@ func TestPushMovesUploadsIntoTheMountInsideTheContainer(t *testing.T) {
 	}
 	if decoded["directory"] != "/workspace/s3/uploads" {
 		t.Fatalf("directory %v", decoded["directory"])
+	}
+	if want := (appLifecycle.PushOutcome{Directory: "/workspace/s3/uploads", Requested: 1, Stored: 1, Removed: 1}); len(events.outcomes) != 1 || events.outcomes[0] != want {
+		t.Fatalf("push events = %+v, want %+v", events.outcomes, want)
 	}
 	// Both commands have to be the container's own, so the write goes through
 	// the FUSE mount rather than the host directory underneath it — and the
@@ -88,9 +94,14 @@ func TestPushKeepsTheUploadWhenTheCopyFails(t *testing.T) {
 		}
 		return commandResult{Output: "cp: no space left on device", Error: "exit status 1"}
 	})
+	events := &recordingPushEvents{}
+	b.pushes = events
 	_, decoded := pushNames(t, b, "shot.png")
 	if decoded["stored"] != float64(0) || decoded["removed"] != float64(0) {
 		t.Fatalf("stored %v removed %v", decoded["stored"], decoded["removed"])
+	}
+	if want := (appLifecycle.PushOutcome{Directory: "/workspace/s3/uploads", Requested: 1, Issues: 1}); len(events.outcomes) != 1 || events.outcomes[0] != want {
+		t.Fatalf("push events = %+v, want %+v", events.outcomes, want)
 	}
 	for _, call := range *calls {
 		if call[0] == "rm" {
@@ -102,7 +113,7 @@ func TestPushKeepsTheUploadWhenTheCopyFails(t *testing.T) {
 func TestPushKeepsTheUploadWhenWritebackIsAsynchronous(t *testing.T) {
 	// With --async-writeback a closed file may still be only in the local
 	// cache, so .uploads is not a redundant copy yet.
-	b := newBackend(appLifecycle.NewOperations())
+	b := newBackend(appLifecycle.NewOperations(), &recordingPushEvents{})
 	instance := testInstance()
 	instance.Env["S3DISK_MOUNT_ARGS"] = "--exclusive --async-writeback"
 	if err := b.Init(instance); err != nil {
@@ -149,6 +160,8 @@ func TestPushRefusesToWriteUnderAnUnmountedMountpoint(t *testing.T) {
 	// Writing here would land in the plain directory the mount hides, which
 	// looks like success and never reaches the bucket.
 	b := testBackend(t)
+	events := &recordingPushEvents{}
+	b.pushes = events
 	var copied bool
 	b.run = func(_ context.Context, _ string, args ...string) commandResult {
 		if args[0] == "cp" {
@@ -165,6 +178,30 @@ func TestPushRefusesToWriteUnderAnUnmountedMountpoint(t *testing.T) {
 	}
 	if copied {
 		t.Fatal("copied into an unmounted mountpoint")
+	}
+	if len(events.outcomes) != 0 {
+		t.Fatalf("published a push that did not run: %+v", events.outcomes)
+	}
+}
+
+func TestPushPublicationFailureKeepsTheCopyResult(t *testing.T) {
+	b, _ := pushBackend(t, func(args []string) commandResult {
+		if args[0] == "test" {
+			return commandResult{Error: "not found"}
+		}
+		return commandResult{}
+	})
+	events := &recordingPushEvents{err: errors.New("bus unavailable")}
+	b.pushes = events
+	response, decoded := pushNames(t, b, "shot.png")
+	if response.Status != http.StatusOK || decoded["stored"] != float64(1) || decoded["removed"] != float64(1) {
+		t.Fatalf("copy result changed: status %d body %s", response.Status, response.Body)
+	}
+	if warning, _ := decoded["warning"].(string); !strings.Contains(warning, "event not published: bus unavailable") {
+		t.Fatalf("warning = %q", warning)
+	}
+	if len(events.outcomes) != 1 {
+		t.Fatalf("publication attempts = %d, want 1", len(events.outcomes))
 	}
 }
 

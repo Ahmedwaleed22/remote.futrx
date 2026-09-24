@@ -69,7 +69,7 @@ func TestOperationsSerializeAndReportFailures(t *testing.T) {
 
 func TestRejectsInvalidTargetsAndUnknownActions(t *testing.T) {
 	for _, name := range []string{"", "--help", "remote:other", "a;sh"} {
-		b := newBackend(appLifecycle.NewOperations())
+		b := newBackend(appLifecycle.NewOperations(), &recordingPushEvents{})
 		instance := testInstance()
 		instance.ContainerName = name
 		if b.Init(instance) == nil {

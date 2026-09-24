@@ -8,8 +8,22 @@ import (
 )
 
 func testBackend(t *testing.T) *backend {
+	return testBackendWithPushEvents(t, &recordingPushEvents{})
+}
+
+type recordingPushEvents struct {
+	outcomes []appLifecycle.PushOutcome
+	err      error
+}
+
+func (e *recordingPushEvents) Completed(outcome appLifecycle.PushOutcome) error {
+	e.outcomes = append(e.outcomes, outcome)
+	return e.err
+}
+
+func testBackendWithPushEvents(t *testing.T, pushes appLifecycle.PushEvents) *backend {
 	t.Helper()
-	b := newBackend(appLifecycle.NewOperations())
+	b := newBackend(appLifecycle.NewOperations(), pushes)
 	if err := b.Init(testInstance()); err != nil {
 		t.Fatal(err)
 	}

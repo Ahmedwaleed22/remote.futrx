@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"futrx.local/catalog/applications/s3disk/backend/attachments"
+	appLifecycle "futrx.local/catalog/applications/s3disk/backend/lifecycle"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
@@ -56,18 +58,32 @@ func (b *backend) push(r applications.Request) applications.Response {
 	}
 
 	results := make([]pushResult, 0, len(batch.Results))
+	issues := 0
 	for _, result := range batch.Results {
+		if result.Error != "" {
+			issues++
+		}
 		results = append(results, pushResult{
 			Name: result.Name, Path: result.Path,
 			Stored: result.Stored, Removed: result.Removed,
 			Skipped: result.Skipped, Error: result.Error,
 		})
 	}
-	return applications.JSON(http.StatusOK, map[string]any{
+	response := map[string]any{
 		"mountpoint": b.target.mountpoint,
 		"directory":  batch.Directory,
 		"stored":     batch.Stored,
 		"removed":    batch.Removed,
 		"results":    results,
-	})
+	}
+	if err := b.pushes.Completed(appLifecycle.PushOutcome{
+		Directory: batch.Directory,
+		Requested: len(batch.Results),
+		Stored:    batch.Stored,
+		Removed:   batch.Removed,
+		Issues:    issues,
+	}); err != nil {
+		response["warning"] = fmt.Sprintf("event not published: %v", err)
+	}
+	return applications.JSON(http.StatusOK, response)
 }
