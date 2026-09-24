@@ -3,7 +3,7 @@
   "name": "s3disk",
   "description": "Mount an S3 bucket as a normal filesystem inside this project's container, and copy chat attachments onto it as they finish uploading.",
   "category": "storage",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "icon": "disk",
   "scopes": [
     "project"

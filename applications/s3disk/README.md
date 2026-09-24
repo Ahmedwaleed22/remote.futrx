@@ -8,7 +8,7 @@ Upload the ZIP in **Settings → Applications**, then install S3Disk in the proj
 
 For an uploaded ZIP, Remote builds `backend/container/cmd/s3disk` before running `infra/install.sh`. For the built-in catalog, Go omits S3Disk's nested Go module from the embedded files, so the shell installer builds the same pinned source snapshot when the binary is missing. Run `bash infra/embed-source.sh` after changing `backend/container/`; `bash infra/embed-source.sh --check` verifies the snapshot. The installer also installs FUSE and creates the mountpoint. Remote writes and starts the systemd service declared in `application.json`, including its base64-mapped settings and idle lifecycle. The installer writes no unit or credential file.
 
-The host composition root in `backend/main.go` wires the request handlers in `backend/api/` to the per-instance mount operation lifecycle in `backend/lifecycle/`. The API exposes mount status, diagnostics, sync, restart, operation progress, and attachment-copy actions to the UI. Remote owns the systemd service lifecycle declared in `application.json`; S3Disk declares no backend event publishers. The project skill `s3disk-inspector` provides safe runtime checks.
+The host composition root in `backend/main.go` wires the request handlers in `backend/api/` to the per-instance mount operation lifecycle in `backend/lifecycle/`. The API exposes mount status, diagnostics, sync, restart, operation progress, and attachment-copy actions to the UI. Remote owns the systemd service lifecycle declared in `application.json`; S3Disk declares no backend event publishers. The project skills `s3disk` and `s3disk-inspector` guide agents through copying files to the mount and checking its health.
 
 ## Verify
 
@@ -16,6 +16,6 @@ Inside the project container, run `systemctl is-active s3disk` and `findmnt -no 
 
 ## Upgrade and stop
 
-Version `0.5.2` restores the missing container binary during install, including when the application is built into Remote's catalog. Uploading a new package version reconverges installed copies according to Remote's upgrade policy. The mount daemon attempts to flush writes before it stops. Remote's generated unit uses the systemd default stop timeout, so sync large pending writes with the Mount controls action before stopping or upgrading the application.
+Version `0.5.2` restored the missing container binary during install, including when the application is built into Remote's catalog. Version `0.5.3` adds the `s3disk` project skill. Uploading a new package version reconverges installed copies according to Remote's upgrade policy. The mount daemon attempts to flush writes before it stops. Remote's generated unit uses the systemd default stop timeout, so sync large pending writes with the Mount controls action before stopping or upgrading the application.
 
 The mount uses `--exclusive` by default. Set `S3DISK_MOUNT_ARGS` to `--no-exclusive` to allow other writers, or add other S3Disk mount flags. Quoted values with spaces are supported. Remote keeps all service settings in its root-readable environment file under `/etc/remote/applications/s3disk/`.
