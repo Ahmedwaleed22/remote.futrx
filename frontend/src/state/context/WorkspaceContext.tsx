@@ -53,7 +53,7 @@ export function WorkspaceProvider({
   // Local State
   ////////////////
   const data = useWorkspaceData(enabled);
-  const { auth } = useAuthContext();
+  const { auth, agentAuth } = useAuthContext();
   const { settings } = useUserSettingsContext();
   const [ui, dispatch] = useReducer(
     workspaceUiState.reduce,
@@ -61,7 +61,8 @@ export function WorkspaceProvider({
     () => workspaceUiState.createInitial(takePushNotificationChatId())
   );
   const activeChat = workspaceSidebarService.activeChat(data.chats, ui.activeChatId);
-  const capabilityUserId = auth.email || auth.adminEmail || "anonymous";
+  const account = auth.email || auth.adminEmail;
+  const capabilityUserId = account || "anonymous";
   const activeCapabilityProjectId = activeChat?.projectId;
 
   ////////////////
@@ -83,9 +84,9 @@ export function WorkspaceProvider({
   }, []);
 
   const createChat = useCallback(async (projectId?: string): Promise<ChatMeta> => {
-    const chat = await chatApi.create(createChatInput(settings, projectId));
+    const chat = await chatApi.create(createChatInput(settings, projectId, agentAuth.providers));
     return activateNewChat(chat);
-  }, [settings, activateNewChat]);
+  }, [settings, agentAuth.providers, activateNewChat]);
 
   const deleteChat = useCallback(async (chatId: string) => {
     await chatApi.delete(chatId);
@@ -131,6 +132,7 @@ export function WorkspaceProvider({
   }, [enabled, capabilityUserId, activeCapabilityProjectId, activeChat?.id]);
 
   useWorkspacePushLifecycle({
+    account: enabled ? account : "",
     activeChatId: ui.activeChatId,
     view: ui.view,
     openChat: openPushChat,
