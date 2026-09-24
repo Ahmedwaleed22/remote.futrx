@@ -46,7 +46,7 @@ class PushServiceWorkerApi {
   async closeChatNotifications(chatId: string): Promise<void> {
     try {
       const registration = await this.currentRegistration();
-      if (!registration || typeof registration.getNotifications !== "function") return;
+      if (!registration) return;
       const shown = await registration.getNotifications({ tag: chatNotificationTag(chatId) });
       for (const notification of shown) notification.close();
     } catch {

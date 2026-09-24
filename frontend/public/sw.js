@@ -100,7 +100,6 @@ async function handlePush(event) {
 }
 
 async function closeNotifications(tag) {
-  if (typeof self.registration.getNotifications !== "function") return;
   try {
     const shown = await self.registration.getNotifications({ tag });
     for (const notification of shown) notification.close();

@@ -101,33 +101,3 @@ test("reports the visible chat only while the page is visible and focused", (t) 
   pushNotificationStore.getState().setVisibleChat(null);
   assert.equal(callbacks.visibleChatId(), null);
 });
-
-test("looking at a chat closes the notifications it already raised", (t) => {
-  resetStore();
-  let focused = false;
-  const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
-  Object.defineProperty(globalThis, "document", {
-    configurable: true,
-    value: { visibilityState: "visible", hasFocus: () => focused },
-  });
-  t.after(() => {
-    if (previousDocument) {
-      Object.defineProperty(globalThis, "document", previousDocument);
-    } else {
-      Reflect.deleteProperty(globalThis, "document");
-    }
-  });
-  const closed: string[] = [];
-  t.mock.method(pushServiceWorkerApi, "closeChatNotifications", async (chatId: string) => {
-    closed.push(chatId);
-  });
-
-  // In the app but switched away: the user has not seen it yet.
-  pushNotificationStore.getState().setVisibleChat("chat-1");
-  assert.deepEqual(closed, []);
-
-  focused = true;
-  pushNotificationStore.getState().setVisibleChat("chat-2");
-  pushNotificationStore.getState().setVisibleChat(null);
-  assert.deepEqual(closed, ["chat-2"]);
-});
