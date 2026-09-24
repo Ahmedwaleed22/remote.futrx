@@ -167,6 +167,28 @@ func TestPushRefusesToWriteUnderAnUnmountedMountpoint(t *testing.T) {
 	}
 }
 
+func TestPushReportsDirectoryCreationFailureBeforeCopying(t *testing.T) {
+	b := testBackend(t)
+	var copied bool
+	b.run = func(_ context.Context, _ string, args ...string) commandResult {
+		if args[0] == "mkdir" {
+			return commandResult{Output: "mkdir: permission denied", Error: "exit status 1"}
+		}
+		if args[0] == "cp" {
+			copied = true
+		}
+		return commandResult{}
+	}
+	response, _ := pushNames(t, b, "shot.png")
+	if response.Status != http.StatusBadGateway ||
+		!strings.Contains(string(response.Body), "Could not create /workspace/s3/uploads: mkdir: permission denied") {
+		t.Fatalf("directory error changed: status %d body %s", response.Status, response.Body)
+	}
+	if copied {
+		t.Fatal("copied after mkdir failed")
+	}
+}
+
 func TestPushReportsAnAlreadyStoredFileWithoutCopyingItAgain(t *testing.T) {
 	b, calls := pushBackend(t, func(args []string) commandResult {
 		return commandResult{} // `test -e` succeeds: it is already there
