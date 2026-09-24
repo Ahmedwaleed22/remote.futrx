@@ -31,16 +31,8 @@ import type { UsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
 import { ApplicationsSection } from "../applications/ApplicationsSection";
 import type { ApplicationsController } from "../../state/hooks/applications/useApplications";
 
-export type SettingsTab =
-  | "appearance"
-  | "notifications"
-  | "agents"
-  | "users"
-  | "security"
-  | "applications"
-  | "updates"
-  | "info"
-  | "usage";
+import type { SettingsTab } from "../../models/workspace";
+export type { SettingsTab } from "../../models/workspace";
 
 const tabs: Array<{
   id: SettingsTab;

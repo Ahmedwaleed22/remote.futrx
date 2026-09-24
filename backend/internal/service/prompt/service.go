@@ -404,7 +404,11 @@ func (rnr *Service) runPromptAs(
 	}
 
 	run := func(runPrompt, runResumeID string) error {
-		return provider.Run(ctx, agent.RunRequest{
+		relay := runEventRelay{
+			service: rnr, ctx: ctx, chatID: id, providerID: providerID,
+			ledger: ledger, emit: emit,
+		}
+		runErr := provider.Run(ctx, agent.RunRequest{
 			Provider:       providerID,
 			AccountID:      meta.AccountID,
 			ConversationID: string(id),
@@ -425,12 +429,9 @@ func (rnr *Service) runPromptAs(
 			EnableScheduleTools:  enableScheduleTools,
 			RuntimeEnv:           runtimeEnv,
 			InteractionResponses: interactionResponses,
-		}, func(ev agent.Event) {
-			// qa added the provider argument; the ledger hook is this
-			// branch's and sits after the emit as before.
-			rnr.emitAgentEvent(ctx, id, providerID, ev, emit)
-			rnr.recordRunUsage(ctx, ledger, ev)
-		})
+		}, relay.forward)
+		relay.finish()
+		return runErr
 	}
 
 	err = run(effectivePrompt, resumeID)

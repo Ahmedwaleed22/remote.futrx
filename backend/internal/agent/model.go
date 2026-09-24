@@ -152,6 +152,9 @@ type Event struct {
 	Native         *NativeEnvelope `json:"native,omitempty"`
 	InteractionID  string          `json:"interactionId,omitempty"`
 	Status         string          `json:"status,omitempty"`
+
+	// NotificationSummary is an internal completion hint, never provider input.
+	NotificationSummary string `json:"-"`
 }
 
 type CapabilityProvider interface {

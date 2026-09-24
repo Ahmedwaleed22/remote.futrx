@@ -9,6 +9,7 @@ import (
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicepresence "github.com/futrx-com/remote.futrx.com/internal/service/presence"
+	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	servicepush "github.com/futrx-com/remote.futrx.com/internal/service/push"
 )
 
@@ -27,6 +28,9 @@ const audienceTimeout = 5 * time.Second
 type chatPushNotifier struct {
 	push     *servicepush.Service
 	chats    servicechat.Repository
+	projects interface {
+		Get(context.Context, serviceproject.ID) (serviceproject.Meta, error)
+	}
 	audience chatNotificationAudience
 	presence *servicepresence.Service
 
@@ -74,7 +78,13 @@ func (n *chatPushNotifier) ChatEvent(chatID servicechat.ID, event servicechat.Ev
 		return
 	}
 
-	title, body := notificationText(kind, meta, event)
+	projectName := "Remote"
+	if meta.ProjectID != "" && n.projects != nil {
+		if project, err := n.projects.Get(ctx, serviceproject.ID(meta.ProjectID)); err == nil {
+			projectName = project.Name
+		}
+	}
+	title, body := notificationText(kind, projectName, event)
 	n.push.NotifyAsync(recipients, servicepush.Notification{
 		Kind:   kind,
 		ChatID: string(chatID),
@@ -145,42 +155,4 @@ func notificationKind(event servicechat.Event) (kind servicepush.Kind, urgent, o
 	default:
 		return "", false, false
 	}
-}
-
-func notificationText(
-	kind servicepush.Kind,
-	meta servicechat.Meta,
-	event servicechat.Event,
-) (title, body string) {
-	chatTitle := strings.TrimSpace(meta.Title)
-	if chatTitle == "" {
-		chatTitle = "Untitled chat"
-	}
-
-	switch kind {
-	case servicepush.KindQuestion:
-		return "The agent is asking a question", chatTitle
-	case servicepush.KindComplete:
-		return "Turn finished", chatTitle
-	case servicepush.KindError:
-		return "Run failed", withDetail(chatTitle, event.Message)
-	case servicepush.KindScheduled:
-		if event.Type == "error" {
-			return "Scheduled task failed", withDetail(chatTitle, event.Message)
-		}
-		return "Scheduled task finished", chatTitle
-	default:
-		return chatTitle, ""
-	}
-}
-
-func withDetail(chatTitle, detail string) string {
-	detail = strings.TrimSpace(strings.ReplaceAll(detail, "\n", " "))
-	if detail == "" {
-		return chatTitle
-	}
-	if len(detail) > 140 {
-		detail = detail[:140] + "…"
-	}
-	return chatTitle + " — " + detail
 }
