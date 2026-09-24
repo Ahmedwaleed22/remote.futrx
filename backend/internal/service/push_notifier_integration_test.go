@@ -522,3 +522,42 @@ func TestLeavingAChatRestoresNotifications(t *testing.T) {
 		t.Fatalf("captured %+v, want only the notification raised after leaving", sent)
 	}
 }
+
+// iOS ignores the per-chat tag and stacks every notification, so an unread
+// chat raises one notification and then stays quiet until it is read.
+func TestAnUnreadChatDoesNotNotifyAgainUntilItIsRead(t *testing.T) {
+	repo, sender := newNotifyingChat(t, servicechat.Meta{ID: "beefcafe", Title: "Plan"})
+	ctx := context.Background()
+	chats := repo.Repository.(*chatRepoStub)
+	appendAt := func(ev servicechat.Event) {
+		t.Helper()
+		if _, err := repo.AppendEvent(ctx, "beefcafe", ev); err != nil {
+			t.Fatal(err)
+		}
+		repo.push.push.Wait()
+	}
+
+	appendAt(servicechat.Event{T: 10, Type: "complete"})
+	appendAt(servicechat.Event{T: 20, Type: "error", Message: "boom"})
+	scheduled := servicechat.Event{T: 30, Type: "user", Text: "nightly", ScheduledTaskID: "task1"}
+	appendAt(scheduled)
+	appendAt(servicechat.Event{T: 40, Type: "complete", ScheduledTaskID: "task1"})
+	if sent := sender.captured(); len(sent) != 1 {
+		t.Fatalf("captured %+v, want only the first notification", sent)
+	}
+
+	// A question still gets through: the run is blocked on the user.
+	appendAt(servicechat.Event{T: 50, Type: "tool_use_start", Name: "AskUserQuestion"})
+	if sent := sender.captured(); len(sent) != 2 || sent[1].Kind != servicepush.KindQuestion {
+		t.Fatalf("captured %+v, want the question as well", sent)
+	}
+
+	// The next scheduled run starts; its completion would still stay quiet.
+	appendAt(servicechat.Event{T: 55, Type: "user", Text: "nightly", ScheduledTaskID: "task1"})
+	// Reading the chat reopens it for the next notification.
+	_, _ = chats.Update(ctx, "beefcafe", func(m *servicechat.Meta) { m.LastReadAt = 55 })
+	appendAt(servicechat.Event{T: 60, Type: "complete", ScheduledTaskID: "task1"})
+	if sent := sender.captured(); len(sent) != 3 {
+		t.Fatalf("captured %+v, want a notification after the read", sent)
+	}
+}
