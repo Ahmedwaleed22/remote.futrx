@@ -155,6 +155,7 @@ export function ChatContainer({
     canSendPrompt,
     preferences: {
       provider: displayMeta.provider || "codex",
+      accountId: displayMeta.accountId,
       model: displayMeta.model || "",
       mode: displayMode,
       reasoningEffort: displayMeta.reasoningEffort || "",

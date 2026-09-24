@@ -9,6 +9,7 @@ import (
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicepresence "github.com/futrx-com/remote.futrx.com/internal/service/presence"
+	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	servicepush "github.com/futrx-com/remote.futrx.com/internal/service/push"
 )
 
@@ -27,6 +28,9 @@ const audienceTimeout = 5 * time.Second
 type chatPushNotifier struct {
 	push     *servicepush.Service
 	chats    servicechat.Repository
+	projects interface {
+		Get(context.Context, serviceproject.ID) (serviceproject.Meta, error)
+	}
 	audience chatNotificationAudience
 	presence *servicepresence.Service
 
@@ -36,6 +40,13 @@ type chatPushNotifier struct {
 	// burying the one notification that actually needs the user.
 	mu     sync.Mutex
 	parked map[servicechat.ID]struct{}
+
+	// notified records, per chat, the chat's read marker at the moment its
+	// last notification went out. Until that marker moves forward the user
+	// has not seen the chat since, so later turns stay quiet instead of
+	// piling up: iOS ignores the per-chat tag and stacks every notification.
+	// Held in memory; a restart costs at most one extra notification per chat.
+	notified map[servicechat.ID]int64
 }
 
 // ChatEvent decides whether an appended event deserves a notification and, if
@@ -44,6 +55,7 @@ func (n *chatPushNotifier) ChatEvent(chatID servicechat.ID, event servicechat.Ev
 	if n == nil || !n.push.Enabled() {
 		return
 	}
+	n.trackUserPrompt(chatID, event)
 	kind, urgent, ok := notificationKind(event)
 	if !n.trackParkedRun(chatID, event, ok && kind == servicepush.KindQuestion) {
 		return
@@ -73,8 +85,17 @@ func (n *chatPushNotifier) ChatEvent(chatID servicechat.ID, event servicechat.Ev
 	if len(recipients) == 0 {
 		return
 	}
+	if !n.claimUnreadSlot(chatID, meta.LastReadAt, kind == servicepush.KindQuestion) {
+		return
+	}
 
-	title, body := notificationText(kind, meta, event)
+	projectName := "Remote"
+	if meta.ProjectID != "" && n.projects != nil {
+		if project, err := n.projects.Get(ctx, serviceproject.ID(meta.ProjectID)); err == nil {
+			projectName = project.Name
+		}
+	}
+	title, body := notificationText(kind, projectName, event)
 	n.push.NotifyAsync(recipients, servicepush.Notification{
 		Kind:   kind,
 		ChatID: string(chatID),
@@ -85,6 +106,39 @@ func (n *chatPushNotifier) ChatEvent(chatID servicechat.ID, event servicechat.Ev
 		Tag:    "chat:" + string(chatID),
 		Urgent: urgent,
 	})
+}
+
+// claimUnreadSlot reports whether the chat may notify again and, if so,
+// records the read marker the notification is about to go out against. A
+// question always goes through: the run is blocked on the user, and an older
+// "finished" notification must not hide that.
+func (n *chatPushNotifier) claimUnreadSlot(
+	chatID servicechat.ID,
+	lastReadAt int64,
+	isQuestion bool,
+) bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if n.notified == nil {
+		n.notified = map[servicechat.ID]int64{}
+	}
+	if marker, pending := n.notified[chatID]; pending && lastReadAt <= marker && !isQuestion {
+		return false
+	}
+	n.notified[chatID] = lastReadAt
+	return true
+}
+
+// trackUserPrompt treats a prompt the user typed as having seen the chat, so
+// the run it starts may notify again. A scheduled prompt has no one behind it
+// and leaves the chat unread.
+func (n *chatPushNotifier) trackUserPrompt(chatID servicechat.ID, event servicechat.Event) {
+	if event.Type != "user" || strings.TrimSpace(event.ScheduledTaskID) != "" {
+		return
+	}
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	delete(n.notified, chatID)
 }
 
 // trackParkedRun maintains the "waiting on an answer" flag and reports whether
@@ -145,42 +199,4 @@ func notificationKind(event servicechat.Event) (kind servicepush.Kind, urgent, o
 	default:
 		return "", false, false
 	}
-}
-
-func notificationText(
-	kind servicepush.Kind,
-	meta servicechat.Meta,
-	event servicechat.Event,
-) (title, body string) {
-	chatTitle := strings.TrimSpace(meta.Title)
-	if chatTitle == "" {
-		chatTitle = "Untitled chat"
-	}
-
-	switch kind {
-	case servicepush.KindQuestion:
-		return "The agent is asking a question", chatTitle
-	case servicepush.KindComplete:
-		return "Turn finished", chatTitle
-	case servicepush.KindError:
-		return "Run failed", withDetail(chatTitle, event.Message)
-	case servicepush.KindScheduled:
-		if event.Type == "error" {
-			return "Scheduled task failed", withDetail(chatTitle, event.Message)
-		}
-		return "Scheduled task finished", chatTitle
-	default:
-		return chatTitle, ""
-	}
-}
-
-func withDetail(chatTitle, detail string) string {
-	detail = strings.TrimSpace(strings.ReplaceAll(detail, "\n", " "))
-	if detail == "" {
-		return chatTitle
-	}
-	if len(detail) > 140 {
-		detail = detail[:140] + "…"
-	}
-	return chatTitle + " — " + detail
 }

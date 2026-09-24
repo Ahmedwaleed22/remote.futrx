@@ -143,6 +143,16 @@ type pushRepoStub struct {
 	rows map[string][]servicepush.Subscription
 }
 
+type notificationProjectStub struct{ name string }
+
+func (s notificationProjectStub) Get(_ context.Context, id serviceproject.ID) (serviceproject.Meta, error) {
+	return serviceproject.Meta{ID: id, Name: s.name}, nil
+}
+
+func (s notificationProjectStub) ListAccess(_ context.Context, _ serviceproject.ID) ([]string, error) {
+	return []string{"owner@example.com"}, nil
+}
+
 func (r *pushRepoStub) List(_ context.Context, email string) ([]servicepush.Subscription, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -240,7 +250,7 @@ func TestAppendingATerminalEventRaisesANotification(t *testing.T) {
 	if len(sent) != 1 {
 		t.Fatalf("captured %d notifications, want 1", len(sent))
 	}
-	if sent[0].Title != "Turn finished" || sent[0].Body != "Fix the flaky upload test" {
+	if sent[0].Title != "Remote - Agent finished" || sent[0].Body != "Open the chat to see the result." {
 		t.Fatalf("notification = %+v", sent[0])
 	}
 	if sent[0].ChatID != "beefcafe" {
@@ -250,6 +260,26 @@ func TestAppendingATerminalEventRaisesANotification(t *testing.T) {
 	// stacking a new one per turn.
 	if sent[0].Tag != "chat:beefcafe" {
 		t.Fatalf("tag = %q", sent[0].Tag)
+	}
+}
+
+func TestProjectCompletionUsesProjectNameAndPrivateSummary(t *testing.T) {
+	repo, sender := newNotifyingChat(t, servicechat.Meta{
+		ID: "abcdef12", ProjectID: "aabbccdd", Title: "An unrelated chat title",
+	})
+	projects := notificationProjectStub{name: "Website"}
+	repo.push.projects = projects
+	repo.push.audience.projects = projects
+	_, err := repo.AppendEvent(context.Background(), "abcdef12", servicechat.Event{
+		Type: "complete", NotificationSummary: "Fixed settings refresh and chat links.",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo.push.push.Wait()
+	sent := sender.captured()
+	if len(sent) != 1 || sent[0].Title != "Website - Agent finished" || sent[0].Body != "Fixed settings refresh and chat links." || sent[0].ChatID != "abcdef12" {
+		t.Fatalf("notification = %+v", sent)
 	}
 }
 
@@ -369,8 +399,8 @@ func TestScheduledRunsAreLabelledSeparately(t *testing.T) {
 	if len(sent) != 1 || sent[0].Kind != servicepush.KindScheduled {
 		t.Fatalf("notifications = %+v", sent)
 	}
-	if sent[0].Title != "Scheduled task finished" {
-		t.Fatalf("title = %q", sent[0].Title)
+	if sent[0].Title != "Remote - Agent finished" || sent[0].Body != "A scheduled task finished." {
+		t.Fatalf("body = %q", sent[0].Body)
 	}
 }
 
@@ -490,5 +520,44 @@ func TestLeavingAChatRestoresNotifications(t *testing.T) {
 
 	if sent := sender.captured(); len(sent) != 1 {
 		t.Fatalf("captured %+v, want only the notification raised after leaving", sent)
+	}
+}
+
+// iOS ignores the per-chat tag and stacks every notification, so an unread
+// chat raises one notification and then stays quiet until it is read.
+func TestAnUnreadChatDoesNotNotifyAgainUntilItIsRead(t *testing.T) {
+	repo, sender := newNotifyingChat(t, servicechat.Meta{ID: "beefcafe", Title: "Plan"})
+	ctx := context.Background()
+	chats := repo.Repository.(*chatRepoStub)
+	appendAt := func(ev servicechat.Event) {
+		t.Helper()
+		if _, err := repo.AppendEvent(ctx, "beefcafe", ev); err != nil {
+			t.Fatal(err)
+		}
+		repo.push.push.Wait()
+	}
+
+	appendAt(servicechat.Event{T: 10, Type: "complete"})
+	appendAt(servicechat.Event{T: 20, Type: "error", Message: "boom"})
+	scheduled := servicechat.Event{T: 30, Type: "user", Text: "nightly", ScheduledTaskID: "task1"}
+	appendAt(scheduled)
+	appendAt(servicechat.Event{T: 40, Type: "complete", ScheduledTaskID: "task1"})
+	if sent := sender.captured(); len(sent) != 1 {
+		t.Fatalf("captured %+v, want only the first notification", sent)
+	}
+
+	// A question still gets through: the run is blocked on the user.
+	appendAt(servicechat.Event{T: 50, Type: "tool_use_start", Name: "AskUserQuestion"})
+	if sent := sender.captured(); len(sent) != 2 || sent[1].Kind != servicepush.KindQuestion {
+		t.Fatalf("captured %+v, want the question as well", sent)
+	}
+
+	// The next scheduled run starts; its completion would still stay quiet.
+	appendAt(servicechat.Event{T: 55, Type: "user", Text: "nightly", ScheduledTaskID: "task1"})
+	// Reading the chat reopens it for the next notification.
+	_, _ = chats.Update(ctx, "beefcafe", func(m *servicechat.Meta) { m.LastReadAt = 55 })
+	appendAt(servicechat.Event{T: 60, Type: "complete", ScheduledTaskID: "task1"})
+	if sent := sender.captured(); len(sent) != 3 {
+		t.Fatalf("captured %+v, want a notification after the read", sent)
 	}
 }

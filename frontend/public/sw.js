@@ -225,18 +225,32 @@ self.addEventListener("notificationclick", (event) => {
 });
 
 async function openChat(chatId) {
+  const path = chatId ? `/chats/${encodeURIComponent(chatId)}` : "/";
   const windows = await self.clients.matchAll({
     type: "window",
     includeUncontrolled: true,
   });
-  for (const client of windows) {
-    if (new URL(client.url).origin !== self.location.origin) continue;
-    // Focus first: some browsers ignore a postMessage-driven view change in
-    // a window that never came forward.
+  const sameOrigin = windows.filter((client) => new URL(client.url).origin === self.location.origin);
+  const alreadyOnChat = sameOrigin.find((client) => new URL(client.url).pathname === path);
+  if (alreadyOnChat && "focus" in alreadyOnChat) {
+    await alreadyOnChat.focus();
+    return;
+  }
+  for (const client of sameOrigin) {
+    try {
+      if ("navigate" in client) {
+        const navigated = await client.navigate(path);
+        if (navigated) {
+          if ("focus" in navigated) await navigated.focus();
+          return;
+        }
+      }
+    } catch {
+      // Some installed browsers cannot navigate an existing client.
+    }
     if ("focus" in client) await client.focus();
     client.postMessage({ type: "open-chat", chatId: chatId || null });
     return;
   }
-  // Cold start: the app reads ?chat= on boot and opens straight into it.
-  await self.clients.openWindow(chatId ? `/?chat=${encodeURIComponent(chatId)}` : "/");
+  await self.clients.openWindow(path);
 }

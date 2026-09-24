@@ -76,6 +76,7 @@ type Dependencies struct {
 	AgentContainers   provisioning.ContainerDependencies
 	AgentModules      *agentmodule.Catalog
 	AgentAPIKeys      agentauth.APIKeyStore
+	AgentAccounts     agentauth.AccountStore
 	AgentOptions      AgentOptions
 	AuthOptions       AuthOptions
 	TmuxClient        TmuxClient
@@ -180,7 +181,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 	// created empty here and populated once they exist — the same late
 	// binding the run hub uses above.
 	presenceService := servicepresence.New()
-	pushNotifier := &chatPushNotifier{chats: deps.Chats, presence: presenceService}
+	pushNotifier := &chatPushNotifier{chats: deps.Chats, projects: deps.Projects, presence: presenceService}
 	chats := notifyingChatRepository{
 		Repository: deps.Chats,
 		workspace:  workspace,
@@ -209,6 +210,7 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Projects:              agentProjectResolver{projects: projectService},
 		Containers:            deps.AgentContainers,
 		APIKeys:               deps.AgentAPIKeys,
+		Accounts:              agentauth.NewAccountVault(deps.AgentAccounts),
 		CredentialSyncTimeout: deps.AgentOptions.CredentialSyncTimeout,
 	})
 	if err != nil {
