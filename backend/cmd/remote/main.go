@@ -168,6 +168,7 @@ func main() {
 		AgentContainers:   containerStack.AgentDependencies(),
 		AgentModules:      agentModules,
 		AgentAPIKeys:      storeSet.AgentAPIKeys,
+		AgentAccounts:     storeSet.AgentAccounts,
 		AgentOptions: service.AgentOptions{
 			CapabilityTimeout:          cfg.Agent.CapabilityTimeout,
 			CapabilityCacheTTL:         cfg.Agent.CapabilityCacheTTL,
