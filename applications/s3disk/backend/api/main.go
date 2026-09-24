@@ -6,16 +6,18 @@ import (
 	"context"
 	"strings"
 
+	"futrx.local/catalog/applications/s3disk/backend/attachments"
 	"github.com/futrx-com/remote.futrx.com/pkg/applications"
 )
 
 func New() applications.Backend { return newBackend() }
 
 type backend struct {
-	router     *applications.Router
-	target     backendTarget
-	run        func(context.Context, string, ...string) commandResult
-	operations operationState
+	router      *applications.Router
+	target      backendTarget
+	run         func(context.Context, string, ...string) commandResult
+	operations  operationState
+	attachments *attachments.Copier
 }
 
 func newBackend() *backend {
@@ -42,6 +44,11 @@ func (b *backend) Init(instance applications.Instance) error {
 		return err
 	}
 	b.target = target
+	b.attachments = attachments.New(target.mountpoint, target.uploadsDir, target.asyncWriteback,
+		func(ctx context.Context, args ...string) (string, string) {
+			result := b.command(ctx, args...)
+			return result.Output, result.Error
+		})
 	return nil
 }
 
