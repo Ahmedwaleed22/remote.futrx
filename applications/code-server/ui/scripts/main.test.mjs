@@ -13,8 +13,12 @@ test("Code Server URL uses the project route and selected chat directory", () =>
 test("editor icon is contributed only for a project workspace", () => {
   let button;
   activate({
-    slots: { chatHeaderActions: "chat.header.actions" },
-    ui: { addIconButton: (_slot, contribution) => { button = contribution; } },
+    application: { id: "code-server" },
+    slots: { chatHeaderActions: "chat.header.actions", applicationCardActions: "applications.card.actions" },
+    ui: {
+      addIconButton: (_slot, contribution) => { button = contribution; },
+      addButton: () => {},
+    },
   });
   globalThis.window = { location: { origin: "https://remote.example.test" }, open: (...args) => { globalThis.opened = args; } };
   try {
@@ -27,4 +31,16 @@ test("editor icon is contributed only for a project workspace", () => {
     delete globalThis.window;
     delete globalThis.opened;
   }
+});
+
+test("settings action belongs only to a running Code Server installation", () => {
+  let action;
+  activate({
+    application: { id: "code-server" },
+    slots: { chatHeaderActions: "chat.header.actions", applicationCardActions: "applications.card.actions" },
+    ui: { addIconButton: () => {}, addButton: (_slot, contribution) => { action = contribution; } },
+  });
+  assert.equal(action.when({ instance: { applicationId: "code-server", status: "running" } }), true);
+  assert.equal(action.when({ instance: { applicationId: "code-server", status: "stopped" } }), false);
+  assert.equal(action.when({ instance: { applicationId: "other", status: "running" } }), false);
 });

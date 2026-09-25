@@ -41,22 +41,32 @@ chmod 0600 /root/.config/code-server/config.yaml
 # container, so there is no per-client opt-out -- desktop Chrome would have to
 # cost mobile the editor entirely. Keep it off.
 install -d -m 0755 /root/.local/share/code-server/User
-# The install form supplies a complete, validated VS Code settings object.
-# The default comes from infra/settings.json, but any key can be edited first.
+# The workspace is a durable mount, so this application-owned copy survives
+# container replacement. The host backend maintains it after installation.
+# The backend replaces a leftover copy from an uninstalled app with the new
+# install form after this script finishes.
 export CODE_SERVER_WS_NAME="${CODE_SERVER_WS_NAME:-$(hostname)}"
 node <<'NODE'
 const fs = require("fs");
-const path = "/root/.local/share/code-server/User/settings.json";
-const settings = JSON.parse(process.env.CODE_SERVER_SETTINGS_JSON || "null");
+const durable = "/workspace/.remote/code-server/settings.json";
+const active = "/root/.local/share/code-server/User/settings.json";
+const source = fs.existsSync(durable)
+  ? fs.readFileSync(durable, "utf8")
+  : process.env.CODE_SERVER_SETTINGS_JSON;
+const settings = JSON.parse(source || "null");
 if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
-  throw new Error("CODE_SERVER_SETTINGS_JSON must be a JSON object");
+  throw new Error("Code Server settings must be a JSON object");
 }
 if (settings["window.title"] === "${rootPath}") {
   settings["window.title"] = process.env.CODE_SERVER_WS_NAME;
 }
-const temporary = path + ".remote-tmp";
-fs.writeFileSync(temporary, JSON.stringify(settings, null, 2) + "\n", { mode: 0o600 });
-fs.renameSync(temporary, path);
+const content = JSON.stringify(settings, null, 2) + "\n";
+for (const path of [durable, active]) {
+  fs.mkdirSync(require("path").dirname(path), { recursive: true, mode: 0o700 });
+  const temporary = path + ".remote-tmp";
+  fs.writeFileSync(temporary, content, { mode: 0o600 });
+  fs.renameSync(temporary, path);
+}
 NODE
 
 # Pinned extensions, best-effort: a flaky Open VSX must never fail the build.
