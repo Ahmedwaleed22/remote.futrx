@@ -2,8 +2,9 @@
 
 Optional browser editor for a project workspace. Install it from that project's
 Applications page. Its icon appears in the chat header only while the project
-installation is running. The existing `code.<host>/<slug>/` route and PWA
-launcher continue to open the same workspace.
+installation is running. The editor opens at
+`https://<host>/<project-slug>/code/`. The existing `code.<host>/<slug>/`
+route and PWA launcher continue to open the same workspace.
 
 Before selecting **Install**, edit the complete **VS Code settings.json** field
 in the catalog's install form. It starts with the current Remote defaults from
