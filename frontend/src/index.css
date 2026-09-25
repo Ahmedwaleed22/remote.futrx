@@ -425,6 +425,14 @@ html[data-theme="light"] {
     color: rgb(var(--accent-orange));
   }
 
+  .turn-activity-icon line {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    opacity: 0.35;
+  }
+
   .turn-activity-label {
     opacity: 1;
   }
@@ -438,8 +446,8 @@ html[data-theme="light"] {
       @starting-style { height: 0; opacity: 0.55; }
     }
 
-    .turn-activity-icon {
-      animation: turn-activity-spin 1.8s steps(8, end) infinite;
+    .turn-activity-icon line {
+      animation: turn-activity-pulse 1.2s ease-out infinite;
     }
 
     .turn-activity-label {
@@ -460,8 +468,9 @@ html[data-theme="light"] {
     }
   }
 
-  @keyframes turn-activity-spin {
-    to { transform: rotate(360deg); }
+  @keyframes turn-activity-pulse {
+    0% { opacity: 1; }
+    40%, 100% { opacity: 0.2; }
   }
 
 

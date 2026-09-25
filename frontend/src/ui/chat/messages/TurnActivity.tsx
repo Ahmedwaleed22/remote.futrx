@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
-import { Loader } from "../../primitives/icons";
 
 const labels = ["Thinking...", "Creating...", "Writing...", "Working on it..."];
+const spokes = Array.from({ length: 8 }, (_, index) => index);
 
 export function TurnActivity() {
   const [label, setLabel] = useState(() => labels[Math.floor(Math.random() * labels.length)]);
@@ -28,7 +28,16 @@ export function TurnActivity() {
 
   return (
     <div class="turn-activity" role="status">
-      <Loader class="turn-activity-icon" aria-hidden="true" />
+      <svg class="turn-activity-icon" viewBox="0 0 24 24" aria-hidden="true">
+        {spokes.map((index) => (
+          <line
+            key={index}
+            x1="12" y1="2" x2="12" y2="6"
+            transform={`rotate(${index * 45} 12 12)`}
+            style={{ animationDelay: `${-index * 150}ms` }}
+          />
+        ))}
+      </svg>
       <span class={`turn-activity-label ${changing ? "turn-activity-label-changing" : ""}`}>{label}</span>
     </div>
   );
