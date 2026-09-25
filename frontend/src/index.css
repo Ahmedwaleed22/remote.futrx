@@ -410,9 +410,23 @@ html[data-theme="light"] {
     height: 1.5rem;
     overflow: hidden;
     opacity: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     color: rgb(var(--fg-muted));
     font-size: 0.75rem;
     line-height: 1.5rem;
+  }
+
+  .turn-activity-icon {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+    color: rgb(var(--accent-orange));
+  }
+
+  .turn-activity-label {
+    opacity: 1;
   }
 
   /* Keep new content legible while its box opens, then gently bring it to
@@ -424,6 +438,19 @@ html[data-theme="light"] {
       @starting-style { height: 0; opacity: 0.55; }
     }
 
+    .turn-activity-icon {
+      animation: turn-activity-spin 1.8s steps(8, end) infinite;
+    }
+
+    .turn-activity-label {
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .turn-activity-label-changing {
+      opacity: 0.4;
+      transform: translateY(2px);
+    }
+
     .markdown-block-reveal {
       transition: height var(--stream-reveal-duration, 560ms) linear,
         opacity 440ms ease-out,
@@ -431,6 +458,10 @@ html[data-theme="light"] {
 
       @starting-style { opacity: 0.55; }
     }
+  }
+
+  @keyframes turn-activity-spin {
+    to { transform: rotate(360deg); }
   }
 
 

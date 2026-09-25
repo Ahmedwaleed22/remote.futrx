@@ -121,7 +121,8 @@ function renderAssistantParts(
 
     if (part.kind === "turn-status") {
       // The thread-level activity label represents a running turn. Only
-      // failures and interruptions need a persistent transcript status line.
+      // Failures need a persistent transcript status line. An interruption
+      // ends the activity indicator without adding another message row.
       if (!showTerminalTurnStatus(part.status)) return;
       const providerLabel = part.provider ? providerDisplayLabel(part.provider) : "Agent";
       rendered.push(

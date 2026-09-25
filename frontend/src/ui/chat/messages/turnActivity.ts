@@ -2,7 +2,7 @@ import type { ChatStatus } from "../../../models/chat";
 import type { AssistantMessageBlock, ChatMessageBlock } from "../../../models/chatMessage";
 
 export function showTerminalTurnStatus(status: string): boolean {
-  return status === "failed" || status === "interrupted";
+  return status === "failed";
 }
 
 export function hasVisibleAssistantContent(block: AssistantMessageBlock): boolean {

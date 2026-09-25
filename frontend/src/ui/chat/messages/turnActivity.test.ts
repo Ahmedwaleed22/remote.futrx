@@ -21,10 +21,11 @@ test("stops activity when the turn ends or a visible thinking part takes over", 
   assert.equal(showTurnActivity("streaming", [{ type: "error", message: "failed", t: 3 }], false), false);
 });
 
-test("hides routine provider status rows while retaining terminal failures", () => {
+test("hides routine and interrupted provider status rows while retaining failures", () => {
   assert.equal(hasVisibleAssistantContent(running), false);
   assert.equal(showTerminalTurnStatus("completed"), false);
-  assert.equal(showTerminalTurnStatus("interrupted"), true);
+  assert.equal(showTerminalTurnStatus("interrupted"), false);
   assert.equal(showTerminalTurnStatus("failed"), true);
+  assert.equal(hasVisibleAssistantContent({ ...running, parts: [{ kind: "turn-status", status: "interrupted" }] }), false);
   assert.equal(hasVisibleAssistantContent({ ...running, parts: [{ kind: "turn-status", status: "failed" }] }), true);
 });
