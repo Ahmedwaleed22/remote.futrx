@@ -1,0 +1,24 @@
+{
+  "id": "code-server",
+  "name": "Code Server",
+  "description": "Optional VS Code workspace editor, started on demand and stopped after inactivity.",
+  "category": "development",
+  "version": "1",
+  "icon": "code",
+  "scopes": ["project"],
+  "install": "infra/install.sh",
+  "service": {
+    "name": "code-server",
+    "description": "Code Server workspace editor",
+    "command": ["/usr/bin/env", "VSCODE_RECONNECTION_GRACE_TIME=60000", "/usr/bin/code-server", "/workspace"],
+    "socketProxy": {
+      "listenPort": 8842,
+      "targetPort": 8081,
+      "idleSeconds": 600,
+      "readyPath": "/healthz"
+    }
+  },
+  "ui": {
+    "entry": "scripts/main.js"
+  }
+}

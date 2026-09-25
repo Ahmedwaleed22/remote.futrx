@@ -59,6 +59,11 @@ code.${HOSTNAME} {
         # code-server uses relative asset paths so it works under the sub-path.
         @ide path_regexp ide ^/(?P<slug>[a-z0-9][a-z0-9-]+)(?P<rest>/.*)$
         handle @ide {
+            # The project must have an active Code Server application install.
+            forward_auth 127.0.0.1:${SERVICE_PORT} {
+                uri /auth/verify-code-server
+                header_up X-Forwarded-Uri {uri}
+            }
             rewrite * {re.ide.rest}
             reverse_proxy {re.ide.slug}.lxd:8842 {
                 transport http {
@@ -89,7 +94,7 @@ code.${HOSTNAME} {
         on_demand
     }
     forward_auth 127.0.0.1:${SERVICE_PORT} {
-        uri /auth/verify
+        uri /auth/verify-code-server
     }
     @valid {
         header_regexp host Host ^([a-z0-9][a-z0-9-]*)\.code\.${HOSTNAME_RE}$

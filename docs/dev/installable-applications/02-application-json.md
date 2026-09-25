@@ -263,11 +263,17 @@ unit, and owns start/stop/uninstall lifecycle.
 | `restartSec` | int | Non-negative restart delay in seconds. |
 | `environment` | object[] | Maps a declared `env[]` key into the service environment. Each entry is `{ "key", "fromEnv", "encoding": "base64" }`. |
 | `hardening` | object | Optional `noNewPrivileges`, `privateTmp`, `protectHome`, and `protectSystem` (`true`, `full`, or `strict`). |
+| `socketProxy` | object | Optional on-demand systemd socket and proxy: `listenPort`, loopback `targetPort`, positive `idleSeconds`, and optional HTTP `readyPath`. The process starts on first connection and stops when the proxy idles out. `port.internal`, if declared, must equal `listenPort`. |
 
 Environment mappings are deliberately base64 encoded. This preserves spaces,
 line breaks, quotes, and secrets without letting a value change systemd's
 environment-file syntax. The service decodes those values itself, as Hello
 Remote does for its `HELLO_*_B64` variables.
+
+For `socketProxy`, Remote enables the socket instead of starting the service.
+Stop and uninstall disable the socket and stop the proxy and service. The
+application installer supplies its own executable and configuration; it does
+not write systemd units. Code Server is the built-in example.
 
 ### `connection`
 
