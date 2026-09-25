@@ -21,8 +21,8 @@ func TestCodeServerRouteRequiresRunningProjectInstallation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler.projects = serviceproject.New(projectStore, serviceproject.ContainerDependencies{}, nil, nil)
-	project, err := handler.projects.Create(ctx, serviceproject.CreateInput{Name: "IDE Project"}, "user@example.com")
+	handler.codeServer.projects = serviceproject.New(projectStore, serviceproject.ContainerDependencies{}, nil, nil)
+	project, err := handler.codeServer.projects.Create(ctx, serviceproject.CreateInput{Name: "IDE Project"}, "user@example.com")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestCodeServerRouteRequiresRunningProjectInstallation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler.applications = serviceapps.New(registry, appStore, nil, nil, nil)
+	handler.codeServer.applications = serviceapps.New(registry, appStore, nil, nil, nil)
 
 	if got := handler.codeServerSlug("code."+verifyBaseHost, "/"+project.Slug+"/?folder=/workspace"); got != project.Slug {
 		t.Fatalf("launcher route slug = %q", got)
@@ -52,7 +52,7 @@ func TestCodeServerRouteRequiresRunningProjectInstallation(t *testing.T) {
 		t.Fatalf("foreign host accepted: %q", got)
 	}
 
-	available, err := handler.codeServerAvailable(ctx, project.Slug)
+	available, err := handler.codeServer.available(ctx, project.Slug)
 	if err != nil || available {
 		t.Fatalf("uninstalled app available = %v, err = %v", available, err)
 	}
@@ -63,7 +63,7 @@ func TestCodeServerRouteRequiresRunningProjectInstallation(t *testing.T) {
 	if err := appStore.Put(ctx, inst); err != nil {
 		t.Fatal(err)
 	}
-	available, err = handler.codeServerAvailable(ctx, project.Slug)
+	available, err = handler.codeServer.available(ctx, project.Slug)
 	if err != nil || !available {
 		t.Fatalf("running app available = %v, err = %v", available, err)
 	}
@@ -71,7 +71,7 @@ func TestCodeServerRouteRequiresRunningProjectInstallation(t *testing.T) {
 	if err := appStore.Put(ctx, inst); err != nil {
 		t.Fatal(err)
 	}
-	available, err = handler.codeServerAvailable(ctx, project.Slug)
+	available, err = handler.codeServer.available(ctx, project.Slug)
 	if err != nil || available {
 		t.Fatalf("stopped app available = %v, err = %v", available, err)
 	}

@@ -1,7 +1,6 @@
 package httphandlers
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -9,22 +8,17 @@ import (
 	"strconv"
 	"strings"
 
-	serviceapplications "github.com/futrx-com/remote.futrx.com/internal/service/applications"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
-	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	httptransport "github.com/futrx-com/remote.futrx.com/internal/transport/http"
 )
 
 var projectVerifyHostPattern = regexp.MustCompile(`^([a-z0-9][a-z0-9-]*)--(\d{4,5})\.dev\.(.+)$`)
-var codeServerPathPattern = regexp.MustCompile(`^/([a-z0-9][a-z0-9-]*)(?:/|$)`)
-var projectCodePathPattern = regexp.MustCompile(`^/([a-z0-9][a-z0-9-]*)/code(?:/|$)`)
 
 type authVerifyHandler struct {
-	auth         *serviceauth.Service
-	access       *serviceauth.AccessVerifier
-	shares       shareAuthorizer
-	projects     *serviceproject.Service
-	applications *serviceapplications.Service
+	auth       *serviceauth.Service
+	access     *serviceauth.AccessVerifier
+	shares     shareAuthorizer
+	codeServer codeServerAccess
 }
 
 func (h *authVerifyHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -33,49 +27,25 @@ func (h *authVerifyHandler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (h *authVerifyHandler) verify(w http.ResponseWriter, r *http.Request) {
-	h.verifyRequest(w, r, false)
-}
-
-func (h *authVerifyHandler) verifyCodeServer(w http.ResponseWriter, r *http.Request) {
-	h.verifyRequest(w, r, true)
-}
-
-func (h *authVerifyHandler) verifyRequest(w http.ResponseWriter, r *http.Request, requireCodeServer bool) {
 	host := strings.ToLower(strings.TrimSpace(r.Header.Get("X-Forwarded-Host")))
 	matchedSlug, matchedPort := h.matchPreviewHost(host)
-	if requireCodeServer {
-		matchedSlug = h.codeServerSlug(host, r.Header.Get("X-Forwarded-Uri"))
-		if matchedSlug == "" {
-			http.Error(w, "invalid Code Server route", http.StatusNotFound)
-			return
-		}
-	}
 
 	// Only the preview host class can be authorized by a public share link.
-	// The IDE hosts and the main application never reach this branch, because
-	// matchPreviewHost leaves the slug empty for them. It runs before the
-	// session check so that a member who opens a share URL themselves also
-	// gets the token stripped from it rather than forwarding it into the
-	// project's own request logs.
-	if !requireCodeServer && matchedSlug != "" && h.authorizeShare(w, r, matchedSlug, matchedPort) {
+	// It runs before the session check so that a member who opens a share
+	// URL themselves also gets the token stripped from it rather than
+	// forwarding it into the project's own request logs.
+	if matchedSlug != "" && h.authorizeShare(w, r, matchedSlug, matchedPort) {
 		return
 	}
+	if h.verifySession(w, r, matchedSlug) {
+		w.WriteHeader(http.StatusOK)
+	}
+}
 
+func (h *authVerifyHandler) verifySession(w http.ResponseWriter, r *http.Request, matchedSlug string) bool {
 	err := h.access.Verify(r.Context(), httptransport.SessionCookieValue(r), matchedSlug)
 	if err == nil {
-		if requireCodeServer {
-			available, appErr := h.codeServerAvailable(r.Context(), matchedSlug)
-			if appErr != nil {
-				http.Error(w, "Code Server availability unavailable", http.StatusInternalServerError)
-				return
-			}
-			if !available {
-				http.Error(w, "Code Server is not installed or running", http.StatusNotFound)
-				return
-			}
-		}
-		w.WriteHeader(http.StatusOK)
-		return
+		return true
 	}
 
 	switch {
@@ -89,52 +59,7 @@ func (h *authVerifyHandler) verifyRequest(w http.ResponseWriter, r *http.Request
 	default:
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-}
-
-func (h *authVerifyHandler) codeServerSlug(host, forwardedURI string) string {
-	base := strings.ToLower(strings.TrimSpace(baseHost(h.auth.BaseURL())))
-	if base == "" {
-		return ""
-	}
-	if host == base {
-		if match := projectCodePathPattern.FindStringSubmatch(forwardedURI); match != nil {
-			return match[1]
-		}
-		return ""
-	}
-	if host == "code."+base {
-		if match := codeServerPathPattern.FindStringSubmatch(forwardedURI); match != nil {
-			return match[1]
-		}
-		return ""
-	}
-	if suffix := ".code." + base; strings.HasSuffix(host, suffix) {
-		slug := strings.TrimSuffix(host, suffix)
-		if codeServerPathPattern.MatchString("/" + slug + "/") {
-			return slug
-		}
-	}
-	return ""
-}
-
-func (h *authVerifyHandler) codeServerAvailable(ctx context.Context, slug string) (bool, error) {
-	if h.projects == nil || h.applications == nil {
-		return false, nil
-	}
-	project, err := h.projects.GetBySlug(ctx, slug)
-	if err != nil {
-		return false, nil
-	}
-	installed, err := h.applications.ListProject(ctx, string(project.ID))
-	if err != nil {
-		return false, err
-	}
-	for _, app := range installed {
-		if app.ApplicationID == "code-server" && app.Status == serviceapplications.StatusRunning {
-			return true, nil
-		}
-	}
-	return false, nil
+	return false
 }
 
 // matchPreviewHost resolves a forwarded host to the project slug and port

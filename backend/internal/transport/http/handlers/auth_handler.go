@@ -43,8 +43,8 @@ func (h *AuthHandler) WithShares(shares *serviceshare.Service) *AuthHandler {
 
 // WithCodeServer gates the IDE proxy on a running project installation.
 func (h *AuthHandler) WithCodeServer(projects *serviceproject.Service, apps *serviceapplications.Service) *AuthHandler {
-	h.verify.projects = projects
-	h.verify.applications = apps
+	h.verify.codeServer.projects = projects
+	h.verify.codeServer.applications = apps
 	return h
 }
 
