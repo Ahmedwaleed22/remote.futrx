@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 import type { AppApplication } from "../../models/application";
 import type { ApplicationsController } from "../../state/hooks/applications/useApplications";
+import { prepareInstallRequest } from "../../services/applications/prepareInstallRequest";
 import { AppIcon } from "./AppIcon";
 import { ApplicationEmptyState } from "./ApplicationEmptyState";
 import { hasPortBinding } from "./applicationPresentation";
@@ -143,35 +144,7 @@ function InstallDialog({
     setBusy(true);
     setErr(null);
     try {
-      const port = asksForPort && externalPort.trim()
-        ? Number(externalPort.trim())
-        : undefined;
-      if (port !== undefined && (!Number.isInteger(port) || port < 1 || port > 65535)) {
-        throw new Error("External port must be 1–65535.");
-      }
-      for (const variable of application.env ?? []) {
-        if (variable.format !== "json") continue;
-        const value = env[variable.key] ?? variable.default ?? "";
-        if (!value.trim()) continue;
-        if (new TextEncoder().encode(value).length > 128 * 1024) {
-          throw new Error(`${variable.label || variable.key} must be smaller than 128 KiB.`);
-        }
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(value);
-        } catch {
-          throw new Error(`${variable.label || variable.key} must be valid JSON.`);
-        }
-        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-          throw new Error(`${variable.label || variable.key} must be a JSON object.`);
-        }
-      }
-      await onInstall({
-        applicationId: application.id,
-        name: name.trim() || application.name,
-        env,
-        externalPort: port,
-      });
+      await onInstall(prepareInstallRequest(application, { name, env, externalPort }, asksForPort));
       onClose();
     } catch (error) {
       setErr((error as Error).message);
