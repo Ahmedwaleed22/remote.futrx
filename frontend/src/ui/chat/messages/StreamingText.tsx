@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { Markdown, MarkdownBlocks } from "../markdown/Markdown";
-import { parseMarkdown, parseStreamingMarkdown } from "../markdown/blockParser";
+import { parseMarkdown, parseStreamingMarkdownState } from "../markdown/blockParser";
 import { getTextAlignClass, getTextDirection } from "../markdown/bidi";
 
 interface Props {
@@ -48,10 +48,35 @@ function HydratedText({ text, chatId, cwd }: Props) {
 }
 
 function BlockStreamingText({ text, streaming, chatId, cwd }: Props) {
-  const blocks = useMemo(() => parseStreamingMarkdown(text, !streaming), [text, streaming]);
+  const { blocks, pending } = useMemo(() => parseStreamingMarkdownState(text, !streaming), [text, streaming]);
   const hasStreamed = useRef(streaming);
   if (streaming) hasStreamed.current = true;
-  return <MarkdownBlocks blocks={blocks} chatId={chatId} cwd={cwd} streaming={hasStreamed.current} />;
+  const last = blocks[blocks.length - 1];
+  const progressKey = `${blocks.length}:${last?.type === "list" ? last.items.length
+    : last?.type === "table" ? last.rows.length : 0}`;
+  return <>
+    <MarkdownBlocks blocks={blocks} chatId={chatId} cwd={cwd} streaming={hasStreamed.current} />
+    <PendingBlockFeedback pending={streaming && pending} progressKey={progressKey} />
+  </>;
+}
+
+const waitingLabels = ["Creating...", "Writing...", "Working on it..."];
+
+function PendingBlockFeedback({ pending, progressKey }: { pending: boolean; progressKey: string }) {
+  const [feedback, setFeedback] = useState<{ key: string; label: string } | null>(null);
+
+  useEffect(() => {
+    if (!pending) return;
+    const timer = window.setTimeout(() => {
+      setFeedback({ key: progressKey, label: waitingLabels[Math.floor(Math.random() * waitingLabels.length)] });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [pending, progressKey]);
+
+  const visible = pending && feedback?.key === progressKey;
+  return <div class={`streaming-feedback${visible ? " streaming-feedback-visible" : ""}`} role="status" aria-hidden={!visible}>
+    {feedback?.label}
+  </div>;
 }
 
 // Typewriter-style renderer: buffers incoming text and reveals it at a steady
