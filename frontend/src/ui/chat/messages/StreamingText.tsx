@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "preact/hooks";
 import { MarkdownBlocks } from "../markdown/Markdown";
-import { parseMarkdown, parseStreamingMarkdownState } from "../markdown/blockParser";
-import { PendingBlockFeedback } from "./PendingBlockFeedback";
+import { parseMarkdown } from "../markdown/blockParser";
+import { BlockStreamingText } from "./BlockStreamingText";
 import { TokenStreamingText } from "./TokenStreamingText";
 
 interface Props {
@@ -46,17 +46,4 @@ export function StreamingText(props: Props) {
 function HydratedText({ text, chatId, cwd }: Props) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
   return <MarkdownBlocks blocks={blocks} chatId={chatId} cwd={cwd} streaming={false} />;
-}
-
-function BlockStreamingText({ text, streaming, chatId, cwd }: Props) {
-  const { blocks, pending } = useMemo(() => parseStreamingMarkdownState(text, !streaming), [text, streaming]);
-  const hasStreamed = useRef(streaming);
-  if (streaming) hasStreamed.current = true;
-  const last = blocks[blocks.length - 1];
-  const progressKey = `${blocks.length}:${last?.type === "list" ? last.items.length
-    : last?.type === "table" ? last.rows.length : 0}`;
-  return <>
-    <MarkdownBlocks blocks={blocks} chatId={chatId} cwd={cwd} streaming={hasStreamed.current} />
-    <PendingBlockFeedback pending={streaming && pending} progressKey={progressKey} />
-  </>;
 }
