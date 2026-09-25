@@ -17,7 +17,7 @@ import { useChatDrawerController } from "../../state/hooks/chat/useChatDrawerCon
 import { useChatFind } from "../../state/hooks/chat/useChatFind";
 import { useChatPreferences } from "../../state/hooks/chat/useChatPreferences";
 import { useAgentCapabilities } from "../../state/hooks/chat/useAgentCapabilities";
-import { streamingPresentationFor } from "../../config/agents";
+import { streamingPresentationFor } from "../../services/chat/streamingPresentation";
 import { useChatReadMarker } from "../../state/hooks/chat/useChatReadMarker";
 import { useDismissShortcut } from "../../state/hooks/shared/useDismissShortcut.ts";
 import { useTerminalOverlayController } from "../../ui/chat/terminal/useTerminalOverlayController";

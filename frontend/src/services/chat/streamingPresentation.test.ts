@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { AgentCapabilitiesCatalog } from "../models/agentCapabilities.ts";
-import { streamingPresentationFor } from "./agents.ts";
+import type { AgentCapabilitiesCatalog } from "../../models/agentCapabilities.ts";
+import { streamingPresentationFor } from "./streamingPresentation.ts";
 
 test("uses provider policy and falls back to tokens when support is absent", () => {
   const catalog = { providers: [
