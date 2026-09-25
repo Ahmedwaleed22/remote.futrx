@@ -152,7 +152,9 @@ itself as a durable process supervisor.
 
 ## Open the browser IDE
 
-1. Install **Code Server** from that project's Applications page.
+1. Open **Code Server** on that project's Applications page. Edit the complete
+   **VS Code settings.json** field before selecting **Install**. It starts with
+   Remote's defaults and accepts a JSON object with any VS Code settings keys.
 2. Open the intended project chat.
 3. Select **Open in IDE**.
 4. Allow the new tab if the browser blocks it.

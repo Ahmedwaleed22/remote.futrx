@@ -41,88 +41,23 @@ chmod 0600 /root/.config/code-server/config.yaml
 # container, so there is no per-client opt-out -- desktop Chrome would have to
 # cost mobile the editor entirely. Keep it off.
 install -d -m 0755 /root/.local/share/code-server/User
-cat > /root/.local/share/code-server/User/settings.json <<'JSON'
-{
-  "window.title": "${rootPath}",
-  "workbench.iconTheme": "material-icon-theme",
-  "chat.disableAIFeatures": true,
-  "chat.commandCenter.enabled": false,
-  "files.watcherExclude": {
-    "**/.git/objects/**": true,
-    "**/.git/subtree-cache/**": true,
-    "**/node_modules/**": true,
-    "**/dist/**": true,
-    "**/build/**": true,
-    "**/.next/**": true,
-    "**/.nuxt/**": true,
-    "**/.cache/**": true,
-    "**/.turbo/**": true,
-    "**/vendor/**": true,
-    "**/.venv/**": true,
-    "**/__pycache__/**": true,
-    "**/target/**": true
-  },
-  "files.exclude": {
-    "**/node_modules": true,
-    "**/.git": true,
-    "**/.DS_Store": true
-  },
-  "search.exclude": {
-    "**/node_modules": true,
-    "**/dist": true,
-    "**/build": true,
-    "**/.next": true,
-    "**/vendor": true,
-    "**/.cache": true,
-    "**/.turbo": true,
-    "**/package-lock.json": true,
-    "**/yarn.lock": true,
-    "**/pnpm-lock.yaml": true
-  },
-  "typescript.tsserver.maxTsServerMemory": 3072,
-  "typescript.disableAutomaticTypeAcquisition": true,
-  "editor.smoothScrolling": false,
-  "editor.cursorSmoothCaretAnimation": "off",
-  "editor.cursorBlinking": "solid",
-  "workbench.list.smoothScrolling": false,
-  "workbench.reduceMotion": "on",
-  "terminal.integrated.smoothScrolling": false,
-  "editor.minimap.enabled": false,
-  "editor.renderWhitespace": "none",
-  "editor.guides.indentation": false,
-  "editor.guides.bracketPairs": false,
-  "editor.bracketPairColorization.enabled": true,
-  "editor.occurrencesHighlight": "off",
-  "editor.selectionHighlight": false,
-  "editor.codeLens": false,
-  "breadcrumbs.enabled": false,
-  "editor.linkedEditing": false,
-  "editor.stickyScroll.enabled": false,
-  "editor.experimentalGpuAcceleration": "off",
-  "editor.fontLigatures": false,
-  "terminal.integrated.gpuAcceleration": "auto",
-  "telemetry.telemetryLevel": "off",
-  "update.mode": "none",
-  "extensions.autoUpdate": false,
-  "extensions.autoCheckUpdates": false,
-  "workbench.enableExperiments": false,
-  "workbench.settings.enableNaturalLanguageSearch": false,
-  "git.autorefresh": true,
-  "git.decorations.enabled": true,
-  "scm.diffDecorations": "gutter",
-  "files.autoSave": "afterDelay",
-  "files.autoSaveDelay": 1500,
-  "workbench.editor.enablePreview": false,
-  "workbench.editor.limit.enabled": true,
-  "workbench.editor.limit.value": 10,
-  "workbench.colorTheme": "JetBrains Darcula Theme",
-  "mermaidLivePreview.previewAppearance": "light",
-  "mermaidLivePreview.useVSCodeTheme": false,
-  "mermaidLivePreview.theme": "default",
-  "git.openRepositoryInParentFolders": "always",
-  "security.workspace.trust.enabled": false
+# The install form supplies a complete, validated VS Code settings object.
+# The default comes from infra/settings.json, but any key can be edited first.
+export CODE_SERVER_WS_NAME="${CODE_SERVER_WS_NAME:-$(hostname)}"
+node <<'NODE'
+const fs = require("fs");
+const path = "/root/.local/share/code-server/User/settings.json";
+const settings = JSON.parse(process.env.CODE_SERVER_SETTINGS_JSON || "null");
+if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+  throw new Error("CODE_SERVER_SETTINGS_JSON must be a JSON object");
 }
-JSON
+if (settings["window.title"] === "${rootPath}") {
+  settings["window.title"] = process.env.CODE_SERVER_WS_NAME;
+}
+const temporary = path + ".remote-tmp";
+fs.writeFileSync(temporary, JSON.stringify(settings, null, 2) + "\n", { mode: 0o600 });
+fs.renameSync(temporary, path);
+NODE
 
 # Pinned extensions, best-effort: a flaky Open VSX must never fail the build.
 for ext in \
@@ -137,8 +72,3 @@ for ext in \
     ; do
     code-server --install-extension "$ext" >/dev/null 2>&1 || true
 done
-
-# Use the container hostname (the project slug) as the window title so each
-# PWA or dock window is identifiable.
-export CODE_SERVER_WS_NAME="${CODE_SERVER_WS_NAME:-$(hostname)}"
-node -e 'const fs=require("fs");const p="/root/.local/share/code-server/User/settings.json";const s=JSON.parse(fs.readFileSync(p,"utf8"));s["window.title"]=process.env.CODE_SERVER_WS_NAME;fs.writeFileSync(p,JSON.stringify(s,null,2)+"\n")' 2>/dev/null || true

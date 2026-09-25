@@ -1,6 +1,7 @@
 package applications
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -25,8 +26,19 @@ func TestCodeServerIsAnOptionalProjectApplication(t *testing.T) {
 	if socket.ListenPort != 8842 || socket.TargetPort != 8081 || socket.IdleSeconds != 600 || socket.ReadyPath != "/healthz" {
 		t.Fatalf("socket contract = %+v", socket)
 	}
+	if len(app.Env) != 1 || app.Env[0].Key != "CODE_SERVER_SETTINGS_JSON" ||
+		app.Env[0].Format != "json" || !app.Env[0].Secret || app.Env[0].DefaultFile != "" {
+		t.Fatalf("install form does not expose the complete settings document: %+v", app.Env)
+	}
+	var settings map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(app.Env[0].Default), &settings); err != nil || len(settings) < 30 {
+		t.Fatalf("default settings are missing or incomplete: %v, %d keys", err, len(settings))
+	}
 	script, ok := registry.Script(app.ID)
 	if !ok || !strings.Contains(string(script), "CODE_SERVER_VERSION=4.121.0") {
 		t.Fatal("Code Server install script is missing its version pin")
+	}
+	if !strings.Contains(string(script), "process.env.CODE_SERVER_SETTINGS_JSON") {
+		t.Fatal("Code Server install script does not apply the selected settings")
 	}
 }
