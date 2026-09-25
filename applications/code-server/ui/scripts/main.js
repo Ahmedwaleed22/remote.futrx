@@ -11,8 +11,7 @@ export function workspaceIdeUrl(cwd, origin = window.location.origin) {
   const match = WORKSPACE.exec(cwd || "");
   if (!match) return null;
   const base = new URL(origin);
-  base.hostname = `code.${base.hostname}`;
-  base.pathname = `/${match[1]}/`;
+  base.pathname = `/${match[1]}/code`;
   base.searchParams.set("folder", match[2] ? `/workspace/${match[2]}` : "/workspace");
   return base.toString();
 }

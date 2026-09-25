@@ -5,7 +5,7 @@ import activate, { workspaceIdeUrl } from "./main.js";
 test("Code Server URL uses the project route and selected chat directory", () => {
   assert.equal(
     workspaceIdeUrl("/var/lib/remote/projects/example/workspace/src", "https://remote.example.test"),
-    "https://code.remote.example.test/example/?folder=%2Fworkspace%2Fsrc",
+    "https://remote.example.test/example/code?folder=%2Fworkspace%2Fsrc",
   );
   assert.equal(workspaceIdeUrl("/opt/remote.futrx", "https://remote.example.test"), null);
 });
@@ -26,7 +26,7 @@ test("editor icon is contributed only for a project workspace", () => {
     assert.equal(button.when({ projectId: "p1", cwd: "/opt/remote.futrx" }), false);
     assert.equal(button.when({ cwd: "/var/lib/remote/projects/example/workspace" }), false);
     button.onClick({ cwd: "/var/lib/remote/projects/example/workspace" });
-    assert.equal(globalThis.opened[0], "https://code.remote.example.test/example/?folder=%2Fworkspace");
+    assert.equal(globalThis.opened[0], "https://remote.example.test/example/code?folder=%2Fworkspace");
   } finally {
     delete globalThis.window;
     delete globalThis.opened;

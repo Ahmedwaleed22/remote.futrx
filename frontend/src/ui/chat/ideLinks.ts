@@ -37,13 +37,13 @@ export function buildIdeUrl(
   const proj = projectSlugAndContainerPath(folder);
   const ideBaseUrl = currentIdeBaseUrl();
   if (proj) {
-    // Per-container IDE: code.<installed-domain>/<slug>/.
-    const url = new URL(`${proj.slug}/`, ideBaseUrl);
+    // The main-site shortcut redirects to the isolated IDE origin.
+    const url = new URL(`${proj.slug}/code`, location.origin + "/");
     url.searchParams.set("folder", proj.containerPath);
     if (filePath) {
       const f = projectSlugAndContainerPath(normalizeAbsolutePath(filePath));
       if (f && f.slug === proj.slug) {
-        url.searchParams.set("payload", openFilePayload(url.host, f.containerPath, line, column));
+        url.searchParams.set("payload", openFilePayload(new URL(ideBaseUrl).host, f.containerPath, line, column));
       }
     }
     return url.toString();

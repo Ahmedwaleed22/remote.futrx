@@ -23,6 +23,10 @@
 
 ${HOSTNAME} {
     encode zstd gzip
+    # A convenient project IDE entry point. Keep the editor on its separate
+    # origin so project code cannot make same-origin requests to the platform.
+    @codeShortcut path_regexp codeShortcut ^/([a-z0-9][a-z0-9-]*)/code/?$
+    redir @codeShortcut https://code.${HOSTNAME}/{re.codeShortcut.1}/{?query} 302
     # Defense in depth: /internal/* is reachable only on loopback (Caddy →
     # backend). Reject any external attempt.
     @internal path /internal/*

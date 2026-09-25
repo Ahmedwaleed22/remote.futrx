@@ -174,6 +174,9 @@ Code Server application in that project. Stopping or uninstalling the app
 blocks both IDE URL forms. Project containers still share the LXD bridge, so
 container-to-container access is a separate host-network limitation.
 
+Open `https://<your-remote-host>/<project-slug>/code` for a short project link.
+It redirects to the IDE's separate origin, where the project access check runs.
+
 ### Use the installable IDE launcher
 
 Open `https://code.<your-remote-host>` to see the available project IDEs in a dedicated launcher. That launcher includes a web-app manifest and minimal service worker, so a supporting browser can install it as a PWA for faster access to project editors.
