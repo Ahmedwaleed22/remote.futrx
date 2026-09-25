@@ -37,7 +37,7 @@ ${HOSTNAME} {
         handle @ide {
             forward_auth 127.0.0.1:${SERVICE_PORT} {
                 uri /auth/verify-code-server
-                header_up X-Forwarded-Uri {uri}
+                header_up X-Forwarded-Uri {http.request.orig_uri}
             }
             rewrite * {re.ide.rest}
             reverse_proxy {re.ide.slug}.lxd:8842 {
@@ -84,7 +84,7 @@ code.${HOSTNAME} {
             # The project must have an active Code Server application install.
             forward_auth 127.0.0.1:${SERVICE_PORT} {
                 uri /auth/verify-code-server
-                header_up X-Forwarded-Uri {uri}
+                header_up X-Forwarded-Uri {http.request.orig_uri}
             }
             rewrite * {re.ide.rest}
             reverse_proxy {re.ide.slug}.lxd:8842 {
