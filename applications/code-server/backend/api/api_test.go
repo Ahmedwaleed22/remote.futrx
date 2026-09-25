@@ -23,8 +23,8 @@ func TestSettingsBackendSeedsOnceAndSavesValidatedSettings(t *testing.T) {
 	dir := t.TempDir()
 	b := New()
 	var stored []byte
-	b.read = func(name string) ([]byte, error) { return stored, nil }
-	b.write = func(name string, content []byte) error {
+	b.settings.read = func(name string) ([]byte, error) { return stored, nil }
+	b.settings.write = func(name string, content []byte) error {
 		if name != "project-test" {
 			t.Fatalf("unexpected container %q", name)
 		}
@@ -65,7 +65,7 @@ func TestSettingsBackendSeedsOnceAndSavesValidatedSettings(t *testing.T) {
 	// Restarts and container replacement keep the backend DataDir. A new
 	// backend must not roll edited settings back to the original install env.
 	restarted := New()
-	restarted.write = func(string, []byte) error { t.Fatal("initial settings overwritten on restart"); return nil }
+	restarted.settings.write = func(string, []byte) error { t.Fatal("initial settings overwritten on restart"); return nil }
 	if err := restarted.Init(instance); err != nil {
 		t.Fatal(err)
 	}
@@ -73,9 +73,9 @@ func TestSettingsBackendSeedsOnceAndSavesValidatedSettings(t *testing.T) {
 
 func TestSettingsBackendRejectsInvalidAndFailedWrites(t *testing.T) {
 	b := New()
-	b.instance = testInstance(t, t.TempDir())
+	b.settings.instance = testInstance(t, t.TempDir())
 	writes := 0
-	b.write = func(string, []byte) error { writes++; return errors.New("container unavailable") }
+	b.settings.write = func(string, []byte) error { writes++; return errors.New("container unavailable") }
 	for _, value := range []string{`{"settings":"[]"}`, `{"settings":"null"}`, `{"settings":"{"}`} {
 		response, err := b.Handle(applications.Request{Method: "POST", Path: "settings", Body: []byte(value)})
 		if err != nil || response.Status != 400 {
