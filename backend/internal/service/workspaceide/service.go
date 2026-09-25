@@ -32,7 +32,7 @@ func (s *Service) redirectURL(target workspacepath.Target) string {
 	folder := target.WorkspaceRoot
 	file := target.FilePath
 	if slug, containerRoot, ok := workspacepath.ContainerPath(target.WorkspaceRoot, s.projectsRoot); ok {
-		base = s.projectURL + slug + "/code"
+		base = s.projectURL + slug + "/code/"
 		folder = containerRoot
 		if _, containerFile, fileIsInContainer := workspacepath.ContainerPath(target.FilePath, s.projectsRoot); fileIsInContainer {
 			file = containerFile
@@ -45,11 +45,7 @@ func (s *Service) redirectURL(target workspacepath.Target) string {
 	query := redirect.Query()
 	query.Set("folder", folder)
 	if file != "" && file != folder {
-		payloadHost := redirect.Host
-		if ideOrigin, err := url.Parse(s.baseURL); err == nil {
-			payloadHost = ideOrigin.Host
-		}
-		query.Set("payload", openFilePayload(payloadHost, file, target.Line, target.Column))
+		query.Set("payload", openFilePayload(redirect.Host, file, target.Line, target.Column))
 	}
 	redirect.RawQuery = query.Encode()
 	return redirect.String()

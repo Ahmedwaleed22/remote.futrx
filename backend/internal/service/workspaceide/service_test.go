@@ -28,8 +28,8 @@ func TestOpenURLMapsProjectPathsIntoContainer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(got, testProjectURL+"graphixy-ai/code?") {
-		t.Fatalf("OpenURL() = %q, want project IDE prefix %q", got, testProjectURL+"graphixy-ai/code?")
+	if !strings.HasPrefix(got, testProjectURL+"graphixy-ai/code/?") {
+		t.Fatalf("OpenURL() = %q, want project IDE prefix %q", got, testProjectURL+"graphixy-ai/code/?")
 	}
 
 	query := redirectQuery(t, got)
@@ -43,7 +43,7 @@ func TestOpenURLMapsProjectPathsIntoContainer(t *testing.T) {
 	// suffix plus gotoLineMode place the cursor (verified on code-server 4.121.0).
 	payload := query.Get("payload")
 	for _, want := range []string{
-		`["openFile","vscode-remote://code.remote.futrx.com/workspace/src/App.tsx:87:5"]`,
+		`["openFile","vscode-remote://remote.futrx.com/workspace/src/App.tsx:87:5"]`,
 		`["gotoLineMode","true"]`,
 	} {
 		if !strings.Contains(payload, want) {
@@ -71,7 +71,7 @@ func TestOpenURLFileWithoutLineOmitsGotoLineMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	payload := redirectQuery(t, got).Get("payload")
-	if !strings.Contains(payload, `["openFile","vscode-remote://code.remote.futrx.com/workspace/README.md"]`) {
+	if !strings.Contains(payload, `["openFile","vscode-remote://remote.futrx.com/workspace/README.md"]`) {
 		t.Fatalf("payload %q missing plain openFile entry", payload)
 	}
 	// Without gotoLineMode the workbench keeps colon-bearing paths intact, so

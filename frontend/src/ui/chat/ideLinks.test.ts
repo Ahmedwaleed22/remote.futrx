@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildIdeUrl, openFilePayload } from "./ideLinks.ts";
 
-test("project IDE links use the main-site shortcut with the IDE payload host", () => {
+test("project IDE links stay on the main site", () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "location");
   Object.defineProperty(globalThis, "location", {
     configurable: true,
@@ -15,9 +15,9 @@ test("project IDE links use the main-site shortcut with the IDE payload host", (
       12,
     );
     const url = new URL(raw);
-    assert.equal(url.origin + url.pathname, "https://remote.example.test/example/code");
+    assert.equal(url.origin + url.pathname, "https://remote.example.test/example/code/");
     assert.equal(url.searchParams.get("folder"), "/workspace");
-    assert.match(url.searchParams.get("payload") || "", /vscode-remote:\/\/code.remote.example.test\/workspace\/src\/App.tsx:12/);
+    assert.match(url.searchParams.get("payload") || "", /vscode-remote:\/\/remote.example.test\/workspace\/src\/App.tsx:12/);
   } finally {
     if (previous) Object.defineProperty(globalThis, "location", previous);
     else Reflect.deleteProperty(globalThis, "location");

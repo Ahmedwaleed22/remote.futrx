@@ -161,8 +161,8 @@ itself as a durable process supervisor.
 5. Wait for code-server to open the chat path, normally `/workspace`.
 6. Use the IDE's explorer, search, editor, and integrated tools normally.
 
-**Outcome:** the browser opens the project's code-server instance on its
-dedicated IDE endpoint. File rows and agent-produced workspace links can target
+**Outcome:** the browser opens the project's code-server instance at
+`/<project-slug>/code/`. File rows and agent-produced workspace links can target
 a validated file and optional line/column inside that IDE.
 
 ![The project code-server IDE in a browser tab](/assets/docs/screenshots/browser-ide.webp)
@@ -174,8 +174,9 @@ Code Server application in that project. Stopping or uninstalling the app
 blocks both IDE URL forms. Project containers still share the LXD bridge, so
 container-to-container access is a separate host-network limitation.
 
-Open `https://<your-remote-host>/<project-slug>/code` for a short project link.
-It redirects to the IDE's separate origin, where the project access check runs.
+Open `https://<your-remote-host>/<project-slug>/code/` for the project editor.
+The IDE stays at this address, and each request checks project access and
+whether Code Server is running.
 
 ### Use the installable IDE launcher
 

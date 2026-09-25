@@ -17,6 +17,7 @@ import (
 
 var projectVerifyHostPattern = regexp.MustCompile(`^([a-z0-9][a-z0-9-]*)--(\d{4,5})\.dev\.(.+)$`)
 var codeServerPathPattern = regexp.MustCompile(`^/([a-z0-9][a-z0-9-]*)(?:/|$)`)
+var projectCodePathPattern = regexp.MustCompile(`^/([a-z0-9][a-z0-9-]*)/code(?:/|$)`)
 
 type authVerifyHandler struct {
 	auth         *serviceauth.Service
@@ -93,6 +94,12 @@ func (h *authVerifyHandler) verifyRequest(w http.ResponseWriter, r *http.Request
 func (h *authVerifyHandler) codeServerSlug(host, forwardedURI string) string {
 	base := strings.ToLower(strings.TrimSpace(baseHost(h.auth.BaseURL())))
 	if base == "" {
+		return ""
+	}
+	if host == base {
+		if match := projectCodePathPattern.FindStringSubmatch(forwardedURI); match != nil {
+			return match[1]
+		}
 		return ""
 	}
 	if host == "code."+base {

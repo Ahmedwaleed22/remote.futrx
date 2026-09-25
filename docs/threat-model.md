@@ -52,6 +52,7 @@ machine and guardrails.
 | 17 | No CSRF tokens and WebSocket origin checks disabled | Web | Tampering | **Medium** | cited |
 | 18 | Secrets/OAuth key plaintext at rest; leaked `session.key` forges admin sessions forever | Secrets | Elevation of privilege | **Medium** | cited |
 | 19 | `return_to` open redirect into untrusted preview/IDE subdomains | Web | Spoofing | **Low** | cited |
+| 20 | Project IDE content shares the platform browser origin | Web | Elevation of privilege | **High** | ✓ |
 
 ¹ Conditional — see finding 11 for the precondition.
 
@@ -71,12 +72,27 @@ External users reach only Caddy, which terminates TLS and forwards to the loopba
 ### 4. Any invited user reaches any project's code-server IDE — resolved at edge
 
 The optional Code Server application now has an application-aware Caddy
-forward-auth route for both `<slug>.code.<host>` and `code.<host>/<slug>/`.
+forward-auth route for `<host>/<slug>/code/`, `<slug>.code.<host>`, and
+`code.<host>/<slug>/`.
 [`auth_verify_handler.go`](../backend/internal/transport/http/handlers/auth_verify_handler.go)
 extracts the slug, verifies project membership or administrator access, and
 requires a running Code Server installation. Stopping or uninstalling the app
 also disables its in-container socket. The direct LXD bridge path remains
 ungated; see finding 5.
+
+### 20. Project IDE content shares the platform browser origin — **High**
+
+The `/<slug>/code/` route serves code-server on the main Remote origin. Code
+Server can render project-controlled content in the browser. Script running in
+that origin can call Remote's API with the user's session, including routes
+outside the project. The proxy strips platform cookies before forwarding
+requests into the container and strips upstream `Set-Cookie` responses; these
+measures keep the container from reading or replacing the cookie directly, but
+they do not stop browser script from sending credentialed same-origin requests.
+The previous dedicated `code.<host>` origin provided a browser boundary that
+this path cannot provide. Operators should treat opening project IDE content as
+granting it the user's platform browser privileges until an isolated origin is
+restored or the API gains a separate authorization boundary.
 
 ### 11. Google OAuth authorizes on an unverified email — **High** (conditional) ✓ code-verified
 

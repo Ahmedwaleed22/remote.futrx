@@ -39,6 +39,12 @@ func TestCodeServerRouteRequiresRunningProjectInstallation(t *testing.T) {
 	if got := handler.codeServerSlug("code."+verifyBaseHost, "/"+project.Slug+"/?folder=/workspace"); got != project.Slug {
 		t.Fatalf("launcher route slug = %q", got)
 	}
+	if got := handler.codeServerSlug(verifyBaseHost, "/"+project.Slug+"/code/?folder=/workspace"); got != project.Slug {
+		t.Fatalf("main-site route slug = %q", got)
+	}
+	if got := handler.codeServerSlug(verifyBaseHost, "/"+project.Slug+"/code-other"); got != "" {
+		t.Fatalf("non-IDE route accepted: %q", got)
+	}
 	if got := handler.codeServerSlug(project.Slug+".code."+verifyBaseHost, "/"); got != project.Slug {
 		t.Fatalf("project subdomain slug = %q", got)
 	}
@@ -80,6 +86,7 @@ func TestCodeServerForwardAuthRejectsAProjectNonmember(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, route := range []struct{ host, uri string }{
+		{verifyBaseHost, "/" + verifyProjectSlug + "/code/?folder=/workspace"},
 		{verifyProjectSlug + ".code." + verifyBaseHost, "/"},
 		{"code." + verifyBaseHost, "/" + verifyProjectSlug + "/?folder=/workspace"},
 	} {
