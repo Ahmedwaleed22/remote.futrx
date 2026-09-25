@@ -41,6 +41,7 @@ export function ChatContainer({
     loadingOlder,
     indexingProgress,
     status,
+    locallyStartedTurn,
     error,
     canSendPrompt,
     sendPrompt,
@@ -207,6 +208,7 @@ export function ChatContainer({
             loadingOlder={loadingOlder}
             indexingProgress={indexingProgress}
             status={status}
+            locallyStartedTurn={locallyStartedTurn}
             streamingPresentation={streamingPresentation}
             error={error}
             composer={composerView}

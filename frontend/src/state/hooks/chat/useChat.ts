@@ -19,6 +19,7 @@ import type {
 } from "../../../models/chat";
 import { chatEventStateProjector } from "./chatEventStateProjector";
 import type { ChatMessageBlock, HydratedTextPart } from "../../../models/chatMessage";
+import { isTerminalTurnStatus } from "../../../services/chat/turnStatus.ts";
 
 interface UseChatResult {
   meta: ChatMeta | null;
@@ -29,6 +30,7 @@ interface UseChatResult {
   loadingOlder: boolean;
   indexingProgress: TranscriptIndexProgress | null;
   status: ChatStatus;
+  locallyStartedTurn: boolean;
   error: string | null;
   canSendPrompt: boolean;
   sendPrompt: (text: string, clientId?: string) => boolean;
@@ -51,6 +53,7 @@ export function useChat(chatId: string): UseChatResult {
     chatEventStateProjector.empty()
   );
   const [status, setStatus] = useState<ChatStatus>("loading");
+  const [locallyStartedTurn, setLocallyStartedTurn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wsReady, setWsReady] = useState(false);
   // True once this connection has received its sync event. Until then the run
@@ -91,6 +94,10 @@ export function useChat(chatId: string): UseChatResult {
     );
     setRenderState((current) => chatEventStateProjector.append(current, events));
     setStatus((current) => chatEventStateProjector.statusAfter(events[events.length - 1], current));
+    if (events.some((event) => event.type === "user" || event.type === "complete" || event.type === "error"
+      || (event.type === "turn_status" && isTerminalTurnStatus(event.status)))) {
+      setLocallyStartedTurn(false);
+    }
   }, []);
 
   const enqueueEvent = useCallback((event: ChatEvent) => {
@@ -104,6 +111,7 @@ export function useChat(chatId: string): UseChatResult {
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
+    setLocallyStartedTurn(false);
     clearPendingEvents();
     setRenderState(chatEventStateProjector.empty());
     setMeta(null);
@@ -199,6 +207,7 @@ export function useChat(chatId: string): UseChatResult {
           if (event.type === "sync") {
             setSynced(true);
             setStatus(event.running ? "streaming" : "ready");
+            if (!event.running) setLocallyStartedTurn(false);
             return;
           }
           if (
@@ -212,6 +221,7 @@ export function useChat(chatId: string): UseChatResult {
             if (typeof clientId === "string" && clientId) {
               setPromptOutcome({ clientId, accepted: event.subtype === "prompt_accepted" });
             }
+            if (event.subtype === "prompt_rejected") setLocallyStartedTurn(false);
             return;
           }
           enqueueEvent(event);
@@ -239,6 +249,7 @@ export function useChat(chatId: string): UseChatResult {
     if (!wsReady || !synced || !stream?.isOpen) return false;
     if (status !== "ready") return false;
     setStatus("streaming");
+    setLocallyStartedTurn(true);
     stream.sendPrompt(text, clientId);
     return true;
   }, [status, wsReady, synced]);
@@ -264,6 +275,7 @@ export function useChat(chatId: string): UseChatResult {
     );
     setRenderState(chatEventStateProjector.fromEvents(res.events, res));
     setStatus("ready");
+    setLocallyStartedTurn(false);
     return res;
   }, [chatId]);
 
@@ -298,6 +310,7 @@ export function useChat(chatId: string): UseChatResult {
     loadingOlder,
     indexingProgress,
     status,
+    locallyStartedTurn,
     error,
     // A known canonical tail lets the socket synchronize safely even while
     // older transcript items continue materializing in the background.

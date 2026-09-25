@@ -8,6 +8,7 @@ import { ToolGroup } from "./ToolGroup";
 import { InteractionCard } from "../interactions/InteractionCard";
 import { CollaborationCard } from "./CollaborationCard";
 import type { ChatInteractionResponder } from "../../../types/chatApi";
+import { showTerminalTurnStatus } from "./turnActivity";
 
 type ToolPart = Extract<AssistantMessagePart, { kind: "tool" }>;
 
@@ -119,6 +120,9 @@ function renderAssistantParts(
     }
 
     if (part.kind === "turn-status") {
+      // The thread-level activity label represents a running turn. Only
+      // failures and interruptions need a persistent transcript status line.
+      if (!showTerminalTurnStatus(part.status)) return;
       const providerLabel = part.provider ? providerDisplayLabel(part.provider) : "Agent";
       rendered.push(
         <div key={`status-${index}`} class="my-2 flex items-center gap-2 text-[11px] text-ink-400">

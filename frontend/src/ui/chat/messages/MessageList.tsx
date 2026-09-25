@@ -5,6 +5,8 @@ import type { ChatMessageBlock, HydratedTextPart } from "../../../models/chatMes
 import { MessageBlock } from "./MessageBlock";
 import { MessageSkeleton } from "./MessageSkeleton";
 import { ThreadEmptyState } from "./ThreadEmptyState";
+import { TurnActivity } from "./TurnActivity";
+import { showTurnActivity } from "./turnActivity";
 import type { ChatInteractionResponder } from "../../../types/chatApi";
 
 const INITIAL_VISIBLE_BLOCKS = 80;
@@ -12,6 +14,7 @@ const LOAD_MORE_BLOCKS = 80;
 
 export function MessageList({
   status,
+  locallyStartedTurn,
   blocks,
   hydratedTextPart,
   hasOlder,
@@ -31,6 +34,7 @@ export function MessageList({
   streamingPresentation,
 }: {
   status: ChatStatus;
+  locallyStartedTurn: boolean;
   blocks: ChatMessageBlock[];
   hydratedTextPart?: HydratedTextPart | null;
   hasOlder: boolean;
@@ -94,7 +98,7 @@ export function MessageList({
           </div>
         )}
 
-        {status !== "loading" && blocks.length === 0 && !indexingProgress && <ThreadEmptyState cwd={cwd} />}
+        {status !== "loading" && status !== "streaming" && blocks.length === 0 && !indexingProgress && <ThreadEmptyState cwd={cwd} />}
 
         {(hiddenCount > 0 || hasOlder) && (
           <div class="flex justify-center">
@@ -131,6 +135,8 @@ export function MessageList({
             />
           );
         })}
+
+        {showTurnActivity(status, blocks, locallyStartedTurn) && <TurnActivity />}
 
         {error && (
           <div class="rounded-card border border-accent-red/25 bg-accent-red/[0.08] p-3 text-[13px] text-accent-red [overflow-wrap:anywhere]">

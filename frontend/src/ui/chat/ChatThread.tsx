@@ -18,6 +18,7 @@ export function ChatThread({
   loadingOlder,
   indexingProgress,
   status,
+  locallyStartedTurn,
   error,
   composer,
   showJump,
@@ -43,6 +44,7 @@ export function ChatThread({
   loadingOlder: boolean;
   indexingProgress: TranscriptIndexProgress | null;
   status: ChatStatus;
+  locallyStartedTurn: boolean;
   error: string | null;
   composer: ChatComposerProps;
   showJump: boolean;
@@ -79,6 +81,7 @@ export function ChatThread({
         <div class="relative flex-1 min-h-0">
           <MessageList
             status={status}
+            locallyStartedTurn={locallyStartedTurn}
             streamingPresentation={streamingPresentation}
             blocks={blocks}
             hydratedTextPart={hydratedTextPart}

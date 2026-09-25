@@ -1,6 +1,6 @@
 import type { AssistantMessageBlock } from "../../../models/chatMessage";
 import { AssistantPartList } from "./AssistantPartList";
-import { ThinkingIndicator } from "./ThinkingIndicator";
+import { hasVisibleAssistantContent } from "./turnActivity";
 import type { ChatInteractionResponder } from "../../../types/chatApi";
 
 export function AssistantMessage({
@@ -22,8 +22,7 @@ export function AssistantMessage({
   onRespondInteraction?: ChatInteractionResponder;
   streamingPresentation: "blocks" | "tokens";
 }) {
-  const reasoningActive = block.parts.at(-1)?.kind === "thinking";
-
+  if (!hasVisibleAssistantContent(block)) return null;
   return (
     <div class="codex-assistant-block min-w-0 space-y-2 max-w-full">
       <AssistantPartList
@@ -36,7 +35,6 @@ export function AssistantMessage({
         onAnswerQuestion={onAnswerQuestion}
         onRespondInteraction={onRespondInteraction}
       />
-      {streaming && !block.isComplete && !reasoningActive && <ThinkingIndicator />}
     </div>
   );
 }

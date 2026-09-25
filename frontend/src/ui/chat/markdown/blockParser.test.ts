@@ -1,16 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseMarkdown, parseStreamingMarkdown, parseStreamingMarkdownState } from "./blockParser.ts";
-
-test("reports pending text only while a block has not been revealed", () => {
-  assert.equal(parseStreamingMarkdownState("Writing a long paragraph").pending, true);
-  assert.equal(parseStreamingMarkdownState("Writing a long paragraph\n\n").pending, false);
-  assert.equal(parseStreamingMarkdownState("```ts\nconst x = 1;\n").pending, true);
-  assert.equal(parseStreamingMarkdownState("```ts\nconst x = 1;\n```\n").pending, false);
-  assert.equal(parseStreamingMarkdownState("A | B\n--- | ---\nrow | value\n").pending, false);
-  assert.equal(parseStreamingMarkdownState("A | B\n--- | ---\nrow | value").pending, true);
-  assert.equal(parseStreamingMarkdownState("Final text", true).pending, false);
-});
+import { parseMarkdown, parseStreamingMarkdown } from "./blockParser.ts";
 
 test("holds an unfinished paragraph until its Markdown and inline syntax are complete", () => {
   assert.deepEqual(parseStreamingMarkdown("A **bold"), []);

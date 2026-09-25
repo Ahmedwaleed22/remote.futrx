@@ -13,36 +13,28 @@ export function parseMarkdown(markdown: string): MarkdownBlock[] {
 // marker ("-", "1.", "|") can change type as more characters arrive; parsing
 // it as a new block would reveal and then retract the preceding list/table.
 export function parseStreamingMarkdown(markdown: string, settled = false): MarkdownBlock[] {
-  return parseStreamingMarkdownState(markdown, settled).blocks;
-}
-
-export function parseStreamingMarkdownState(markdown: string, settled = false): {
-  blocks: MarkdownBlock[];
-  pending: boolean;
-} {
-  if (settled) return { blocks: parseMarkdown(markdown), pending: false };
+  if (settled) return parseMarkdown(markdown);
   // Hold a trailing CR until we know whether the provider is sending CRLF.
   const normalized = markdown.replace(/\r$/, "").replace(/\r\n?/g, "\n");
   const complete = normalized.slice(0, normalized.lastIndexOf("\n") + 1);
-  const pendingTail = normalized.slice(complete.length).trim().length > 0;
   const { blocks, lastClosedFence, lastOpenFence } = parseMarkdownWithEnding(complete);
-  if (blocks.length === 0) return { blocks, pending: normalized.trim().length > 0 };
+  if (blocks.length === 0) return blocks;
   const last = blocks[blocks.length - 1];
   const separated = !lastOpenFence && /\n[ \t]*\n$/.test(complete);
   const singleLineComplete = last.type === "heading" || last.type === "hr";
-  if (lastClosedFence || separated || singleLineComplete) return { blocks, pending: pendingTail };
+  if (lastClosedFence || separated || singleLineComplete) return blocks;
   if (last.type === "table") {
     // The delimiter establishes the table; each newline-terminated row is
     // complete and can be shown without waiting for the final blank line.
-    return { blocks, pending: pendingTail };
+    return blocks;
   }
   if (last.type === "list") {
     // Each item is stable once the next complete item starts. Publish those
     // items now while keeping the final item buffered for continuation lines.
     const items = last.items.slice(0, -1);
-    return { blocks: items.length ? [...blocks.slice(0, -1), { ...last, items }] : blocks.slice(0, -1), pending: true };
+    return items.length ? [...blocks.slice(0, -1), { ...last, items }] : blocks.slice(0, -1);
   }
-  return { blocks: blocks.slice(0, -1), pending: true };
+  return blocks.slice(0, -1);
 }
 
 function parseMarkdownWithEnding(markdown: string): {
