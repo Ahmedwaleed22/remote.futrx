@@ -12,6 +12,7 @@ import type {
   AppScope,
 } from "../../../models/application";
 import type { ProjectMeta } from "../../../models/project";
+import { usePendingInstalls } from "./usePendingInstalls";
 
 /** Everything the Applications UI needs, independent of scope. */
 export interface ApplicationsController {
@@ -100,10 +101,7 @@ function useApplicationsCore({
   const [catalog, setCatalog] = useState<AppApplication[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [instances, setInstances] = useState<AppInstance[]>([]);
-  // This reservation belongs to the controller, so dismissing its dialog
-  // cannot reset it. The ref-like set also guards clicks before a rerender.
-  const pendingInstalls = useMemo(() => new Set<string>(), [bindings]);
-  const [installRevision, setInstallRevision] = useState(0);
+  const { beginInstall, hasPendingInstall, pendingIds, revision: installRevision } = usePendingInstalls(bindings);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [packages, setPackages] = useState<AppPackage[]>([]);
@@ -183,8 +181,8 @@ function useApplicationsCore({
   // "installing" row. Follow it until the server records running/error so the
   // catalog and extension host settle without another manual page refresh.
   useEffect(() => {
-    const hasPendingInstall = pendingInstalls.size > 0 || instances.some((instance) => instance.status === "installing");
-    if (!enabled || !bindings || !hasPendingInstall) return;
+    const shouldFollowInstall = hasPendingInstall || instances.some((instance) => instance.status === "installing");
+    if (!enabled || !bindings || !shouldFollowInstall) return;
     let active = true;
     let polling = false;
     const timer = window.setInterval(async () => {
@@ -205,7 +203,7 @@ function useApplicationsCore({
       active = false;
       window.clearInterval(timer);
     };
-  }, [enabled, bindings, instances, notifySettled, pendingInstalls, installRevision]);
+  }, [enabled, bindings, instances, notifySettled, hasPendingInstall, installRevision]);
 
   // Uploading and removing both change what the catalog holds, so both end by
   // reloading it — the new card has to appear without a page refresh, and a
@@ -248,9 +246,8 @@ function useApplicationsCore({
   const install = useCallback(
     async (req: AppInstallRequest) => {
       if (!bindings) return;
-      if (pendingInstalls.has(req.applicationId)) return;
-      pendingInstalls.add(req.applicationId);
-      setInstallRevision((revision) => revision + 1);
+      const releaseInstall = beginInstall(req.applicationId);
+      if (!releaseInstall) return;
       setError(undefined);
       try {
         const inst = await bindings.install(req);
@@ -263,11 +260,10 @@ function useApplicationsCore({
         setError((err as Error).message);
         throw err;
       } finally {
-        pendingInstalls.delete(req.applicationId);
-        setInstallRevision((revision) => revision + 1);
+        releaseInstall();
       }
     },
-    [bindings, upsert, notifySettled, reload, pendingInstalls],
+    [bindings, upsert, notifySettled, reload, beginInstall],
   );
 
   const start = useCallback(
@@ -320,7 +316,7 @@ function useApplicationsCore({
     catalog,
     catalogLoading,
     instances,
-    pendingApplicationIds: new Set(pendingInstalls),
+    pendingApplicationIds: pendingIds,
     loading,
     error,
     packages,
