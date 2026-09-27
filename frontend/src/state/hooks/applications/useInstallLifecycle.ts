@@ -22,14 +22,19 @@ export function useInstallLifecycle({
   const pending = useMemo(() => new Set<string>(), [bindings]);
   const [revision, setRevision] = useState(0);
 
-  const beginInstall = useCallback((applicationId: string): (() => void) | null => {
-    if (pending.has(applicationId)) return null;
+  const runInstall = useCallback(async <T,>(
+    applicationId: string,
+    operation: () => Promise<T>,
+  ): Promise<T | undefined> => {
+    if (pending.has(applicationId)) return undefined;
     pending.add(applicationId);
     setRevision((current) => current + 1);
-    return () => {
+    try {
+      return await operation();
+    } finally {
       pending.delete(applicationId);
       setRevision((current) => current + 1);
-    };
+    }
   }, [pending]);
 
   // A dismissed dialog or a disconnected browser may leave a persisted
@@ -62,7 +67,7 @@ export function useInstallLifecycle({
   }, [enabled, bindings, instances, setInstances, notifySettled, hasPendingInstall, revision]);
 
   return {
-    beginInstall,
+    runInstall,
     pendingIds: new Set(pending),
   };
 }

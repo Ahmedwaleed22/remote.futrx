@@ -111,7 +111,7 @@ function useApplicationsCore({
   const settledRef = useRef(onApplicationsSettled);
   settledRef.current = onApplicationsSettled;
   const notifySettled = useCallback(() => settledRef.current?.(), []);
-  const { beginInstall, pendingIds } = useInstallLifecycle({
+  const { runInstall, pendingIds } = useInstallLifecycle({
     enabled,
     bindings,
     instances,
@@ -224,24 +224,22 @@ function useApplicationsCore({
   const install = useCallback(
     async (req: AppInstallRequest) => {
       if (!bindings) return;
-      const releaseInstall = beginInstall(req.applicationId);
-      if (!releaseInstall) return;
-      setError(undefined);
-      try {
-        const inst = await bindings.install(req);
-        upsert(inst);
-        notifySettled();
-      } catch (err) {
-        // The dialog may already be closed. Refresh the persisted attempt so
-        // the catalog offers Retry and show the error on the applications page.
-        await reload();
-        setError((err as Error).message);
-        throw err;
-      } finally {
-        releaseInstall();
-      }
+      await runInstall(req.applicationId, async () => {
+        setError(undefined);
+        try {
+          const inst = await bindings.install(req);
+          upsert(inst);
+          notifySettled();
+        } catch (err) {
+          // The dialog may already be closed. Refresh the persisted attempt so
+          // the catalog offers Retry and show the error on the applications page.
+          await reload();
+          setError((err as Error).message);
+          throw err;
+        }
+      });
     },
-    [bindings, upsert, notifySettled, reload, beginInstall],
+    [bindings, upsert, notifySettled, reload, runInstall],
   );
 
   const start = useCallback(
