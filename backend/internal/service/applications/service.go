@@ -41,20 +41,20 @@ type Clock func() int64
 
 // Service is the policy layer for installable applications.
 type Service struct {
-	registry      Registry
-	store         Store
-	installer     Installer
-	projects      ProjectContainers
-	ports         PortAllocator
-	backends      BackendHost
-	packages      PackageCatalog
-	lifecycle     ApplicationLifecyclePublisher
-	eventSource   EventSource
-	eventContext  context.Context
-	eventRouter   *applicationEventRouter
-	instanceLocks instanceLockSet
-	installSlots  installSlotSet
-	now           Clock
+	registry       Registry
+	store          Store
+	installer      Installer
+	projects       ProjectContainers
+	ports          PortAllocator
+	backends       BackendHost
+	packages       PackageCatalog
+	lifecycle      ApplicationLifecyclePublisher
+	eventSource    EventSource
+	eventContext   context.Context
+	eventRouter    *applicationEventRouter
+	instanceLocks  instanceLockSet
+	operationSlots operationSlotSet
+	now            Clock
 }
 
 // Option configures optional service dependencies. Backend backend hosting is
@@ -233,7 +233,7 @@ func (s *Service) view(inst Instance) View {
 	return View{
 		Instance:          safe,
 		EnvPublic:         pub,
-		InstallInProgress: inst.Status == StatusInstalling && s.installSlots.isInstalling(inst.Scope, inst.ProjectID, inst.ApplicationID),
+		InstallInProgress: inst.Status == StatusInstalling && s.operationSlots.isInstalling(inst),
 	}
 }
 

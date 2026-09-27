@@ -64,7 +64,7 @@ func (s *Service) Uninstall(ctx context.Context, id string) error {
 	if !found {
 		return ErrNotFound
 	}
-	releaseSlot, acquired := s.installSlots.tryReserve(inst.Scope, inst.ProjectID, inst.ApplicationID, slotUninstalling)
+	releaseSlot, acquired := s.operationSlots.tryReserveUninstall(inst)
 	if !acquired {
 		return fmt.Errorf("%w: an install or uninstall is in progress", ErrInvalidState)
 	}

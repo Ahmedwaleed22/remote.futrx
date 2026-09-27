@@ -187,7 +187,7 @@ func (s *Service) allocateHostPort(ctx context.Context, req InstallRequest, appl
 // the rest of the system reads: one running copy per application per scope, so an
 // extension's identity and its backend are unambiguous.
 func (s *Service) reserveInstallSlot(ctx context.Context, scope Scope, projectID, applicationID string) (func(), error) {
-	release, acquired := s.installSlots.tryReserve(scope, projectID, applicationID, slotInstalling)
+	release, acquired := s.operationSlots.tryReserveInstall(scope, projectID, applicationID)
 	if !acquired {
 		return nil, ErrAlreadyInstalled
 	}
