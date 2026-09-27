@@ -12,7 +12,7 @@ import type {
   AppScope,
 } from "../../../models/application";
 import type { ProjectMeta } from "../../../models/project";
-import { usePendingInstalls } from "./usePendingInstalls";
+import { useInstallLifecycle } from "./useInstallLifecycle";
 
 /** Everything the Applications UI needs, independent of scope. */
 export interface ApplicationsController {
@@ -101,7 +101,6 @@ function useApplicationsCore({
   const [catalog, setCatalog] = useState<AppApplication[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [instances, setInstances] = useState<AppInstance[]>([]);
-  const { beginInstall, hasPendingInstall, pendingIds, revision: installRevision } = usePendingInstalls(bindings);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [packages, setPackages] = useState<AppPackage[]>([]);
@@ -112,6 +111,13 @@ function useApplicationsCore({
   const settledRef = useRef(onApplicationsSettled);
   settledRef.current = onApplicationsSettled;
   const notifySettled = useCallback(() => settledRef.current?.(), []);
+  const { beginInstall, pendingIds } = useInstallLifecycle({
+    enabled,
+    bindings,
+    instances,
+    setInstances,
+    notifySettled,
+  });
 
   const reload = useCallback(async () => {
     if (!enabled || !bindings) return;
@@ -176,34 +182,6 @@ function useApplicationsCore({
       cancelled = true;
     };
   }, [enabled, loadCatalog, reload, loadPackages, notifySettled]);
-
-  // A dismissed dialog or a disconnected browser may leave a persisted
-  // "installing" row. Follow it until the server records running/error so the
-  // catalog and extension host settle without another manual page refresh.
-  useEffect(() => {
-    const shouldFollowInstall = hasPendingInstall || instances.some((instance) => instance.status === "installing");
-    if (!enabled || !bindings || !shouldFollowInstall) return;
-    let active = true;
-    let polling = false;
-    const timer = window.setInterval(async () => {
-      if (polling) return;
-      polling = true;
-      try {
-        const next = await bindings.list();
-        if (!active) return;
-        setInstances(next ?? []);
-        if (!next?.some((instance) => instance.status === "installing")) notifySettled();
-      } catch {
-        // A later poll or a manual reload can recover from a transient failure.
-      } finally {
-        polling = false;
-      }
-    }, 4000);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, [enabled, bindings, instances, notifySettled, hasPendingInstall, installRevision]);
 
   // Uploading and removing both change what the catalog holds, so both end by
   // reloading it — the new card has to appear without a page refresh, and a
