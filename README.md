@@ -199,10 +199,10 @@ even when your browser is closed.
       Connect managed providers, review provider-specific setup instructions, and synchronize the appropriate host-managed state into projects.
     </td>
     <td width="50%" valign="top">
-      <img src="docs/assets/readme/feature-usage.webp" alt="Remote token usage and estimated cost dashboard">
+      <img src="docs/assets/readme/feature-usage.webp" alt="Remote token usage dashboard">
       <br>
-      <strong>Usage and estimated cost</strong><br>
-      Compare tokens, runs, active projects, and estimated cost by project, user, provider, model, or day.
+      <strong>Usage and plan limits</strong><br>
+      Compare tokens, runs, and active projects by project, user, provider, model, or day, and see each subscription account's current plan limits.
     </td>
   </tr>
   <tr>
@@ -319,6 +319,18 @@ curl -fsSL https://remote.futrx.com/get | sudo bash -s -- remote.example.com
 ```
 
 Replace `remote.example.com` with the hostname you set up above. The installer downloads Remote, installs its dependencies, builds the workspace image, starts the services, and enables HTTPS.
+
+#### Pseudonymous version telemetry
+
+Starting with `0.21.0`, Remote reports its version once after installation or a
+version change, then at most weekly. The payload is only the version and a
+random, stable installation ID; the collector adds a receipt timestamp and
+retains reports for three months. No hostname, user, project, provider, chat,
+prompt, source code, or resource data is sent. `dev` and `qa-*` builds do not
+report, and pre-`0.21.0` installations are not counted.
+
+See [Deployment and operations](docs/04-operations/09-deployment-and-operations.md#pseudonymous-version-telemetry)
+for cadence and counting limitations.
 
 ### 3. Create your first project
 
