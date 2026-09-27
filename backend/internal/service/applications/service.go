@@ -53,7 +53,7 @@ type Service struct {
 	eventContext  context.Context
 	eventRouter   *applicationEventRouter
 	instanceLocks instanceLockSet
-	installLocks  instanceLockSet
+	installSlots  installSlotSet
 	now           Clock
 }
 

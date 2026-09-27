@@ -27,19 +27,6 @@ func (s *instanceLockSet) lock(id string) func() {
 	}
 }
 
-// tryLock reserves a key without waiting for an operation already in progress.
-func (s *instanceLockSet) tryLock(id string) (func(), bool) {
-	entry := s.retain(id)
-	if !entry.mu.TryLock() {
-		s.release(id, entry)
-		return nil, false
-	}
-	return func() {
-		entry.mu.Unlock()
-		s.release(id, entry)
-	}, true
-}
-
 // rlock lets backend calls and event notifications for one running instance
 // overlap while still excluding lifecycle and reconfiguration work.
 func (s *instanceLockSet) rlock(id string) func() {

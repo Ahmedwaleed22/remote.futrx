@@ -31,12 +31,7 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 	}
 	// Reserve the application/scope before checking persisted instances. Container
 	// preparation can take minutes before the first installing record is saved.
-	projectID := req.ProjectID
-	if req.Scope == ScopeGlobal {
-		projectID = ""
-	}
-	key, _ := json.Marshal([]string{string(req.Scope), projectID, application.ID})
-	releaseSlot, acquired := s.installLocks.tryLock(string(key))
+	releaseSlot, acquired := s.installSlots.tryReserve(req.Scope, req.ProjectID, application.ID)
 	if !acquired {
 		return View{}, ErrAlreadyInstalled
 	}
