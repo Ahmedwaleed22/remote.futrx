@@ -230,7 +230,11 @@ func (s *Service) view(inst Instance) View {
 	}
 	safe := inst
 	safe.Env = nil // never leak secrets through the Instance blob
-	return View{Instance: safe, EnvPublic: pub}
+	return View{
+		Instance:          safe,
+		EnvPublic:         pub,
+		InstallInProgress: inst.Status == StatusInstalling && s.installSlots.isInstalling(inst.Scope, inst.ProjectID, inst.ApplicationID),
+	}
 }
 
 func declaredEnv(application Application, stored map[string]string) map[string]string {

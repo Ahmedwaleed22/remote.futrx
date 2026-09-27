@@ -198,6 +198,8 @@ export interface AppInstance {
   bindAddress: string;
   protocol?: string;
   status: AppInstanceStatus;
+  /** An installation is actively running; an abandoned installing record has this unset. */
+  installInProgress?: boolean;
   error?: string;
   createdAt: number;
   updatedAt: number;

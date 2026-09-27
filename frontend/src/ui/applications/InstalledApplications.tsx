@@ -102,6 +102,8 @@ function InstalledRow({
   const connectionAssigned = hasAssignedConnection(instance, application);
   const lifecycleAction = instanceLifecycleAction(instance.status);
   const pendingUpgrade = pendingUpgradeVersion(instance, application);
+  const installInProgress = controller.pendingApplicationIds.has(instance.applicationId) ||
+    instance.installInProgress === true;
 
   const remove = async () => {
     // The dialog owns the request: a failure is shown inside it so the user can
@@ -165,9 +167,9 @@ function InstalledRow({
             </IconButton>
           ) : null}
           <IconButton
-            title="Uninstall"
+            title={installInProgress ? "Installation in progress" : "Uninstall"}
             onClick={() => void remove()}
-            disabled={busy}
+            disabled={busy || installInProgress}
             danger
           >
             <Trash class="w-3.5 h-3.5" />

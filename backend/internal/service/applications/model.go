@@ -357,6 +357,9 @@ type View struct {
 	Instance
 	// EnvPublic contains only non-secret env values, keyed by var name.
 	EnvPublic map[string]string `json:"envPublic,omitempty"`
+	// InstallInProgress distinguishes an active install from an unfinished
+	// record left by a server restart, which can still be uninstalled.
+	InstallInProgress bool `json:"installInProgress,omitempty"`
 }
 
 // Credentials is the full connection detail for an installed instance,

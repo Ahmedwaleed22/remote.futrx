@@ -103,3 +103,76 @@ func TestInstallRefusesPersistedInstallingAttempt(t *testing.T) {
 		t.Fatal("duplicate installer was invoked")
 	}
 }
+
+func TestUninstallRefusesActiveInstallThenAllowsCompletedInstall(t *testing.T) {
+	gate := newOperationGate()
+	installer := &serializationInstaller{install: gate}
+	store := &fakeStore{}
+	application := Application{
+		ID: "demo", Name: "Demo", Scopes: []Scope{ScopeGlobal}, Install: "infra/install.sh",
+	}
+	service := New(&singleApplicationRegistry{application: application}, store, installer, nil, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := service.Install(ctx, InstallRequest{ApplicationID: application.ID, Scope: ScopeGlobal})
+		done <- err
+	}()
+	awaitSignal(t, gate.entered, "install to enter installer")
+
+	instances, err := store.ListGlobal(ctx)
+	if err != nil || len(instances) != 1 || instances[0].Status != StatusInstalling {
+		t.Fatalf("installing instances = %+v, error = %v", instances, err)
+	}
+	id := instances[0].ID
+	view, found, err := service.Get(ctx, id)
+	if err != nil || !found || !view.InstallInProgress {
+		t.Fatalf("active install view = %+v, found = %t, error = %v", view, found, err)
+	}
+	uninstallDone := make(chan error, 1)
+	go func() { uninstallDone <- service.Uninstall(ctx, id) }()
+	select {
+	case err := <-uninstallDone:
+		if !errors.Is(err, ErrInvalidState) {
+			t.Fatalf("uninstall during install = %v, want ErrInvalidState", err)
+		}
+	case <-time.After(time.Second):
+		close(gate.release)
+		<-uninstallDone
+		t.Fatal("uninstall waited for the active install")
+	}
+	if _, found, err := store.Get(ctx, id); err != nil || !found {
+		t.Fatalf("active instance removed: found = %t, error = %v", found, err)
+	}
+
+	close(gate.release)
+	if err := <-done; err != nil {
+		t.Fatalf("install: %v", err)
+	}
+	view, found, err = service.Get(ctx, id)
+	if err != nil || !found || view.InstallInProgress || view.Status != StatusRunning {
+		t.Fatalf("completed install view = %+v, found = %t, error = %v", view, found, err)
+	}
+	if err := service.Uninstall(ctx, id); err != nil {
+		t.Fatalf("uninstall after install: %v", err)
+	}
+}
+
+func TestUninstallAllowsAbandonedInstallingRecord(t *testing.T) {
+	application := Application{
+		ID: "demo", Name: "Demo", Scopes: []Scope{ScopeGlobal}, Install: "infra/install.sh",
+	}
+	store := &fakeStore{global: []Instance{{
+		ID: "orphan", ApplicationID: application.ID, Scope: ScopeGlobal, Status: StatusInstalling,
+	}}}
+	service := New(&singleApplicationRegistry{application: application}, store, &serializationInstaller{}, nil, nil)
+	ctx := context.Background()
+	view, found, err := service.Get(ctx, "orphan")
+	if err != nil || !found || view.InstallInProgress {
+		t.Fatalf("abandoned install view = %+v, found = %t, error = %v", view, found, err)
+	}
+	if err := service.Uninstall(ctx, "orphan"); err != nil {
+		t.Fatalf("uninstall abandoned attempt: %v", err)
+	}
+}

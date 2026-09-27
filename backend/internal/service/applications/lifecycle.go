@@ -54,9 +54,25 @@ func (s *Service) SetPort(ctx context.Context, id string, port int) (View, error
 
 // Uninstall removes an instance and everything it left behind.
 func (s *Service) Uninstall(ctx context.Context, id string) error {
+	// Claim the same scope as Install before waiting on the instance lock. An
+	// install holds that lock until it finishes; waiting there would uninstall
+	// the copy immediately after its installation completes.
+	inst, found, err := s.store.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return ErrNotFound
+	}
+	releaseSlot, acquired := s.installSlots.tryReserve(inst.Scope, inst.ProjectID, inst.ApplicationID, slotUninstalling)
+	if !acquired {
+		return fmt.Errorf("%w: an install or uninstall is in progress", ErrInvalidState)
+	}
+	defer releaseSlot()
+
 	unlock := s.instanceLocks.lock(id)
 	defer unlock()
-	inst, err := s.uninstallLocked(ctx, id)
+	inst, err = s.uninstallLocked(ctx, id)
 	if err != nil {
 		return err
 	}
