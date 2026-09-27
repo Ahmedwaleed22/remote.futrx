@@ -1,11 +1,13 @@
 package httphandlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	serviceapplications "github.com/futrx-com/remote.futrx.com/internal/service/applications"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
@@ -215,7 +217,12 @@ func (h *ApplicationsHandler) install(w http.ResponseWriter, r *http.Request, sc
 		httptransport.SendErr(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	view, err := h.apps.Install(r.Context(), serviceapplications.InstallRequest{
+	// A browser can dismiss the install surface or navigate away after the
+	// container has already changed. Finish the bounded operation and persist
+	// running/error status even when its HTTP connection goes away.
+	ctx, cancel := applicationMutationContext(r)
+	defer cancel()
+	view, err := h.apps.Install(ctx, serviceapplications.InstallRequest{
 		ApplicationID: strings.TrimSpace(body.ApplicationID),
 		Scope:         scope,
 		ProjectID:     projectID,
@@ -248,7 +255,9 @@ func (h *ApplicationsHandler) instanceAction(w http.ResponseWriter, r *http.Requ
 			}
 			httptransport.SendJSON(w, http.StatusOK, view)
 		case http.MethodDelete:
-			if err := h.apps.Uninstall(r.Context(), id); err != nil {
+			ctx, cancel := applicationMutationContext(r)
+			defer cancel()
+			if err := h.apps.Uninstall(ctx, id); err != nil {
 				sendAppError(w, err)
 				return
 			}
@@ -290,6 +299,13 @@ func (h *ApplicationsHandler) instanceAction(w http.ResponseWriter, r *http.Requ
 	default:
 		httptransport.SendErr(w, http.StatusNotFound, "unknown action")
 	}
+}
+
+// Package installation and removal can outlive a browser connection. Both
+// have bounded container commands, and this outer deadline bounds the complete
+// mutation while retaining request values such as the authenticated actor.
+func applicationMutationContext(r *http.Request) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(r.Context()), 12*time.Minute)
 }
 
 func (h *ApplicationsHandler) lifecycle(w http.ResponseWriter, r *http.Request, fn func() (serviceapplications.View, error)) {

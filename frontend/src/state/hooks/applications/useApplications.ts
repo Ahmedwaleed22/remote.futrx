@@ -21,6 +21,7 @@ export interface ApplicationsController {
   catalog: AppApplication[];
   catalogLoading: boolean;
   instances: AppInstance[];
+  pendingApplicationIds: Set<string>;
   loading: boolean;
   error?: string;
   /**
@@ -99,6 +100,10 @@ function useApplicationsCore({
   const [catalog, setCatalog] = useState<AppApplication[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [instances, setInstances] = useState<AppInstance[]>([]);
+  // This reservation belongs to the controller, so dismissing its dialog
+  // cannot reset it. The ref-like set also guards clicks before a rerender.
+  const pendingInstalls = useMemo(() => new Set<string>(), [bindings]);
+  const [installRevision, setInstallRevision] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [packages, setPackages] = useState<AppPackage[]>([]);
@@ -174,6 +179,34 @@ function useApplicationsCore({
     };
   }, [enabled, loadCatalog, reload, loadPackages, notifySettled]);
 
+  // A dismissed dialog or a disconnected browser may leave a persisted
+  // "installing" row. Follow it until the server records running/error so the
+  // catalog and extension host settle without another manual page refresh.
+  useEffect(() => {
+    const hasPendingInstall = pendingInstalls.size > 0 || instances.some((instance) => instance.status === "installing");
+    if (!enabled || !bindings || !hasPendingInstall) return;
+    let active = true;
+    let polling = false;
+    const timer = window.setInterval(async () => {
+      if (polling) return;
+      polling = true;
+      try {
+        const next = await bindings.list();
+        if (!active) return;
+        setInstances(next ?? []);
+        if (!next?.some((instance) => instance.status === "installing")) notifySettled();
+      } catch {
+        // A later poll or a manual reload can recover from a transient failure.
+      } finally {
+        polling = false;
+      }
+    }, 4000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [enabled, bindings, instances, notifySettled, pendingInstalls, installRevision]);
+
   // Uploading and removing both change what the catalog holds, so both end by
   // reloading it — the new card has to appear without a page refresh, and a
   // removed one has to stop offering an install that would now fail.
@@ -215,11 +248,26 @@ function useApplicationsCore({
   const install = useCallback(
     async (req: AppInstallRequest) => {
       if (!bindings) return;
-      const inst = await bindings.install(req);
-      upsert(inst);
-      notifySettled();
+      if (pendingInstalls.has(req.applicationId)) return;
+      pendingInstalls.add(req.applicationId);
+      setInstallRevision((revision) => revision + 1);
+      setError(undefined);
+      try {
+        const inst = await bindings.install(req);
+        upsert(inst);
+        notifySettled();
+      } catch (err) {
+        // The dialog may already be closed. Refresh the persisted attempt so
+        // the catalog offers Retry and show the error on the applications page.
+        await reload();
+        setError((err as Error).message);
+        throw err;
+      } finally {
+        pendingInstalls.delete(req.applicationId);
+        setInstallRevision((revision) => revision + 1);
+      }
     },
-    [bindings, upsert, notifySettled],
+    [bindings, upsert, notifySettled, reload, pendingInstalls],
   );
 
   const start = useCallback(
@@ -272,6 +320,7 @@ function useApplicationsCore({
     catalog,
     catalogLoading,
     instances,
+    pendingApplicationIds: new Set(pendingInstalls),
     loading,
     error,
     packages,

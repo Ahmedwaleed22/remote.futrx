@@ -29,6 +29,19 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 	if !req.Scope.Valid() || !application.SupportsScope(req.Scope) {
 		return View{}, ErrScope
 	}
+	// Reserve the application/scope before checking persisted instances. Container
+	// preparation can take minutes before the first installing record is saved.
+	projectID := req.ProjectID
+	if req.Scope == ScopeGlobal {
+		projectID = ""
+	}
+	key, _ := json.Marshal([]string{string(req.Scope), projectID, application.ID})
+	releaseSlot, acquired := s.installLocks.tryLock(string(key))
+	if !acquired {
+		return View{}, ErrAlreadyInstalled
+	}
+	defer releaseSlot()
+
 	if err := s.claimInstallSlot(ctx, req.Scope, req.ProjectID, application.ID); err != nil {
 		return View{}, err
 	}

@@ -41,6 +41,9 @@ export function CatalogGrid({
             application={application}
             installed={installedIds.has(application.id)}
             failed={failedIds.has(application.id)}
+            pending={controller.pendingApplicationIds.has(application.id) ||
+              controller.instances.some((instance) => instance.applicationId === application.id && instance.status === "installing")}
+            loading={controller.loading}
             onInstall={() => setInstalling(application)}
           />
         ))}
@@ -60,11 +63,15 @@ function CatalogCard({
   application,
   installed,
   failed,
+  pending,
+  loading,
   onInstall,
 }: {
   application: AppApplication;
   installed: boolean;
   failed: boolean;
+  pending: boolean;
+  loading: boolean;
   onInstall: () => void;
 }) {
   return (
@@ -96,7 +103,12 @@ function CatalogCard({
           </p>
         )}
       </div>
-      {installed ? (
+      {pending ? (
+        <span class="h-8 px-2.5 flex-none text-ink-300 text-[12px] inline-flex items-center gap-1">
+          <Loader class="w-3.5 h-3.5 animate-spin" />
+          Installing…
+        </span>
+      ) : installed ? (
         <span
           title="Already installed in this scope"
           class="h-8 px-2.5 flex-none rounded border border-white/10 text-ink-400 text-[12px] font-medium inline-flex items-center gap-1"
@@ -108,6 +120,7 @@ function CatalogCard({
         <button
           type="button"
           onClick={onInstall}
+          disabled={loading}
           title={failed
             ? "The last install failed. Retrying removes that attempt and installs again."
             : undefined}
@@ -260,12 +273,17 @@ function InstallDialog({
           )}
 
           <div class="flex justify-end gap-2">
+            {busy && (
+              <span class="mr-auto self-center text-[11px] text-ink-400">
+                Installation continues if you close this window.
+              </span>
+            )}
             <button
               type="button"
               onClick={onClose}
               class="h-9 px-3 rounded text-[13px] text-ink-300 hover:text-ink-100 hover:bg-white/[0.08]"
             >
-              Cancel
+              {busy ? "Close" : "Cancel"}
             </button>
             <button
               type="submit"
