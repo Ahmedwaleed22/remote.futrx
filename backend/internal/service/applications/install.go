@@ -29,17 +29,11 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 	if !req.Scope.Valid() || !application.SupportsScope(req.Scope) {
 		return View{}, ErrScope
 	}
-	// Reserve the application/scope before checking persisted instances. Container
-	// preparation can take minutes before the first installing record is saved.
-	releaseSlot, acquired := s.installSlots.tryReserve(req.Scope, req.ProjectID, application.ID)
-	if !acquired {
-		return View{}, ErrAlreadyInstalled
-	}
-	defer releaseSlot()
-
-	if err := s.claimInstallSlot(ctx, req.Scope, req.ProjectID, application.ID); err != nil {
+	releaseSlot, err := s.reserveInstallSlot(ctx, req.Scope, req.ProjectID, application.ID)
+	if err != nil {
 		return View{}, err
 	}
+	defer releaseSlot()
 
 	id := newInstanceID()
 	unlock := s.instanceLocks.lock(id)
@@ -178,8 +172,9 @@ func (s *Service) allocateHostPort(ctx context.Context, req InstallRequest, appl
 	return nil
 }
 
-// claimInstallSlot enforces one instance per application per scope, and decides what
-// installing over an existing one means.
+// reserveInstallSlot enforces one instance per application per scope. Reserve
+// before checking persisted instances because container preparation can take
+// minutes before the first installing record is saved.
 //
 // An instance whose install failed is not an installation: it is the record of
 // an attempt, kept so its error and whatever it left in a container stay
@@ -191,6 +186,19 @@ func (s *Service) allocateHostPort(ctx context.Context, req InstallRequest, appl
 // Installing over a *working* instance is still refused. That is the invariant
 // the rest of the system reads: one running copy per application per scope, so an
 // extension's identity and its backend are unambiguous.
+func (s *Service) reserveInstallSlot(ctx context.Context, scope Scope, projectID, applicationID string) (func(), error) {
+	release, acquired := s.installSlots.tryReserve(scope, projectID, applicationID)
+	if !acquired {
+		return nil, ErrAlreadyInstalled
+	}
+	if err := s.claimInstallSlot(ctx, scope, projectID, applicationID); err != nil {
+		release()
+		return nil, err
+	}
+	return release, nil
+}
+
+// claimInstallSlot checks the persisted copy while its scope is reserved.
 func (s *Service) claimInstallSlot(ctx context.Context, scope Scope, projectID, applicationID string) error {
 	existing, found, err := s.instanceOfApplication(ctx, scope, projectID, applicationID)
 	if err != nil || !found {
