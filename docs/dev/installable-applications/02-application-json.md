@@ -513,3 +513,9 @@ applications may declare them; uninstall leaves them in place.
 A host that installs no application declaring host tools downloads nothing, which is
 what keeps such an application a genuinely optional addition rather than a dependency
 every operator inherits.
+
+### Optional service idle shutdown
+
+`service.socketProxy` enables start-on-connection and shutdown after all
+connections close. See [Application idle shutdown](20-application-idle-shutdown.md)
+for fields, generated units, lifecycle and validation.
