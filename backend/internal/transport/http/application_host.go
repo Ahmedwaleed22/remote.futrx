@@ -31,7 +31,8 @@ func requestHostname(host string) string {
 func IsApplicationHost(host, publicHost string) bool {
 	base := "apps." + requestHostname(publicHost)
 	host = requestHostname(host)
-	return publicHost != "" && (host == base || strings.HasSuffix(host, "."+base))
+	// Reserve the removed built-in launcher hostname instead of serving platform APIs there.
+	return publicHost != "" && (host == "code."+requestHostname(publicHost) || host == base || strings.HasSuffix(host, "."+base))
 }
 
 func ApplicationInstanceID(host, publicHost string) (string, bool) {

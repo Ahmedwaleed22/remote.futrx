@@ -19,6 +19,7 @@ func TestApplicationHosts(t *testing.T) {
 		{id + ".nested.apps." + base, true, false},
 		{id + ".apps." + base + ".evil.test", false, false},
 		{id + ".apps.other.test", false, false},
+		{"code." + base, true, false},
 		{base, false, false},
 	} {
 		got, valid := ApplicationInstanceID(tc.host, base)
