@@ -6,8 +6,7 @@ import { fileIdeUrl } from '../ui/scripts/main.js';
 
 // Execute the exact page published by the installer, on the origin selected by
 // Remote's launch redirect. No installation IDs are cached in the extension.
-const installer = fs.readFileSync(new URL('./install.sh', import.meta.url), 'utf8');
-const html = installer.split("<<'REMOTE_OPEN_HTML'\n")[1].split('\nREMOTE_OPEN_HTML')[0];
+const html = fs.readFileSync(new URL('./remote-open.html', import.meta.url), 'utf8');
 const script = html.split('<script>')[1].split('</script>')[0];
 function openFile(url) {
   let destination;

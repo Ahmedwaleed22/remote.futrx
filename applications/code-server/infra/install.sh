@@ -24,43 +24,9 @@ if ! command -v code-server >/dev/null 2>&1 \
     apt-get -o DPkg::Lock::Timeout=300 install -y -qq "$deb"
 fi
 
-# The stable launch route redirects to an installation-specific origin. Resolve
-# file links there so VS Code's remote URI uses that origin, including after a
-# reinstall. Code Server serves this page through its existing static route.
-cat > /usr/lib/code-server/remote-open.html <<'REMOTE_OPEN_HTML'
-<!doctype html>
-<meta charset="utf-8">
-<title>Opening workspace file</title>
-<p>Opening workspace file…</p>
-<script>
-(() => {
-  const query = new URL(location.href).searchParams;
-  const file = query.get("file");
-  const folder = query.get("folder") || "/workspace";
-  const inWorkspace = (path) => path === "/workspace" || path?.startsWith("/workspace/");
-  if (!inWorkspace(file) || !inWorkspace(folder)) {
-    document.querySelector("p").textContent = "Invalid workspace file.";
-    return;
-  }
-  const target = new URL("/", location.origin);
-  target.searchParams.set("folder", folder);
-  let uri = `vscode-remote://${location.host}${file.split("/").map(encodeURIComponent).join("/")}`;
-  const payload = [];
-  const line = Number(query.get("line"));
-  const column = Number(query.get("column"));
-  if (Number.isInteger(line) && line > 0) {
-    uri += `:${line}`;
-    if (Number.isInteger(column) && column > 0) uri += `:${column}`;
-    payload.push(["openFile", uri], ["gotoLineMode", "true"]);
-  } else {
-    payload.push(["openFile", uri]);
-  }
-  target.searchParams.set("payload", JSON.stringify(payload));
-  location.replace(target.toString());
-})();
-</script>
-REMOTE_OPEN_HTML
-chmod 0644 /usr/lib/code-server/remote-open.html
+# Remote stages infra/payload.tar.gz in APP_PACKAGE_DIR before running this script.
+install -m 0644 "${APP_PACKAGE_DIR:?Missing application payload}/infra/remote-open.html" \
+    /usr/lib/code-server/remote-open.html
 
 install -d -m 0700 /root/.config/code-server
 cat > /root/.config/code-server/config.yaml <<YAML

@@ -134,3 +134,11 @@ The installer still owns seeding and migration of the persistent User directory.
 
 The selected Code Server version is saved with the installation. Application
 updates preserve that choice; changing the manifest default affects new installs.
+
+### Installer assets
+
+The file-launch page lives in `infra/remote-open.html`. Remote stages it through
+its existing `infra/payload.tar.gz` support; `install.sh` copies the staged file.
+After changing an asset, run `bash applications/code-server/infra/build-payload.sh`
+from the repository checkout. Payload tests compare the shipped archive with
+its reviewable sources so an outdated archive fails validation.
