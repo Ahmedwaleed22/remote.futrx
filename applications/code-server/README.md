@@ -53,7 +53,9 @@ placeholder becomes the container hostname. Code Server's bind address,
 authentication, and listening port remain owned by the application so its IDE route
 continues to work.
 
-The install downloads Code Server 4.121.0 for amd64 or arm64, applies the
+The install form exposes **Code Server version**, defaulting to `4.121.0` in
+`application.json`. Enter a release as `major.minor.patch`. Installation downloads
+that version for amd64 or arm64, applies the
 current workspace settings and extensions, and starts a regular systemd
 service listening on `0.0.0.0:8842`. The editor stays running while the
 application is enabled; closing browser tabs does not stop it. Stop stops the
@@ -115,7 +117,7 @@ code. The LXD bridge still permits direct connections from sibling containers
 to the editor socket; origin isolation does not provide container network isolation.
 
 Settings and launch regression checks: `node --test applications/code-server/infra/*.test.mjs`.
-Version 8 uses a regular service without idle shutdown and retains the
+The application uses a regular service without idle shutdown and retains the
 subdomain-aware file-launch page without resetting settings.
 In a disposable project, change a setting directly in Code Server, upgrade the
 app, then replace the container and confirm the setting and keybindings remain.
@@ -129,3 +131,6 @@ app, then replace the container and confirm the setting and keybindings remain.
 - [config/settings.go](backend/config/settings.go) holds the size limit, timeout, and active settings path.
 
 The installer still owns seeding and migration of the persistent User directory. The infrastructure tests execute both the installer's migration and the embedded writer.
+
+The selected Code Server version is saved with the installation. Application
+updates preserve that choice; changing the manifest default affects new installs.

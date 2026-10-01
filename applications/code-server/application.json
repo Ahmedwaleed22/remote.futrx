@@ -3,12 +3,18 @@
   "name": "Code Server",
   "description": "Optional VS Code editor for a project workspace.",
   "category": "development",
-  "version": "8",
+  "version": "9",
   "icon": "code",
   "scopes": ["project"],
   "install": "infra/install.sh",
   "uninstall": "infra/uninstall.sh",
   "env": [
+    {
+      "key": "CODE_SERVER_VERSION",
+      "label": "Code Server version",
+      "required": true,
+      "default": "4.121.0"
+    },
     {
       "key": "CODE_SERVER_SETTINGS_JSON",
       "label": "VS Code settings.json",

@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Code Server is an optional project application. Remote owns its systemd service.
-CODE_SERVER_VERSION=4.121.0
+# Remote resolves this required input from the application manifest.
+: "${CODE_SERVER_VERSION:?Code Server version is required}"
+if [[ ! "$CODE_SERVER_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "Code Server version must use major.minor.patch (for example 4.121.0)" >&2
+    exit 1
+fi
 ARCH="$(dpkg --print-architecture)"
 case "$ARCH" in amd64|arm64) ;; *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; esac
 # An older project image may still have the legacy socket enabled.
