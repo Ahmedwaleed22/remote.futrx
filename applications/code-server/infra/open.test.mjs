@@ -4,8 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 import { fileIdeUrl } from '../ui/scripts/main.js';
 
-// Execute the exact page published by the installer, on the origin selected by
-// Remote's launch redirect. No installation IDs are cached in the extension.
+// Execute the exact page published by the installer on the application origin.
 const html = fs.readFileSync(new URL('./remote-open.html', import.meta.url), 'utf8');
 const script = html.split('<script>')[1].split('</script>')[0];
 function openFile(url) {
@@ -20,14 +19,12 @@ function openFile(url) {
 }
 
 test('file links preserve paths and positions on the current installation subdomain', () => {
-  const launch = new URL(fileIdeUrl({
-    cwd: '/var/lib/remote/projects/example/workspace/src',
-    path: '/workspace/src/a #ü%.ts', line: 12, column: 3,
-  }, 'https://remote.example.test'));
   for (const id of ['abcdef123456', '654321fedcba']) {
-    // Mirror the gateway's host redirect and launch-prefix removal.
-    const landing = new URL(launch.pathname.replace('/apps/example/code-server', '') + launch.search,
-      `https://${id}.apps.remote.example.test`);
+    const landing = new URL(fileIdeUrl({
+      cwd: '/var/lib/remote/projects/example/workspace/src',
+      path: '/workspace/src/a #ü%.ts', line: 12, column: 3,
+    }, id, 'https://remote.example.test'));
+    assert.equal(landing.origin, `https://${id}.apps.remote.example.test`);
     const { destination } = openFile(landing);
     assert.equal(destination.origin, landing.origin);
     assert.equal(destination.pathname, '/');

@@ -2,17 +2,19 @@
 
 Optional browser editor for a project workspace. Install it from that
 project's Applications page. Its icon appears in the chat header only while
-the project installation is running. The launch link
-`https://<host>/apps/<project-slug>/code-server/` redirects to
+the project installation is running. Editor and file links open directly at
 `https://<instance-id>.apps.<host>/`. The editor, assets and WebSockets stay on
 that installation's origin. Configure `*.apps.<host>` DNS to reach Remote;
 Caddy obtains certificates on demand through the application gateway.
 
-The UI extension registers the file opener used by chat links and the Files
-drawer. File links launch `/_static/remote-open.html` through the same redirect.
-This small application-owned page builds Code Server's `openFile` payload using
-the final hostname, preserving the folder, file, line and column. It does not
-cache installation IDs, so stable launch links work after a reinstall.
+The UI extension selects the running installation for the current project from
+`remote.backend.instances`. File-opener callbacks receive `projectId` from core.
+The host refreshes installation metadata on reconciliation, so subsequent links
+use the new origin after a reinstall. No application links use `/apps/...`.
+
+File links open `/_static/remote-open.html` on the application subdomain. This
+application-owned page builds Code Server's `openFile` payload on that origin,
+preserving the folder, file, line and column.
 
 ## Install as a desktop or mobile app
 
