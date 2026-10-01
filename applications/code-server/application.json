@@ -3,7 +3,7 @@
   "name": "Code Server",
   "description": "Optional VS Code editor for a project workspace.",
   "category": "development",
-  "version": "9",
+  "version": "10",
   "icon": "code",
   "scopes": ["project"],
   "install": "infra/install.sh",
@@ -31,7 +31,7 @@
     "restart": "on-failure",
     "restartSec": 2
   },
-  "web": { "port": 8842 },
+  "web": { "port": 8842, "subdomain": "code" },
   "backend": {
     "timeoutMs": 30000
   },

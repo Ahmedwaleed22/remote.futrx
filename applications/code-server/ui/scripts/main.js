@@ -7,18 +7,19 @@ const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
 // Chat cwd is the host path to the bind-mounted project workspace.
 const WORKSPACE = /^\/var\/lib\/remote\/projects\/([a-z0-9][a-z0-9-]*)\/workspace(?:\/(.*))?$/;
 
-export function workspaceIdeUrl(cwd, instanceId, origin = window.location.origin) {
+export function workspaceIdeUrl(cwd, instanceId, subdomain, origin = window.location.origin) {
   const match = WORKSPACE.exec(cwd || "");
   if (!match || !/^[a-f0-9]{12}$/.test(instanceId || "")) return null;
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(subdomain || "")) return null;
   const base = new URL(origin);
-  base.hostname = `${instanceId}.apps.${base.hostname}`;
+  base.hostname = `${subdomain}.${instanceId}.apps.${base.hostname}`;
   base.pathname = "/";
   base.searchParams.set("folder", match[2] ? `/workspace/${match[2]}` : "/workspace");
   return base.toString();
 }
 
-export function fileIdeUrl({ cwd, path, line, column }, instanceId, origin = window.location.origin) {
-  const url = workspaceIdeUrl(cwd, instanceId, origin);
+export function fileIdeUrl({ cwd, path, line, column }, instanceId, subdomain, origin = window.location.origin) {
+  const url = workspaceIdeUrl(cwd, instanceId, subdomain, origin);
   if (!url || (path !== "/workspace" && !path.startsWith("/workspace/"))) return null;
   if (path === "/workspace") return url;
   const result = new URL(url);
@@ -37,14 +38,14 @@ export default function activate(remote) {
   const instanceId = (projectId) => remote.backend.instances.find(
     (instance) => instance.scope === "project" && instance.projectId === projectId,
   )?.instanceId;
-  remote.files.registerOpener((request) => fileIdeUrl(request, instanceId(request.projectId)));
+  remote.files.registerOpener((request) => fileIdeUrl(request, instanceId(request.projectId), remote.application.web?.subdomain));
   remote.ui.addIconButton(remote.slots.chatHeaderActions, {
     icon: ICON,
     label: "Workspace IDE",
     title: "Open workspace in IDE",
-    when: (context) => Boolean(context.projectId && workspaceIdeUrl(context.cwd, instanceId(context.projectId))),
+    when: (context) => Boolean(context.projectId && workspaceIdeUrl(context.cwd, instanceId(context.projectId), remote.application.web?.subdomain)),
     onClick: (context) => {
-      const url = workspaceIdeUrl(context.cwd, instanceId(context.projectId));
+      const url = workspaceIdeUrl(context.cwd, instanceId(context.projectId), remote.application.web?.subdomain);
       if (url) window.open(url, "_blank", "noopener,noreferrer");
     },
   });
