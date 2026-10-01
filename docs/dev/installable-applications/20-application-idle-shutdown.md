@@ -79,3 +79,7 @@ They do not prove a real systemd idle cycle. On a disposable container, verify
 that the listener starts the process, open connections prevent idle exit,
 closing every connection stops it after the timeout, reconnecting restarts it,
 and Stop disables the listener. The app remains installed throughout.
+
+### Responsibility boundaries
+
+- [installer_socket.go](../../../backend/internal/integration/containers/applications/installer_socket.go) — Owns socket/proxy unit rendering and the shared best-effort shutdown sequence used by Stop and Uninstall.

@@ -201,10 +201,7 @@ func (in *Installer) Stop(ctx context.Context, spec svc.InstallSpec) error {
 		return nil
 	}
 	if svcName := spec.Application.ServiceName(); svcName != "" {
-		if spec.Application.Service.SocketProxy != nil {
-			_, _ = in.exec(ctx, inst.ContainerName, nil, controlTimeout, "systemctl", "disable", "--now", svcName+".socket")
-			_, _ = in.exec(ctx, inst.ContainerName, nil, controlTimeout, "systemctl", "stop", svcName+"-proxy.service")
-		}
+		in.stopSocketProxy(ctx, spec, svcName)
 		_, _ = in.exec(ctx, inst.ContainerName, nil, controlTimeout, "systemctl", "stop", svcName)
 	}
 	return nil
@@ -234,10 +231,7 @@ func (in *Installer) Uninstall(ctx context.Context, spec svc.InstallSpec) error 
 		return err
 	}
 	if svcName := spec.Application.ServiceName(); svcName != "" {
-		if spec.Application.Service.SocketProxy != nil {
-			_, _ = in.exec(ctx, inst.ContainerName, nil, controlTimeout, "systemctl", "disable", "--now", svcName+".socket")
-			_, _ = in.exec(ctx, inst.ContainerName, nil, controlTimeout, "systemctl", "stop", svcName+"-proxy.service")
-		}
+		in.stopSocketProxy(ctx, spec, svcName)
 		_, _ = in.exec(ctx, inst.ContainerName, nil, controlTimeout, "systemctl", "disable", "--now", svcName)
 		in.removeServiceFiles(ctx, spec)
 	}
@@ -487,16 +481,6 @@ func serviceUnit(spec svc.InstallSpec, environmentPath string) []byte {
 	}
 	unit.WriteString("\n[Install]\nWantedBy=multi-user.target\n")
 	return []byte(unit.String())
-}
-
-func socketProxyUnit(name string, socket svc.SocketProxy) []byte {
-	return []byte(fmt.Sprintf("[Unit]\nDescription=%s on-demand proxy\nRequires=%s.service\nAfter=%s.service\n\n[Service]\nExecStart=/usr/lib/systemd/systemd-socket-proxyd --exit-idle-time=%ds 127.0.0.1:%d\n",
-		name, name, name, socket.IdleSeconds, socket.TargetPort))
-}
-
-func socketUnit(name string, socket svc.SocketProxy) []byte {
-	return []byte(fmt.Sprintf("[Unit]\nDescription=%s on-demand socket\n\n[Socket]\nListenStream=0.0.0.0:%d\nService=%s-proxy.service\n\n[Install]\nWantedBy=sockets.target\n",
-		name, socket.ListenPort, name))
 }
 
 func systemdArgument(value string) string {
