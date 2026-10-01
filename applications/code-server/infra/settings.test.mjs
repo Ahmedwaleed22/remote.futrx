@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const installer = fs.readFileSync(new URL('./install.sh', import.meta.url), 'utf8').split("node <<'NODE'\n")[1].split('\nNODE')[0];
+const installer = fs.readFileSync(new URL('./migrate-settings.cjs', import.meta.url), 'utf8');
 const writer = fs.readFileSync(new URL('../backend/containerio/write-settings.js', import.meta.url), 'utf8');
 function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'code-server-settings-'));

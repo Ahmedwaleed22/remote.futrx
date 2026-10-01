@@ -130,15 +130,18 @@ app, then replace the container and confirm the setting and keybindings remain.
 - [containerio/settings.go](backend/containerio/settings.go) owns timed LXC commands; [write-settings.js](backend/containerio/write-settings.js) performs the existing atomic save and is embedded into the backend.
 - [config/settings.go](backend/config/settings.go) holds the size limit, timeout, and active settings path.
 
-The installer still owns seeding and migration of the persistent User directory. The infrastructure tests execute both the installer's migration and the embedded writer.
+The installer invokes `infra/migrate-settings.cjs` to seed and migrate the
+persistent User directory. The infrastructure tests execute that script and
+the embedded settings writer.
 
 The selected Code Server version is saved with the installation. Application
 updates preserve that choice; changing the manifest default affects new installs.
 
 ### Installer assets
 
-The file-launch page lives in `infra/remote-open.html`. Remote stages it through
-its existing `infra/payload.tar.gz` support; `install.sh` copies the staged file.
+The file-launch page lives in `infra/remote-open.html`; settings migration lives
+in `infra/migrate-settings.cjs`. Remote stages both through its existing
+`infra/payload.tar.gz` support. `install.sh` copies the page and runs the migration.
 After changing an asset, run `bash applications/code-server/infra/build-payload.sh`
 from the repository checkout. Payload tests compare the shipped archive with
 its reviewable sources so an outdated archive fails validation.
