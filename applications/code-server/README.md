@@ -6,8 +6,9 @@ the project installation is running. Editor and file links open directly at
 `https://<web.subdomain>--<project-slug>.<host>/`. The editor, assets and WebSockets stay on
 that project's application origin. Configure DNS for `<web.subdomain>--<project-slug>.<host>` to reach Remote;
 The shared gateway infrastructure uses one certificate for the platform hostname
-and one wildcard certificate for all app hosts, with an administrator-selected
-DNS provider. It does not request a certificate for each application or project.
+and one wildcard certificate for named application hosts, with an administrator-selected
+DNS provider. Code Server does not request a certificate for each project. Existing
+preview URLs and their certificate handling remain unchanged.
 
 The manifest declares `"web": { "port": 8842, "subdomain": "code" }`. The label
 comes from `remote.application.web.subdomain`; the project slug comes from the
