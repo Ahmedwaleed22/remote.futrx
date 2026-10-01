@@ -5,7 +5,9 @@ project's Applications page. Its icon appears in the chat header only while
 the project installation is running. Editor and file links open directly at
 `https://<web.subdomain>--<project-slug>.<host>/`. The editor, assets and WebSockets stay on
 that project's application origin. Configure DNS for `<web.subdomain>--<project-slug>.<host>` to reach Remote;
-Caddy obtains certificates on demand through the application gateway.
+The shared gateway infrastructure uses one certificate for the platform hostname
+and one wildcard certificate for all app hosts, with an administrator-selected
+DNS provider. It does not request a certificate for each application or project.
 
 The manifest declares `"web": { "port": 8842, "subdomain": "code" }`. The label
 comes from `remote.application.web.subdomain`; the project slug comes from the
@@ -14,7 +16,7 @@ is used in the URL. For project `gamerhead` on `remote.example.com`, the URL is
 `https://code--gamerhead.remote.example.com/?folder=%2Fworkspace`. Reinstalling
 preserves the URL. The existing gateway resolves it to the current running install.
 DNS must resolve that full hostname to Remote, and Caddy must use the updated
-application-host route.
+wildcard application-host route from the shared prerequisite.
 
 The UI extension selects the running installation for the current project from
 `remote.backend.instances`. File-opener callbacks receive `projectId` from core.
