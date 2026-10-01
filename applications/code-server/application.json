@@ -3,7 +3,7 @@
   "name": "Code Server",
   "description": "Optional VS Code editor for a project workspace.",
   "category": "development",
-  "version": "10",
+  "version": "11",
   "icon": "code",
   "scopes": ["project"],
   "install": "infra/install.sh",

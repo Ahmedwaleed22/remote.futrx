@@ -3,14 +3,16 @@
 Optional browser editor for a project workspace. Install it from that
 project's Applications page. Its icon appears in the chat header only while
 the project installation is running. Editor and file links open directly at
-`https://<web.subdomain>.<instance-id>.apps.<host>/`. The editor, assets and WebSockets stay on
-that installation's origin. Configure `*.apps.<host>` DNS to reach Remote;
+`https://<web.subdomain>.<project-slug>.<host>/`. The editor, assets and WebSockets stay on
+that project's application origin. Configure DNS for `<web.subdomain>.<project-slug>.<host>` to reach Remote;
 Caddy obtains certificates on demand through the application gateway.
 
 The manifest declares `"web": { "port": 8842, "subdomain": "code" }`. The label
-comes from `remote.application.web.subdomain`; the installation ID comes from
-the current project installation. Neither value is hardcoded into the URL builder.
-The resulting Code Server URL is `https://code.<instance-id>.apps.<host>/`.
+comes from `remote.application.web.subdomain`; the project slug comes from the
+selected workspace path. Neither a container ID nor an application installation ID
+is used in the URL. For project `gamerhead` on `remote.example.com`, the URL is
+`https://code.gamerhead.remote.example.com/?folder=%2Fworkspace`. Reinstalling
+preserves the URL. The existing gateway resolves it to the current running install.
 DNS must resolve that full hostname to Remote, and Caddy must use the updated
 nested application-host route.
 

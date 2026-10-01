@@ -37,16 +37,16 @@ test('file links preserve paths and positions on the current installation subdom
 });
 
 test('files without positions open on the app origin and keep a non-default port', () => {
-  const { destination } = openFile(new URL('https://code.abcdef123456.apps.remote.test:8443/_static/remote-open.html?file=%2Fworkspace%2FREADME.md'));
-  assert.equal(destination.origin, 'https://code.abcdef123456.apps.remote.test:8443');
+  const { destination } = openFile(new URL('https://code.gamerhead.remote.test:8443/_static/remote-open.html?file=%2Fworkspace%2FREADME.md'));
+  assert.equal(destination.origin, 'https://code.gamerhead.remote.test:8443');
   assert.deepEqual(JSON.parse(destination.searchParams.get('payload')), [
-    ['openFile', 'vscode-remote://code.abcdef123456.apps.remote.test:8443/workspace/README.md'],
+    ['openFile', 'vscode-remote://code.gamerhead.remote.test:8443/workspace/README.md'],
   ]);
 });
 
 test('invalid file or folder cannot redirect away from the application', () => {
   for (const query of ['file=/etc/passwd', 'file=https://evil.test/a', 'file=/workspace/a&folder=//evil.test', '']) {
-    const result = openFile(new URL(`https://code.abcdef123456.apps.remote.test/_static/remote-open.html?${query}`));
+    const result = openFile(new URL(`https://code.gamerhead.remote.test/_static/remote-open.html?${query}`));
     assert.equal(result.destination, undefined);
     assert.equal(result.message, 'Invalid workspace file.');
   }

@@ -7,19 +7,19 @@ const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
 // Chat cwd is the host path to the bind-mounted project workspace.
 const WORKSPACE = /^\/var\/lib\/remote\/projects\/([a-z0-9][a-z0-9-]*)\/workspace(?:\/(.*))?$/;
 
-export function workspaceIdeUrl(cwd, instanceId, subdomain, origin = window.location.origin) {
+export function workspaceIdeUrl(cwd, installed, subdomain, origin = window.location.origin) {
   const match = WORKSPACE.exec(cwd || "");
-  if (!match || !/^[a-f0-9]{12}$/.test(instanceId || "")) return null;
+  if (!match || !installed || match[1].length > 63 || match[1].endsWith("-") || ["dev", "code", "apps"].includes(match[1])) return null;
   if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(subdomain || "")) return null;
   const base = new URL(origin);
-  base.hostname = `${subdomain}.${instanceId}.apps.${base.hostname}`;
+  base.hostname = `${subdomain}.${match[1]}.${base.hostname}`;
   base.pathname = "/";
   base.searchParams.set("folder", match[2] ? `/workspace/${match[2]}` : "/workspace");
   return base.toString();
 }
 
-export function fileIdeUrl({ cwd, path, line, column }, instanceId, subdomain, origin = window.location.origin) {
-  const url = workspaceIdeUrl(cwd, instanceId, subdomain, origin);
+export function fileIdeUrl({ cwd, path, line, column }, installed, subdomain, origin = window.location.origin) {
+  const url = workspaceIdeUrl(cwd, installed, subdomain, origin);
   if (!url || (path !== "/workspace" && !path.startsWith("/workspace/"))) return null;
   if (path === "/workspace") return url;
   const result = new URL(url);
@@ -34,18 +34,18 @@ export function fileIdeUrl({ cwd, path, line, column }, instanceId, subdomain, o
 }
 
 export default function activate(remote) {
-  // Read live installation metadata each time: reinstalling changes the origin.
-  const instanceId = (projectId) => remote.backend.instances.find(
+  // Read current availability; the project slug keeps the address stable on reinstall.
+  const isInstalled = (projectId) => remote.backend.instances.some(
     (instance) => instance.scope === "project" && instance.projectId === projectId,
-  )?.instanceId;
-  remote.files.registerOpener((request) => fileIdeUrl(request, instanceId(request.projectId), remote.application.web?.subdomain));
+  );
+  remote.files.registerOpener((request) => fileIdeUrl(request, isInstalled(request.projectId), remote.application.web?.subdomain));
   remote.ui.addIconButton(remote.slots.chatHeaderActions, {
     icon: ICON,
     label: "Workspace IDE",
     title: "Open workspace in IDE",
-    when: (context) => Boolean(context.projectId && workspaceIdeUrl(context.cwd, instanceId(context.projectId), remote.application.web?.subdomain)),
+    when: (context) => Boolean(context.projectId && workspaceIdeUrl(context.cwd, isInstalled(context.projectId), remote.application.web?.subdomain)),
     onClick: (context) => {
-      const url = workspaceIdeUrl(context.cwd, instanceId(context.projectId), remote.application.web?.subdomain);
+      const url = workspaceIdeUrl(context.cwd, isInstalled(context.projectId), remote.application.web?.subdomain);
       if (url) window.open(url, "_blank", "noopener,noreferrer");
     },
   });
