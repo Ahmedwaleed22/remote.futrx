@@ -64,7 +64,7 @@ flowchart LR
 | --- | --- |
 | Projects sidebar | Project and chat creation, search, status, ordering, read state, forking, and deletion |
 | Chat | Agent selection, prompt context, streamed reasoning and tool activity, per-tab drafts and queues, questions, usage, and history |
-| Workspace tools | The durable `/workspace` through files, downloads, a shell, code-server, and Git |
+| Workspace tools | The durable `/workspace` through files, downloads, a shell, application actions, and Git |
 | Scheduled tasks | Host-owned one-time or recurring prompts that return to a project chat |
 | Project settings | Container state, diagnostics, resource limits, secrets, membership, and recovery |
 | Global settings | Appearance, host-wide agent credentials, platform users, Google OAuth, and host metrics |
