@@ -10,7 +10,7 @@ Caddy obtains certificates on demand through the application gateway.
 The UI extension selects the running installation for the current project from
 `remote.backend.instances`. File-opener callbacks receive `projectId` from core.
 The host refreshes installation metadata on reconciliation, so subsequent links
-use the new origin after a reinstall. No application links use `/apps/...`.
+use the new origin after a reinstall.
 
 File links open `/_static/remote-open.html` on the application subdomain. This
 application-owned page builds Code Server's `openFile` payload on that origin,
