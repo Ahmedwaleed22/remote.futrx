@@ -31,3 +31,21 @@ func TestSocketProxyValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestSocketProxyMatchesProjectWebPort(t *testing.T) {
+	app := svc.Application{
+		ID: "editor", Name: "Editor", Version: "1", Scopes: []svc.Scope{svc.ScopeProject},
+		Web: &svc.ApplicationWeb{Port: 8400},
+		Service: &svc.ApplicationService{
+			Name: "editor", Command: []string{"/usr/bin/editor"},
+			SocketProxy: &svc.SocketProxy{ListenPort: 8400, TargetPort: 8401, IdleSeconds: 600},
+		},
+	}
+	if err := validateApplication(app); err != nil {
+		t.Fatalf("matching web listener: %v", err)
+	}
+	app.Web.Port = 8401
+	if err := validateApplication(app); err == nil {
+		t.Fatal("accepted web route that bypasses the activation listener")
+	}
+}

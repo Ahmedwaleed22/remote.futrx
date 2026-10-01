@@ -7,7 +7,11 @@ change the built-in editor or install any editor application.
 Apps without `service.socketProxy` keep their existing service behavior.
 A socket-activated application can use an allocated host port through
 `port.internal`, which must match the socket listener port, or run only inside
-the container without allocating a host port.
+the container without allocating a host port. For a project web app,
+`web.port` must match `listenPort`. The existing app subdomain gateway forwards
+to this listener; socket activation does not change hostnames or authentication.
+This capability is opt-in and does not enable idle shutdown for Code Server
+or any other application unless its manifest declares `service.socketProxy`.
 
 ```json
 "service": {
@@ -69,7 +73,7 @@ command errors; an issued command is not proof of successful OS cleanup.
 
 Listener and target ports must be distinct integers between 1024 and 65535.
 `idleSeconds` must be positive. A declared `port.internal` must match
-`listenPort`. Optional `readyPath` must match `^/[A-Za-z0-9/_-]*$`.
+`listenPort`; a declared `web.port` must also match it. Optional `readyPath` must match `^/[A-Za-z0-9/_-]*$`.
 
 ## Verification
 
