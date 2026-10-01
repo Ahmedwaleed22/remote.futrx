@@ -124,7 +124,9 @@ app, then replace the container and confirm the setting and keybindings remain.
 
 ### Backend ownership
 
-- [main.go](backend/main.go) wires the settings service to container I/O and starts RPC.
+- [main.go](backend/main.go) wires the settings service to container I/O and starts
+  RPC through `ServeWithRuntime`, matching Hello Remote. Code Server currently
+  declares no publishers or subscriptions and does not use runtime events.
 - [api/api.go](backend/api/api.go) owns routes, request serialization, and HTTP error mapping.
 - [settings/store.go](backend/settings/store.go) owns instance initialization and settings validation. Initialization never writes settings.
 - [containerio/settings.go](backend/containerio/settings.go) owns timed LXC commands; [write-settings.js](backend/containerio/write-settings.js) performs the existing atomic save and is embedded into the backend.
