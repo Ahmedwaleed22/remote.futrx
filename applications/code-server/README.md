@@ -158,3 +158,6 @@ in `infra/migrate-settings.cjs`. Remote stages both through its existing
 After changing an asset, run `bash applications/code-server/infra/build-payload.sh`
 from the repository checkout. Payload tests compare the shipped archive with
 its reviewable sources so an outdated archive fails validation.
+
+Editor URL parsing and validation live in `ui/scripts/editorUrls.js`;
+`ui/scripts/main.js` registers the editor actions and file opener.

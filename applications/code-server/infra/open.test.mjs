@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
-import { fileIdeUrl } from '../ui/scripts/main.js';
+import { fileIdeUrl } from '../ui/scripts/editorUrls.js';
 
 // Execute the exact page published by the installer on the application origin.
 const html = fs.readFileSync(new URL('./remote-open.html', import.meta.url), 'utf8');

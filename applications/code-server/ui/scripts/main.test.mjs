@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import activate, { fileIdeUrl, workspaceIdeUrl } from "./main.js";
+import activate from "./main.js";
+import { fileIdeUrl, workspaceIdeUrl } from "./editorUrls.js";
 
 test("Code Server URL uses the project subdomain and selected chat directory", () => {
   assert.equal(
@@ -102,10 +103,16 @@ test("the manifest label and project slug independently determine the app hostna
 });
 
 test("reserved separators and combined DNS-label length are validated", () => {
- const url = (slug, label) => workspaceIdeUrl(`/var/lib/remote/projects/${slug}/workspace`, true, label, "https://example.com");
- for (const slug of ["game--head", "--game", "game-"]) assert.equal(url(slug, "code"), null);
- assert.equal(url("project", "code--editor"), null);
- assert.equal(url("proj", "a".repeat(58)), null);
- assert.equal(new URL(url("proj", "a".repeat(57))).hostname.split(".")[0].length, 63);
- for (const slug of ["code", "dev", "apps"]) assert.equal(new URL(url(slug, "code")).hostname, `code--${slug}.example.com`);
+  const url = (slug, label) => workspaceIdeUrl(
+    `/var/lib/remote/projects/${slug}/workspace`, true, label, "https://example.com",
+  );
+  for (const slug of ["game--head", "--game", "game-"]) {
+    assert.equal(url(slug, "code"), null);
+  }
+  assert.equal(url("project", "code--editor"), null);
+  assert.equal(url("proj", "a".repeat(58)), null);
+  assert.equal(new URL(url("proj", "a".repeat(57))).hostname.split(".")[0].length, 63);
+  for (const slug of ["code", "dev", "apps"]) {
+    assert.equal(new URL(url(slug, "code")).hostname, `code--${slug}.example.com`);
+  }
 });
