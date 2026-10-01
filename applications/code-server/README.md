@@ -31,12 +31,12 @@ Open the project editor URL in a browser, then use the browser's **Install app**
 action (or **Add to Home Screen** on iOS). Code Server provides the PWA
 manifest, icons, and service worker. Its installed name includes the project
 container's hostname so editors from different projects are distinguishable.
-Each installation has its own origin and service worker, separate from Remote
-and other projects. Uninstalling and reinstalling creates a new installation ID
-and origin; install the new editor as a PWA again if you previously pinned it.
+Each project application has its own origin and service worker, separate from Remote
+and other projects. Reinstalling keeps the same project URL and browser storage, so existing PWA
+bookmarks continue to work once the application is running again.
 The editor still needs a network connection and a running Code Server
 installation. Stopping or uninstalling Code Server makes the installed app's
-launch URL unavailable while stopped; an uninstalled origin remains unavailable.
+launch URL unavailable while stopped; the origin becomes available again after reinstall.
 
 Before selecting **Install**, edit the complete **VS Code settings.json** field
 in the catalog's install form. It starts with the current Remote defaults from

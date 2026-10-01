@@ -18,13 +18,13 @@ function openFile(url) {
   return { destination: destination && new URL(destination), message: message.textContent };
 }
 
-test('file links preserve paths and positions on the current installation subdomain', () => {
-  for (const id of ['abcdef123456', '654321fedcba']) {
+test('file links preserve paths and positions on the current project subdomain', () => {
+  for (const slug of ['gamerhead', 'other-project']) {
     const landing = new URL(fileIdeUrl({
-      cwd: '/var/lib/remote/projects/example/workspace/src',
+      cwd: `/var/lib/remote/projects/${slug}/workspace/src`,
       path: '/workspace/src/a #ü%.ts', line: 12, column: 3,
-    }, id, 'code', 'https://remote.example.test'));
-    assert.equal(landing.origin, `https://code.${id}.apps.remote.example.test`);
+    }, true, 'code', 'https://remote.example.test'));
+    assert.equal(landing.origin, `https://code.${slug}.remote.example.test`);
     const { destination } = openFile(landing);
     assert.equal(destination.origin, landing.origin);
     assert.equal(destination.pathname, '/');
