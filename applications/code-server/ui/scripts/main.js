@@ -9,10 +9,11 @@ const WORKSPACE = /^\/var\/lib\/remote\/projects\/([a-z0-9][a-z0-9-]*)\/workspac
 
 export function workspaceIdeUrl(cwd, installed, subdomain, origin = window.location.origin) {
   const match = WORKSPACE.exec(cwd || "");
-  if (!match || !installed || match[1].length > 63 || match[1].endsWith("-") || ["dev", "code", "apps"].includes(match[1])) return null;
-  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(subdomain || "")) return null;
+  if (!match || !installed || match[1].length > 63 || match[1].endsWith("-") || match[1].includes("--")) return null;
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(subdomain || "") || subdomain.includes("--")) return null;
+  if (subdomain.length + 2 + match[1].length > 63) return null;
   const base = new URL(origin);
-  base.hostname = `${subdomain}.${match[1]}.${base.hostname}`;
+  base.hostname = `${subdomain}--${match[1]}.${base.hostname}`;
   base.pathname = "/";
   base.searchParams.set("folder", match[2] ? `/workspace/${match[2]}` : "/workspace");
   return base.toString();
