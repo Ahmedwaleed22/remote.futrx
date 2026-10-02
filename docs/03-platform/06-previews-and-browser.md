@@ -148,7 +148,7 @@ Backend behavior:
 ```mermaid
 flowchart TD
     Main["https://host"] --> Backend["Main UI and API"]
-    AppLaunch["https://host/apps/slug/app/"] -->|302| AppWeb["https://instance-id.apps.host/"]
+    AppLaunch["https://host/apps/slug/app/"] -->|302| AppWeb["https://label--project.host/"]
     AppWeb --> WebProxy["Authorized Go web proxy → declared app port"]
     Preview["https://slug--port.dev.host"] --> ProjectApp["slug.lxd:port"]
     AgentView["https://slug--6080.dev.host"] --> NoVNC["slug.lxd:6080"]

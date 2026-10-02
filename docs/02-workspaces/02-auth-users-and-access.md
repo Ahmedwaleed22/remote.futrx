@@ -187,7 +187,7 @@ Project access is enforced independently on project/chat HTTP resources, chat so
 
 ## Preview and application web authentication
 
-Caddy calls `/auth/verify` before forwarding preview traffic. For a preview host, the backend extracts the project slug and checks membership; failing that, it accepts a valid [public share link](../03-platform/06-previews-and-browser.md#public-share-links) for that exact slug and port, which is the one path that authorizes a caller with no platform account. Application launch links under `/apps/<slug>/<app-id>/` redirect to `<instance-id>.apps.<host>`. The gateway checks project membership and a running installation on every app-host request and never accepts share links. The backend strips platform cookies before forwarding to the application; Caddy strips platform session and share cookies from preview traffic.
+Caddy calls `/auth/verify` before forwarding preview traffic. For a preview host, the backend extracts the project slug and checks membership; failing that, it accepts a valid [public share link](../03-platform/06-previews-and-browser.md#public-share-links) for that exact slug and port, which is the one path that authorizes a caller with no platform account. Application launch links under `/apps/<slug>/<app-id>/` redirect to `<label>--<project>.<host>`. The gateway checks project membership and a running installation on every app-host request and never accepts share links. The backend strips platform cookies before forwarding to the application; Caddy strips platform session and share cookies from preview traffic.
 
 ```mermaid
 sequenceDiagram

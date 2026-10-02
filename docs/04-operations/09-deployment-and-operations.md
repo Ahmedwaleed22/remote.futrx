@@ -109,7 +109,7 @@ flowchart TD
     Internet["Internet"] --> Caddy
     Caddy --> Main["host → Go backend"]
     Main --> Launch["/apps/slug/app → redirect to installation origin"]
-    Caddy --> AppWeb["instance-id.apps.host → Go gateway → declared project web port"]
+    Caddy --> AppWeb["label--project.host → Go gateway → declared project web port"]
     Caddy --> Preview["slug--port.dev.host → slug.lxd:port"]
     Caddy --> Inspector["preview /__remote_inspector → Go backend"]
 
@@ -118,7 +118,7 @@ flowchart TD
     Preview --> TLS["on-demand TLS checked by /internal/tls-ask"]
 ```
 
-Caddy validates its rendered configuration before replacing the live file. On-demand certificate requests are accepted only for existing project previews and running web installations with permitted hostname formats. Configure `*.apps.<host>` DNS for installed applications.
+Caddy validates its rendered configuration before replacing the live file. On-demand certificate requests are accepted only for existing project previews and running web installations with permitted hostname formats. Configure `*.<host>` DNS for installed applications.
 
 ## Base-image build
 

@@ -161,7 +161,7 @@ chat run path. See [Scheduled tasks](06-scheduled-tasks.md).
 ## Application web routes and workspace links
 
 Project applications can declare a web port in their manifest. Remote exposes a
-running installation at `<instance-id>.apps.<host>` after checking
+running installation at `<label>--<project>.<host>` after checking
 project access. It selects the upstream port from the validated application
 manifest, removes platform cookies before forwarding, and stops routing when
 the application stops or is uninstalled. The `/apps/<project-slug>/<application-id>/` launch URL redirects to that origin. The application owns its browser UI,

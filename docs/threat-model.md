@@ -72,7 +72,7 @@ External users reach only Caddy, which terminates TLS and forwards to the loopba
 ### 4. Any invited user reaches another project's application web service — resolved at edge
 
 Project web applications are routed through the authenticated
-`<instance-id>.apps.<public-host>` gateway; `/apps/<project-slug>/<application-id>/`
+`<web.subdomain>--<project-slug>.<public-host>` gateway; `/apps/<project-slug>/<application-id>/`
 is only its launch redirect. The gateway verifies project membership and a
 running installation, then selects the upstream port from the validated
 application manifest. Stopping or uninstalling an app disables its route. The
@@ -84,8 +84,7 @@ The original `/apps/<project-slug>/<application-id>/` proxy would have served
 project-controlled scripts on the main Remote origin. Cookie stripping could
 not stop those scripts from making authenticated platform API calls.
 
-The route only redirects to an isolated app origin: `<instance-id>.apps.<public-host>`
-for unnamed apps, or `<web.subdomain>--<project-slug>.<public-host>` for named apps.
+The route only redirects to an isolated app origin: `<web.subdomain>--<project-slug>.<public-host>`.
 Named origins persist across reinstall, including browser storage and service workers. Host dispatch
 runs before the platform router, so app hosts cannot serve platform APIs or
 login pages. Every app request validates the session, project visibility and

@@ -2,30 +2,17 @@ package httptransport
 
 import (
 	"net"
-	"regexp"
 	"strings"
 
 	svc "github.com/futrx-com/remote.futrx.com/internal/service/applications"
 )
 
-var applicationInstanceLabel = regexp.MustCompile(`^[a-f0-9]{12}$`)
-
-// ApplicationHost uses a project slug for named apps. Unnamed apps retain their
-// existing installation origin until they opt into a manifest subdomain.
+// ApplicationHost uses the manifest label and project slug.
 func ApplicationHost(identity, subdomain, publicHost string) string {
-	if publicHost == "" || !svc.ValidWebSubdomain(subdomain) {
+	if publicHost == "" || !validProjectApplicationLabel(subdomain, identity) {
 		return ""
 	}
-	if subdomain != "" {
-		if !validProjectApplicationLabel(subdomain, identity) {
-			return ""
-		}
-		return subdomain + "--" + identity + "." + publicHost
-	}
-	if !applicationInstanceLabel.MatchString(identity) {
-		return ""
-	}
-	return identity + ".apps." + publicHost
+	return subdomain + "--" + identity + "." + publicHost
 }
 
 // validProjectApplicationLabel owns the combined app/project DNS-label rules.
@@ -68,16 +55,6 @@ func ApplicationProject(host, publicHost string) (string, string, bool) {
 		return "", "", false
 	}
 	return label, slug, true
-}
-
-func ApplicationInstanceID(host, publicHost string) (string, bool) {
-	suffix := ".apps." + requestHostname(publicHost)
-	host = requestHostname(host)
-	if publicHost == "" || !strings.HasSuffix(host, suffix) {
-		return "", false
-	}
-	id := strings.TrimSuffix(host, suffix)
-	return id, applicationInstanceLabel.MatchString(id)
 }
 
 func MatchesApplicationHost(host, identity, subdomain, publicHost string) bool {
