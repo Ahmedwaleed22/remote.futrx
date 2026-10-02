@@ -2,8 +2,8 @@
 #
 # Platform and application site blocks:
 #   1. ${HOSTNAME}            main chat UI + backend API
-#   2. *.dev.${HOSTNAME}      per-project dev URLs (<slug>--<port>.dev.<host>)
-#   3. *.apps.${HOSTNAME}     isolated installation origins (<instance-id>.apps.<host>)
+#   2. *.${HOSTNAME}          named application origins (<label>--<project>.<host>)
+#   3. *.dev.${HOSTNAME}      per-project dev URLs (<slug>--<port>.dev.<host>)
 #
 # All use Remote authentication. Dev URLs use forward_auth; the
 # application gateway validates sessions and project membership itself.
@@ -34,10 +34,11 @@ ${HOSTNAME} {
 
 # Code Server's manifest-defined <label>--<project>.<host> origin uses the
 # platform wildcard. This does not change preview or legacy app hostnames/TLS.
+# Certificates are on-demand per host, admitted by /internal/tls-ask like previews.
 *.${HOSTNAME} {
     encode zstd gzip
     tls {
-        import /etc/caddy/remote-dns.caddy
+        on_demand
     }
     @named header_regexp named Host (?i)^[a-z0-9-]+--[a-z0-9-]+\.${HOSTNAME_RE}\.?(?::[0-9]+)?$
     handle @named {
@@ -46,14 +47,6 @@ ${HOSTNAME} {
     handle {
         respond 404
     }
-}
-
-*.apps.${HOSTNAME} {
-    encode zstd gzip
-    tls {
-        on_demand
-    }
-    reverse_proxy 127.0.0.1:${SERVICE_PORT}
 }
 
 # Per-project dev URLs. <slug>--<port>.dev.${HOSTNAME} proxies into the
