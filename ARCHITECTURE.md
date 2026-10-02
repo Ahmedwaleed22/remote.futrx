@@ -37,7 +37,7 @@ flowchart TB
 
     User -->|HTTPS| Caddy
     Caddy -->|"main host → loopback"| Go
-    Go -->|"authenticated instance.apps.host gateway"| AppWeb
+    Go -->|"authenticated label--project.host gateway"| AppWeb
     Caddy -->|"&lt;slug&gt;--&lt;port&gt;.dev.host → :port"| AppA
     Caddy -->|"&lt;slug&gt;--6080.dev.host → :6080"| BrowA
     Go -->|reads/writes| Stores
@@ -62,7 +62,7 @@ Caddy ([`infra/templates/Caddyfile.tmpl`](infra/templates/Caddyfile.tmpl)) termi
 | --- | --- | --- |
 | `remote.example.com` (main) | Go backend on loopback | App session middleware; `/internal/*` blocked externally |
 | `<slug>--<port>.dev.<host>` | Project dev server on `<slug>.lxd:<port>` | `forward_auth` → `/auth/verify` (**project membership enforced**, or a valid public share link for that exact slug+port) |
-| `<instance-id>.apps.<host>` | Go application gateway → declared project app port | Session, registered account, project membership and running installation |
+| `<label>--<project-slug>.<host>` | Go application gateway → declared project app port | Session, registered account, project membership and running installation |
 | `<slug>--6080.dev.<host>` | Agent Browser noVNC on `:6080` | `forward_auth` → `/auth/verify` (project membership, via the dev pattern) |
 
 Two properties of this table are load-bearing and both are analyzed in the threat model:
@@ -288,7 +288,7 @@ overlap, authorization, cron, and crash-recovery state machine.
 Project containers expose these capabilities ([deep dive](docs/03-platform/06-previews-and-browser.md)):
 
 - **App previews:** the backend runs `ss` inside the container to discover listening ports ([`listeners/scanner.go`](backend/internal/integration/containers/listeners/scanner.go), loopback binds excluded), and each becomes a `<slug>--<port>.dev.<host>` URL. No per-app proxy config is written — DNS + Caddy regex do the routing.
-- **Installed application web services:** an application can declare a project port. The backend checks membership and installation status on every `<instance-id>.apps.<host>` request. `/apps/<slug>/<application-id>/` only redirects to that isolated origin. No editor is installed by core.
+- **Installed application web services:** an application can declare a project port and a required `web.subdomain` label. The backend checks membership and installation status on every `<label>--<project-slug>.<host>` request. `/apps/<slug>/<application-id>/` only redirects to that isolated origin. No editor is installed by core.
 - **Agent Browser:** one shared headed Chromium per project, driven by the user via noVNC (`:6080`) and by the agent via MCP-over-CDP (`127.0.0.1:9222`) — the *same* browser session, so the agent inherits whatever sites the user logged into. The human UI can start and view it directly; selecting the `browser` skill enables agent MCP access for Claude, Codex, or MiniMax.
 
 ## Frontend
