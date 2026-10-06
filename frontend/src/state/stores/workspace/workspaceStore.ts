@@ -1,5 +1,3 @@
-import { discardChatAttachments } from "../chat/attachmentDraftStore.ts";
-import { chatComposerSessionStore } from "../chat/composerSessionStore.ts";
 import { createStore } from "zustand/vanilla";
 import type { ChatMeta } from "../../../models/chat";
 import type { ProjectMeta } from "../../../models/project";
@@ -59,9 +57,6 @@ export function createWorkspaceStore(subscribe: SubscribeToWorkspace) {
             upsertChat(message.chat);
             break;
           case "chat.delete":
-            discardChatAttachments(message.id);
-            chatComposerSessionStore.getState().setDraft(message.id, "");
-            chatComposerSessionStore.getState().setQueuedPrompts(message.id, []);
             commit(workspaceDataProjector.removeChat(chats, message.id), projects, loaded);
             break;
           case "project.upsert":

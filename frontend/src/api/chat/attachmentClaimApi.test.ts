@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 
-import { announceUpload } from "./attachmentClaimPolicy.ts";
+import { announceUpload } from "./attachmentClaimApi.ts";
 import type {
   CompletedUpload,
   UploadCompletedEvent,
-} from "../../../models/extension.ts";
-import { extensionEventService } from "../../../services/extensions/extensionEventService.ts";
+} from "../../models/extension.ts";
+import { extensionEventService } from "../../services/extensions/extensionEventService.ts";
 
 const UPLOAD: CompletedUpload = {
   chatId: "chat-1",

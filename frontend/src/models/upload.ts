@@ -20,3 +20,8 @@ export interface AttachmentDraftActions {
   begin: (chatId: string) => void;
   finish: (chatId: string) => void;
 }
+
+export interface AttachmentUploadTarget {
+  attachmentBasePath: string;
+  projectId?: string;
+}

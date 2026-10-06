@@ -9,10 +9,10 @@
 // attachment alone, which is the direction that cannot break a send: the file
 // is still where the composer already thinks it is.
 
-import { ATTACHMENT_CLAIM_TIMEOUT_MS } from "../../../config/chat.ts";
-import { EXTENSION_EVENTS } from "../../../config/extensions.ts";
-import type { CompletedUpload } from "../../../models/extension.ts";
-import { extensionEventService } from "../../../services/extensions/extensionEventService.ts";
+import { ATTACHMENT_CLAIM_TIMEOUT_MS } from "../../config/chat.ts";
+import { EXTENSION_EVENTS } from "../../config/extensions.ts";
+import type { CompletedUpload } from "../../models/extension.ts";
+import { extensionEventService } from "../../services/extensions/extensionEventService.ts";
 
 /**
  * Announces an attachment that is on disk, and waits for whatever claimed it.
