@@ -11,11 +11,11 @@ package capability
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	agentmodule "github.com/futrx-com/remote.futrx.com/internal/service/agent/module"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
@@ -115,7 +115,7 @@ func New(
 			settings.CapabilityCacheTTL,
 			settings.DegradedCapabilityCacheTTL,
 		),
-		probeSlots: make(chan struct{}, 8),
+		probeSlots: make(chan struct{}, configconstants.CapabilityProbeConcurrency),
 	}
 	for _, option := range options {
 		if option != nil {
@@ -156,39 +156,7 @@ func (c *Service) List(ctx context.Context, query ListQuery) ([]agent.Capabiliti
 	for i, provider := range providers {
 		key := flightKey + ":provider:" + string(provider.ID())
 		entries[i] = c.cache.start(key, force, func() agent.Capabilities {
-			probeCtx := context.WithoutCancel(ctx)
-			timeout := c.capabilityTimeout
-			if timeout <= 0 {
-				timeout = 30 * time.Second
-			}
-			probeCtx, cancel := context.WithTimeout(probeCtx, timeout)
-			defer cancel()
-			started := time.Now()
-			var caps agent.Capabilities
-			var err error
-			select {
-			case c.probeSlots <- struct{}{}:
-				caps, err = provider.Capabilities(probeCtx, agent.CapabilityRequest{ContainerName: containerName})
-				<-c.probeSlots
-			case <-probeCtx.Done():
-				err = probeCtx.Err()
-			}
-			caps.Provider = provider.ID()
-			c.decorate(&caps)
-			if caps.Source == "" {
-				caps.Source = agent.CapabilitySourceFallback
-			}
-			if err != nil && caps.Warning == "" {
-				caps.Warning = "Provider capabilities are temporarily unavailable"
-			}
-			if caps.Models == nil {
-				caps.Models = []agent.ModelCapability{}
-			}
-			if caps.Modes == nil {
-				caps.Modes = []agent.CapabilityOption{}
-			}
-			log.Printf("capability probe provider=%s scope=%s duration=%s source=%s failed=%t", provider.ID(), scope, time.Since(started), caps.Source, err != nil)
-			return caps
+			return c.probe(ctx, provider, containerName, scope)
 		})
 	}
 	result := make([]agent.Capabilities, len(providers))

@@ -2,10 +2,12 @@ package capability
 
 import (
 	"context"
-	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/futrx-com/remote.futrx.com/internal/agent"
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 )
 
 // Cache entries and refresh flights are independent per provider and scope.
@@ -38,7 +40,7 @@ func (c *catalogCache) start(key string, force bool, discover func() agent.Capab
 		}
 	} else {
 		// Bound retained catalogs across projects. Never evict an active flight.
-		if len(c.entries) >= 1024 {
+		if len(c.entries) >= configconstants.CapabilityCacheEntryLimit {
 			oldestKey := ""
 			var oldest time.Time
 			for k, candidate := range c.entries {
