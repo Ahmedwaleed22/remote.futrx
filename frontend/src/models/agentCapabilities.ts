@@ -30,6 +30,7 @@ export interface AgentModelCapability {
 }
 
 export interface AgentProviderCapabilities {
+  refreshing?: boolean;
   provider: ChatProvider;
   label: string;
   default?: boolean;

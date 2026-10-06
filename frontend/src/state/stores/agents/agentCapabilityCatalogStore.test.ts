@@ -104,3 +104,30 @@ test("catalog rendering state remains isolated by user and project", async () =>
   assert.equal(read(store, "other@example.com", "project-1").catalog, null);
   assert.equal(read(store, "user@example.com", "project-2").catalog, null);
 });
+
+test("polls only observed scopes and publishes fast providers before slow ones", async () => {
+ let calls=0;
+ const store=createAgentCapabilityCatalogStore(async()=>{
+  calls++;
+  const response=catalog("fast");
+  if(calls===1)response.providers.push({...response.providers[0],provider:"codex",label:"slow",source:"fallback",refreshing:true});
+  return response;
+ });
+ const unobserve=store.getState().observe("user", "project");
+ await store.getState().load("user","project");
+ assert.equal(read(store,"user","project").refreshing,true);
+ assert.equal(read(store,"user","project").catalog?.providers[0].source,"live");
+ await new Promise(resolve=>setTimeout(resolve,300));
+ assert.equal(calls,2);
+ assert.equal(read(store,"user","project").refreshing,false);
+ unobserve();
+});
+
+test("inactive scope cache is bounded and unobserving cancels polling",async()=>{
+ const store=createAgentCapabilityCatalogStore(async()=>({...catalog("cached"),providers:[{...catalog("cached").providers[0],refreshing:true}]}));
+ const unobserve=store.getState().observe("user","active");
+ await store.getState().load("user","active");
+ unobserve();
+ for(let i=0;i<80;i++)await store.getState().load("user",`project-${i}`);
+ assert.ok(store.getState().scopes.size<=32);
+});

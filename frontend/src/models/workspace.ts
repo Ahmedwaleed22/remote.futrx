@@ -4,6 +4,9 @@ import type { WorkspaceMessage } from "../types/workspaceApi";
 
 /** What the workspace feed has delivered so far. */
 export interface WorkspaceSnapshot {
+  nextBefore?: string;
+  hasMore?: boolean;
+  totalChats?: number;
   chats: ChatMeta[];
   projects: ProjectMeta[];
   /** False until the first snapshot lands. An empty list before that means
@@ -21,10 +24,12 @@ export interface WorkspaceStoreState {
 }
 
 export interface WorkspaceStoreActions {
+  connectionGeneration: () => number;
   setConnected: (connected: boolean) => void;
   /** Applies a chat this client just created, ahead of the server's own
    *  `chat.upsert` for it. */
   seedChat: (chat: ChatMeta) => void;
+  appendPage: (page: import("./chat").ChatMetadataPage) => void;
 }
 
 export type WorkspaceView = "chat" | "settings" | "project-containers";

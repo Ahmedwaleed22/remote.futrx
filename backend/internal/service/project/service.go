@@ -498,7 +498,7 @@ func (s *Service) Restart(ctx context.Context, id ID) (Meta, error) {
 	return s.repo.SetStatus(ctx, id, StatusRunning, "")
 }
 
-func (s *Service) InspectContainer(ctx context.Context, id ID) (ContainerInspect, error) {
+func (s *Service) InspectContainer(ctx context.Context, id ID, resourcesOnly ...bool) (ContainerInspect, error) {
 	if !ValidID(id) {
 		return ContainerInspect{}, ErrInvalidID
 	}
@@ -509,7 +509,18 @@ func (s *Service) InspectContainer(ctx context.Context, id ID) (ContainerInspect
 	if s.containerInspector == nil || m.ContainerName == "" {
 		return ContainerInspect{Name: m.ContainerName, LimitOverrides: m.ResourceLimits}, nil
 	}
-	info, err := s.containerInspector.Inspect(ctx, m.ContainerName)
+	var info ContainerInspect
+	if len(resourcesOnly) > 0 && resourcesOnly[0] {
+		if inspector, ok := s.containerInspector.(interface {
+			InspectResources(context.Context, string) (ContainerInspect, error)
+		}); ok {
+			info, err = inspector.InspectResources(ctx, m.ContainerName)
+		} else {
+			info, err = s.containerInspector.Inspect(ctx, m.ContainerName)
+		}
+	} else {
+		info, err = s.containerInspector.Inspect(ctx, m.ContainerName)
+	}
 	if err != nil {
 		return ContainerInspect{}, err
 	}

@@ -277,7 +277,7 @@ func (h *ProjectHandler) HandleResource(w http.ResponseWriter, r *http.Request) 
 				httptransport.SendErr(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
 			}
-			info, err := h.projects.InspectContainer(r.Context(), id)
+			info, err := h.projects.InspectContainer(r.Context(), id, r.URL.Query().Get("resources") == "1")
 			if err != nil {
 				sendProjectError(w, err)
 				return

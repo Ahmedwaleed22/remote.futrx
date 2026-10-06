@@ -4,5 +4,5 @@ import { WEB_SOCKET_ROUTES } from "../config/routes";
 
 export const workspaceApi = {
   subscribe: (onMessage: (message: WorkspaceMessage) => void) =>
-    subscribeToJsonMessages(WEB_SOCKET_ROUTES.workspace, onMessage),
+    subscribeToJsonMessages((WEB_SOCKET_ROUTES.workspace + "?chatLimit=100") as typeof WEB_SOCKET_ROUTES.workspace, onMessage),
 };

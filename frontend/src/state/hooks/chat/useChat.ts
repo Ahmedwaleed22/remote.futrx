@@ -84,6 +84,7 @@ export function useChat(chatId: string): UseChatResult {
   }, []);
 
   const flushPendingEvents = useCallback(() => {
+    if (pendingFrameRef.current !== null) cancelAnimationFrame(pendingFrameRef.current);
     pendingFrameRef.current = null;
     const events = pendingEventsRef.current;
     if (events.length === 0) return;
@@ -110,6 +111,7 @@ export function useChat(chatId: string): UseChatResult {
   // Load metadata when chat id changes.
   useEffect(() => {
     let cancelled = false;
+    const abort = new AbortController();
     setStatus("loading");
     setLocallyStartedTurn(false);
     clearPendingEvents();
@@ -128,9 +130,9 @@ export function useChat(chatId: string): UseChatResult {
     (async () => {
       try {
         const [m, initialPage] = await Promise.all([
-          chatApi.fetch(chatId),
+          chatApi.fetch(chatId, abort.signal),
           chatApi.fetchTranscript(chatId, {
-            limit: CHAT_INITIAL_TRANSCRIPT_TURN_LIMIT,
+            limit: CHAT_INITIAL_TRANSCRIPT_TURN_LIMIT, signal: abort.signal,
           }),
         ]);
         if (cancelled) return;
@@ -154,11 +156,13 @@ export function useChat(chatId: string): UseChatResult {
         // the socket's sync event corrects the status.
         setStatus(m.running ? "streaming" : "ready");
 
+        let indexingDelay = 500;
         while (page.indexing) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, indexingDelay));
+          indexingDelay = Math.min(indexingDelay * 2, 4000);
           if (cancelled) return;
           page = await chatApi.fetchTranscript(chatId, {
-            limit: CHAT_INITIAL_TRANSCRIPT_TURN_LIMIT,
+            limit: CHAT_INITIAL_TRANSCRIPT_TURN_LIMIT, signal: abort.signal,
           });
           if (cancelled) return;
           setIndexingProgress(page.indexing ?? null);
@@ -180,7 +184,7 @@ export function useChat(chatId: string): UseChatResult {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; abort.abort(); };
   }, [chatId]);
 
   // Open WS once the server knows the canonical tail sequence. Modern legacy
@@ -189,6 +193,7 @@ export function useChat(chatId: string): UseChatResult {
   useEffect(() => {
     if (!meta || meta.id !== chatId || !historyReadyForStream) return;
     const streamChatId = meta.id;
+    const streamAbort = new AbortController();
     setWsReady(false);
 
     const stream = chatApi.openStream(
@@ -224,7 +229,24 @@ export function useChat(chatId: string): UseChatResult {
             if (event.subtype === "prompt_rejected") setLocallyStartedTurn(false);
             return;
           }
+          // Raw provider telemetry is persisted on the server but is never
+          // displayed. Keep the replay cursor without retaining its payload.
+          if (event.type === "provider_event") {
+            flushPendingEvents();
+            lastSeqRef.current = Math.max(lastSeqRef.current, event.seq || 0);
+            return;
+          }
           enqueueEvent(event);
+          if (event.type === "complete" || event.type === "error") {
+            // Replace large live tool output/deltas with the server's compact
+            // projection once the turn finishes. Keep newer live events and
+            // any history the user explicitly loaded.
+            void chatApi.fetchTranscript(streamChatId, { limit: 1, signal: streamAbort.signal }).then((page) => {
+              if (streamRef.current !== stream || page.indexing) return;
+              flushPendingEvents();
+              setRenderState((current) => chatEventStateProjector.replaceWindow(current, page));
+            }).catch(() => undefined);
+          }
         },
         onClose: () => {
           if (streamRef.current !== stream) return;
@@ -240,6 +262,7 @@ export function useChat(chatId: string): UseChatResult {
       setWsReady(false);
       setSynced(false);
       clearPendingEvents();
+      streamAbort.abort();
       stream.close();
     };
   }, [meta?.id, chatId, historyReadyForStream]);

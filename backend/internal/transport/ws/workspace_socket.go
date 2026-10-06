@@ -2,7 +2,9 @@ package wstransport
 
 import (
 	"context"
+	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
@@ -35,9 +37,12 @@ type WorkspaceSocket struct {
 }
 
 type workspaceSnapshot struct {
-	Type     string                `json:"type"`
-	Chats    []servicechat.Meta    `json:"chats"`
-	Projects []serviceproject.Meta `json:"projects"`
+	NextBefore string                `json:"nextBefore,omitempty"`
+	HasMore    bool                  `json:"hasMore,omitempty"`
+	TotalChats int                   `json:"totalChats"`
+	Type       string                `json:"type"`
+	Chats      []servicechat.Meta    `json:"chats"`
+	Projects   []serviceproject.Meta `json:"projects"`
 }
 
 func NewWorkspaceSocket(chats ChatLister, projects ProjectLister, hub *workspacehub.Hub) *WorkspaceSocket {
@@ -106,6 +111,12 @@ func (s *WorkspaceSocket) handle(upgrader websocket.Upgrader, w http.ResponseWri
 		chats = s.filterChats(chats, allowed)
 	}
 
+	page := servicechat.ChatPage{Chats: chats, Total: len(chats)}
+	if limit, err := strconv.Atoi(r.URL.Query().Get("chatLimit")); err == nil && limit > 0 {
+		page = servicechat.SelectChatPage(chats, servicechat.ChatPageQuery{Limit: limit})
+	}
+	chats = page.Chats
+	log.Printf("workspace snapshot chats=%d total_chats=%d projects=%d", len(chats), page.Total, len(projects))
 	done := make(chan struct{})
 	go func() {
 		defer conn.Close()
@@ -114,9 +125,12 @@ func (s *WorkspaceSocket) handle(upgrader websocket.Upgrader, w http.ResponseWri
 
 		_ = conn.SetWriteDeadline(time.Now().Add(15 * time.Second))
 		if err := conn.WriteJSON(workspaceSnapshot{
-			Type:     "workspace.snapshot",
-			Chats:    chats,
-			Projects: projects,
+			Type:       "workspace.snapshot",
+			Chats:      chats,
+			Projects:   projects,
+			NextBefore: page.NextBefore,
+			HasMore:    page.HasMore,
+			TotalChats: page.Total,
 		}); err != nil {
 			return
 		}

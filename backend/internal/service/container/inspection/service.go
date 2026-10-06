@@ -96,3 +96,22 @@ func (s *Service) Inspect(ctx context.Context, containerName string) (servicepro
 	out.AuthBundles = s.credentials.InspectCredentials(ctx, containerName, state)
 	return out, nil
 }
+
+// InspectResources skips guest, CLI/version and credential probes. Resource
+// settings only need LXD configuration and live resource counters.
+func (s *Service) InspectResources(ctx context.Context, containerName string) (serviceproject.ContainerInspect, error) {
+	out := serviceproject.ContainerInspect{Name: containerName}
+	state, err := s.states.State(ctx, containerName)
+	if err != nil {
+		return out, err
+	}
+	out.State = state
+	if state == serviceproject.ContainerStateMissing {
+		return out, nil
+	}
+	s.configuration.InspectConfiguration(ctx, containerName, &out)
+	if state == serviceproject.ContainerStateRunning {
+		s.runtime.InspectRuntime(ctx, containerName, &out)
+	}
+	return out, nil
+}

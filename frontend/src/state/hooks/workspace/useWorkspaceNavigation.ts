@@ -6,7 +6,7 @@ import { currentWorkspaceRoute, navigateWorkspace } from "../../context/workspac
 import { workspaceUiState } from "../../context/workspaceUiState";
 
 /** Keeps workspace UI state and the browser address in sync. */
-export function useWorkspaceNavigation(chats: ChatMeta[], loaded: boolean, enabled: boolean) {
+export function useWorkspaceNavigation(chats: ChatMeta[], loaded: boolean, enabled: boolean, ensureChat?: (id: string) => Promise<boolean>) {
   const [ui, dispatch] = useReducer(
     workspaceUiState.reduce,
     null,
@@ -64,11 +64,18 @@ export function useWorkspaceNavigation(chats: ChatMeta[], loaded: boolean, enabl
     // Wait for the first snapshot before resolving a chat opened from a notification.
     if (!loaded || ui.view !== "chat") return;
     if (workspaceSidebarService.isActiveChatMissing(chats, ui.activeChatId)) {
-      const replacement = workspaceSidebarService.replacementChatId(chats);
-      navigateWorkspace({ view: "chat", chatId: replacement, tab: ui.settingsTab }, true);
-      dispatch({ type: "select-chat", chatId: replacement });
+      let cancelled = false;
+      const resolveMissing = async () => {
+        if (ensureChat && ui.activeChatId && await ensureChat(ui.activeChatId)) return;
+        if (cancelled) return;
+        const replacement = workspaceSidebarService.replacementChatId(chats);
+        navigateWorkspace({ view: "chat", chatId: replacement, tab: ui.settingsTab }, true);
+        dispatch({ type: "select-chat", chatId: replacement });
+      };
+      void resolveMissing();
+      return () => { cancelled = true; };
     }
-  }, [chats, loaded, ui.activeChatId, ui.settingsTab, ui.view]);
+  }, [chats, loaded, ui.activeChatId, ui.settingsTab, ui.view, ensureChat]);
 
   return {
     ui,

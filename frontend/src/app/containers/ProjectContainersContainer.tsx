@@ -25,9 +25,9 @@ export function ProjectContainersContainer({
   onDeleteProject: (projectId: string) => Promise<void>;
 }) {
   const { auth } = useAuthContext();
-  const controller = useProjectContainersController(projects, selectedProjectId);
-  const { selectedProject, info, secrets, access, shares } = controller;
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("info");
+  const controller = useProjectContainersController(projects, selectedProjectId, activeTab);
+  const { selectedProject, info, secrets, access, shares } = controller;
   const serverInfo = useServerInfo(activeTab === "settings");
   const usage = useProjectUsage(selectedProject?.id);
   const applications = useProjectApplications({

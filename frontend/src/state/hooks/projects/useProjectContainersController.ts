@@ -7,13 +7,14 @@ import { useProjectShares } from "./useProjectShares";
 
 export function useProjectContainersController(
   projects: ProjectMeta[],
-  selectedProjectId: string | null
+  selectedProjectId: string | null,
+  activeTab: "info" | "settings" | "secrets" | "applications" | "sharing" = "info"
 ) {
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
     [projects, selectedProjectId]
   );
-  const info = useProjectContainerInfo(selectedProject);
+  const info = useProjectContainerInfo(selectedProject, activeTab === "settings");
   const secrets = useProjectSecrets(selectedProject);
   const access = useProjectAccess(selectedProject);
   const shares = useProjectShares(selectedProject);
@@ -23,22 +24,27 @@ export function useProjectContainersController(
     if (!selectedProject) return;
     setRefreshing(true);
     try {
-      await Promise.all([info.load(), secrets.load(), access.load(), shares.load()]);
+      await Promise.all([
+        ...(activeTab === "info" || activeTab === "settings" ? [info.load()] : []),
+        ...(activeTab === "secrets" ? [secrets.load()] : []),
+        ...(activeTab === "sharing" ? [access.load(), shares.load()] : []),
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, [selectedProject, info.load, secrets.load, access.load, shares.load]);
+  }, [selectedProject, activeTab, info.load, secrets.load, access.load, shares.load]);
 
   useEffect(() => {
-    const signal = { cancelled: false };
-    void info.load(signal);
-    void secrets.load(signal);
-    void access.load(signal);
-    void shares.load(signal);
+    const abort = new AbortController();
+    const signal = { cancelled: false, abortSignal: abort.signal };
+    if (activeTab === "info" || activeTab === "settings") void info.load(signal);
+    if (activeTab === "secrets") void secrets.load(signal);
+    if (activeTab === "sharing") { void access.load(signal); void shares.load(signal); }
     return () => {
       signal.cancelled = true;
+      abort.abort();
     };
-  }, [info.load, secrets.load, access.load, shares.load]);
+  }, [activeTab, info.load, secrets.load, access.load, shares.load]);
 
   return {
     selectedProject,

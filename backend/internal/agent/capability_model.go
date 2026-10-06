@@ -73,6 +73,7 @@ type CapabilityFeatures struct {
 // Capabilities is the normalized catalog returned by every agent adapter.
 // Warning is intentionally concise and must not contain raw provider output.
 type Capabilities struct {
+	Refreshing        bool                     `json:"refreshing,omitempty"`
 	Provider          ProviderID               `json:"provider"`
 	Label             string                   `json:"label"`
 	Default           bool                     `json:"default,omitempty"`

@@ -157,3 +157,7 @@ export const MAX_PALETTE_RESULTS = 50;
 
 /** Above this many options, a facet's list gets its own filter box. */
 export const FACET_INLINE_FILTER_THRESHOLD = 8;
+
+// Bound strings retained by search, including find-in-chat on long messages.
+export const FOLD_CACHE_MAX_CHARACTERS = 1_000_000;
+export const FOLD_CACHE_MAX_VALUE_CHARACTERS = 16_384;

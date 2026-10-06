@@ -4,7 +4,7 @@ import type { AgentCapabilitiesCatalog } from "../../models/agentCapabilities";
 
 export const capabilitiesApi = {
   list: (projectId?: string, options: { refresh?: boolean } = {}) => {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams({ progressive: "1" });
     if (projectId) params.set("projectId", projectId);
     if (options.refresh) params.set("refresh", "1");
     return requestJson<AgentCapabilitiesCatalog>(

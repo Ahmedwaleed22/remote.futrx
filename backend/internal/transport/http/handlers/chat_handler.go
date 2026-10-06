@@ -72,6 +72,16 @@ func (h *ChatHandler) HandleCollection(w http.ResponseWriter, r *http.Request) {
 		if metas == nil {
 			metas = []servicechat.Meta{}
 		}
+		if rawLimit := r.URL.Query().Get("limit"); rawLimit != "" {
+			limit, err := strconv.Atoi(rawLimit)
+			before := r.URL.Query().Get("before")
+			if err != nil || limit <= 0 || !servicechat.ValidChatCursor(before) || len(r.URL.Query().Get("q")) > 512 {
+				httptransport.SendErr(w, http.StatusBadRequest, "invalid chat page query")
+				return
+			}
+			httptransport.SendJSON(w, http.StatusOK, servicechat.SelectChatPage(metas, servicechat.ChatPageQuery{Limit: limit, Before: before, Search: r.URL.Query().Get("q")}))
+			return
+		}
 		httptransport.SendJSON(w, http.StatusOK, metas)
 
 	case http.MethodPost:

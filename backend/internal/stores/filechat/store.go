@@ -26,6 +26,8 @@ var _ servicechat.TranscriptProjectionSource = (*Store)(nil)
 // Store manages chat dirs on disk. Single writer per chat via a per-id mutex
 // map; concurrent access across different chats is fine.
 type Store struct {
+	tailMu       sync.Mutex
+	tails        map[servicechat.ID]chatTailSequence
 	root         string
 	index        *chatEventIndex
 	mu           sync.Mutex
@@ -51,6 +53,7 @@ func New(root string) (*Store, error) {
 	indexContext, indexCancel := context.WithCancel(context.Background())
 	store := &Store{
 		root:         root,
+		tails:        map[servicechat.ID]chatTailSequence{},
 		index:        index,
 		locks:        map[servicechat.ID]*sync.Mutex{},
 		metas:        map[servicechat.ID]servicechat.Meta{},

@@ -18,6 +18,8 @@ import { EMPTY_AGENT_CAPABILITY_CATALOG_SNAPSHOT } from "../../../config/agents.
 // in flight; in-flight requests for the same frontend scope are coalesced.
 export function createAgentCapabilityCatalogStore(request: AgentCapabilityCatalogRequester) {
   const inFlight = new Map<string, Promise<AgentCapabilitiesCatalog>>();
+  const pollTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const pollDelays = new Map<string, number>();
   const observed = new Map<string, ObservedAgentCapabilityScope>();
 
   return createStore<
@@ -27,7 +29,13 @@ export function createAgentCapabilityCatalogStore(request: AgentCapabilityCatalo
       function setScope(key: string, snapshot: AgentCapabilityCatalogSnapshot): void {
         set((state) => {
           const scopes = new Map(state.scopes);
+          scopes.delete(key);
           scopes.set(key, snapshot);
+          // Keep only a bounded number of inactive project catalogs.
+          for (const candidate of scopes.keys()) {
+            if (scopes.size <= 32) break;
+            if (!observed.has(candidate) && !inFlight.has(candidate)) scopes.delete(candidate);
+          }
           return { scopes };
         });
       }
@@ -38,6 +46,9 @@ export function createAgentCapabilityCatalogStore(request: AgentCapabilityCatalo
         options: AgentCapabilityCatalogLoadOptions = {},
       ): Promise<AgentCapabilitiesCatalog> {
         const key = catalogKey(userId, projectId);
+        const timer = pollTimers.get(key);
+        if (timer) { clearTimeout(timer); pollTimers.delete(key); }
+        if (options.force) pollDelays.delete(key);
         const existing = inFlight.get(key);
         if (existing) return existing;
 
@@ -47,10 +58,20 @@ export function createAgentCapabilityCatalogStore(request: AgentCapabilityCatalo
             inFlight.delete(key);
             setScope(key, {
               catalog,
-              loading: false,
-              refreshing: false,
+              loading: catalog.providers.length > 0 && catalog.providers.every((provider) => provider.refreshing && provider.source !== "live"),
+              refreshing: catalog.providers.some((provider) => provider.refreshing),
               error: "",
             });
+            if (catalog.providers.some((provider) => provider.refreshing) && observed.has(key)) {
+              const delay = pollDelays.get(key) ?? 50;
+              pollDelays.set(key, Math.min(delay * 2, 2000));
+              pollTimers.set(key, setTimeout(() => {
+                pollTimers.delete(key);
+                if (observed.has(key)) void load(userId, projectId).catch(() => undefined);
+              }, delay));
+            } else {
+              pollDelays.delete(key);
+            }
             return catalog;
           } catch (cause) {
             inFlight.delete(key);
@@ -92,7 +113,13 @@ export function createAgentCapabilityCatalogStore(request: AgentCapabilityCatalo
             if (!isObserved) return;
             isObserved = false;
             scope.observers -= 1;
-            if (scope.observers === 0) observed.delete(key);
+            if (scope.observers === 0) {
+              observed.delete(key);
+              const timer = pollTimers.get(key);
+              if (timer) clearTimeout(timer);
+              pollTimers.delete(key);
+              pollDelays.delete(key);
+            }
           };
         },
         load,

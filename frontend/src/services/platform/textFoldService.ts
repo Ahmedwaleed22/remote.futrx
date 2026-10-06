@@ -11,7 +11,7 @@
 //
 // Leaf service: it knows about the language, never about chats or filters.
 
-import { FOLD_CACHE_LIMIT } from "../../config/search.ts";
+import { FOLD_CACHE_LIMIT, FOLD_CACHE_MAX_CHARACTERS, FOLD_CACHE_MAX_VALUE_CHARACTERS } from "../../config/search.ts";
 
 /**
  * One-to-one character equivalences that NFD cannot express, so a word matches
@@ -42,7 +42,9 @@ function buildCharEquivalents(): ReadonlyMap<string, string> {
 
 const CHAR_EQUIVALENTS = buildCharEquivalents();
 
-class TextFoldService {
+export class TextFoldService {
+  #cachedCharacters = 0;
+  get cachedCharacters(): number { return this.#cachedCharacters; }
   readonly #cache = new Map<string, string>();
 
   /**
@@ -56,10 +58,22 @@ class TextFoldService {
     const cached = this.#cache.get(value);
     if (cached !== undefined) return cached;
 
-    let out = "";
-    for (const char of value) out += this.#foldChar(char);
+    // join produces a flat string; repeated concatenation can retain a long
+    // chain of tiny string nodes when a folded transcript is cached.
+    const characters: string[] = [];
+    for (const char of value) characters.push(this.#foldChar(char));
+    const out = characters.join("");
     // Bounded so a long session cannot grow the cache without limit.
-    if (this.#cache.size < FOLD_CACHE_LIMIT) this.#cache.set(value, out);
+    if (value.length <= FOLD_CACHE_MAX_VALUE_CHARACTERS) {
+      const characters = value.length + out.length;
+      while (this.#cache.size && (this.#cache.size >= FOLD_CACHE_LIMIT || this.#cachedCharacters + characters > FOLD_CACHE_MAX_CHARACTERS)) {
+        const oldest = this.#cache.keys().next().value!;
+        this.#cachedCharacters -= oldest.length + this.#cache.get(oldest)!.length;
+        this.#cache.delete(oldest);
+      }
+      this.#cache.set(value, out);
+      this.#cachedCharacters += characters;
+    }
     return out;
   }
 
@@ -72,6 +86,7 @@ class TextFoldService {
    * "İ" to "i̇", decomposing an astral char) is refused and the char stands.
    */
   #foldChar(char: string): string {
+    if (char.charCodeAt(0) < 128) return char.toLowerCase();
     const base = char.toLowerCase().normalize("NFD")[0] ?? char;
     const stripped = base.length === char.length ? base : char;
     return CHAR_EQUIVALENTS.get(stripped) ?? stripped;

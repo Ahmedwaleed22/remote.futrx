@@ -31,6 +31,9 @@ export function SidebarContainer() {
     <Sidebar
       open={workspace.ui.sidebarOpen}
       model={model}
+      hasMore={workspace.hasMoreChats}
+      loadingMore={workspace.loadingMoreChats}
+      onLoadMore={() => void workspace.loadMoreChats().catch(() => undefined)}
       search={search}
       loading={!workspace.loaded}
       collapsed={sidebar.collapsed}

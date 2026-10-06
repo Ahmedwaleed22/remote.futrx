@@ -34,13 +34,20 @@ func (s *AccessService) List(ctx context.Context, email string, isAdmin bool) ([
 		return metas, nil
 	}
 	visible := make([]Meta, 0, len(metas))
+	allowed := make(map[ProjectID]bool)
 	for _, meta := range metas {
 		if meta.ProjectID == "" {
 			visible = append(visible, meta)
 			continue
 		}
-		hasAccess, err := s.projects.HasAccess(ctx, serviceproject.ID(meta.ProjectID), email)
-		if err == nil && hasAccess {
+		hasAccess, checked := allowed[meta.ProjectID]
+		if !checked {
+			var err error
+			hasAccess, err = s.projects.HasAccess(ctx, serviceproject.ID(meta.ProjectID), email)
+			hasAccess = err == nil && hasAccess
+			allowed[meta.ProjectID] = hasAccess
+		}
+		if hasAccess {
 			visible = append(visible, meta)
 		}
 	}
