@@ -20,7 +20,7 @@ class ChatUsageAccumulator {
     return totals;
   }
 
-  private add(totals: ChatUsageTotals, event: ChatEvent): ChatUsageTotals {
+  add(totals: ChatUsageTotals, event: ChatEvent): ChatUsageTotals {
     if (event.type !== "complete" || !event.usage) return totals;
 
     try {

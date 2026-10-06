@@ -28,3 +28,8 @@ const (
 	// the active provider turn to consume them.
 	PromptInteractionResponseQueueCapacity = 64
 )
+
+const (
+	ChatTailInitialReadBytes     = 4096
+	ChatTailSequenceCacheEntries = 128
+)

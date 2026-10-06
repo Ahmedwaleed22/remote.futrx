@@ -1,11 +1,9 @@
 package filechat
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 
@@ -53,7 +51,7 @@ func (s *Store) ReadTranscriptPage(
 		}
 		lastSeq := state.lastSeq
 		tailSeqKnown := totalBytes == 0
-		if tailSeq, tailErr := lastStoredEventSeq(s.eventsPath(id), totalBytes); tailErr == nil && tailSeq > 0 {
+		if tailSeq, tailErr := s.cachedTailSequence(id, totalBytes, mtimeNS); tailErr == nil && tailSeq > 0 {
 			tailSeqKnown = true
 			if tailSeq > lastSeq {
 				lastSeq = tailSeq
@@ -70,37 +68,6 @@ func (s *Store) ReadTranscriptPage(
 		}, nil
 	}
 	return s.index.readProjectedTranscriptPage(ctx, id, state, query)
-}
-
-func lastStoredEventSeq(eventsPath string, fileSize int64) (int64, error) {
-	if fileSize <= 0 {
-		return 0, nil
-	}
-	window := int64(maxEventRecordBytes + 2)
-	if window > fileSize {
-		window = fileSize
-	}
-	file, err := os.Open(eventsPath)
-	if err != nil {
-		return 0, err
-	}
-	defer file.Close()
-	raw := make([]byte, int(window))
-	if _, err := file.ReadAt(raw, fileSize-window); err != nil && !errors.Is(err, io.EOF) {
-		return 0, err
-	}
-	lines := bytes.Split(raw, []byte{'\n'})
-	for index := len(lines) - 1; index >= 0; index-- {
-		line := bytes.TrimSuffix(lines[index], []byte{'\r'})
-		if len(line) == 0 {
-			continue
-		}
-		event, err := decodeStoredEvent(line, 0)
-		if err == nil && event.Seq > 0 {
-			return event.Seq, nil
-		}
-	}
-	return 0, errors.New("last stored event has no sequence")
 }
 
 func (s *Store) startTranscriptIndex(id servicechat.ID) {
