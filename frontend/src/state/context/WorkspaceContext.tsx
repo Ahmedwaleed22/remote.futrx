@@ -13,7 +13,7 @@ import { useWorkspaceNavigation } from "../hooks/workspace/useWorkspaceNavigatio
 import { useUserSettingsContext } from "./UserSettingsContext";
 import type { SettingsTab, WorkspaceUiState } from "../../models/workspace";
 import { workspaceSidebarService } from "../../services/workspace/workspaceSidebarService.ts";
-import { agentCapabilityCatalogStore } from "../stores/agents/agentCapabilityCatalogStore";
+import { useAgentCapabilityContext } from "./AgentCapabilityContext.ts";
 import { useAuthContext } from "./AuthContext";
 
 interface WorkspaceContextValue {
@@ -55,6 +55,7 @@ export function WorkspaceProvider({
   // Local State
   ////////////////
   const data = useWorkspaceData(enabled);
+  const { catalog } = useAgentCapabilityContext();
   const { auth, agentAuth } = useAuthContext();
   const { settings } = useUserSettingsContext();
   const {
@@ -102,8 +103,8 @@ export function WorkspaceProvider({
 
   const deleteProject = useCallback(async (projectId: string) => {
     await projectApi.delete(projectId);
-    agentCapabilityCatalogStore.getState().removeProject(capabilityUserId, projectId);
-  }, [capabilityUserId]);
+    catalog.removeProject(capabilityUserId, projectId);
+  }, [capabilityUserId, catalog]);
 
   const reorderProjects = useCallback(async (projectIds: string[]) => {
     await projectApi.reorder(projectIds);
@@ -114,10 +115,9 @@ export function WorkspaceProvider({
   ////////////////
   useEffect(() => {
     if (!enabled || !activeChat) return;
-    void agentCapabilityCatalogStore.getState()
-      .load(capabilityUserId, activeCapabilityProjectId)
+    void catalog.load(capabilityUserId, activeCapabilityProjectId)
       .catch(() => undefined);
-  }, [enabled, capabilityUserId, activeCapabilityProjectId, activeChat?.id]);
+  }, [enabled, capabilityUserId, activeCapabilityProjectId, activeChat?.id, catalog]);
 
   useWorkspacePushLifecycle({
     account: enabled ? account : "",

@@ -1,23 +1,21 @@
 // Package capability aggregates the provider-specific capability catalogs
 // exposed by the registered agent CLIs.
 //
-// Capability discovery may start several comparatively expensive CLI probes (for
-// example, Codex app-server and provider model-list commands). Simultaneous
-// requests for the same host or project container share one in-flight probe.
-// Completed catalogs are cached per execution environment using the healthy
-// and degraded TTLs supplied by application configuration. A manual refresh
-// bypasses a completed cache entry and starts or joins one discovery flight
-// whose result replaces it. A backend restart clears every entry.
+// Capability discovery may start expensive CLI probes. Requests for the same
+// provider and execution environment share one flight and cache entry. Healthy
+// and degraded providers expire independently. Progressive callers see stale
+// results during refresh and poll for new completions; legacy callers wait.
+// A backend restart clears every entry.
 package capability
 
 import (
 	"context"
 	"errors"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	agentmodule "github.com/futrx-com/remote.futrx.com/internal/service/agent/module"
 	serviceauth "github.com/futrx-com/remote.futrx.com/internal/service/auth"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
@@ -56,6 +54,8 @@ type ListQuery struct {
 	ProjectID     serviceproject.ID
 	SessionCookie string
 	Refresh       bool
+	// Progressive returns immediately; clients poll while providers refresh.
+	Progressive bool
 }
 
 type Service struct {
@@ -66,7 +66,7 @@ type Service struct {
 	scopes            ScopePolicy
 	descriptors       DescriptorPolicy
 	cache             *catalogCache
-	flights           *catalogFlights
+	probeSlots        chan struct{}
 }
 
 // Settings are cross-provider discovery policies supplied by the application
@@ -115,7 +115,7 @@ func New(
 			settings.CapabilityCacheTTL,
 			settings.DegradedCapabilityCacheTTL,
 		),
-		flights: newCatalogFlights(),
+		probeSlots: make(chan struct{}, configconstants.CapabilityProbeConcurrency),
 	}
 	for _, option := range options {
 		if option != nil {
@@ -148,58 +148,33 @@ func (c *Service) List(ctx context.Context, query ListQuery) ([]agent.Capabiliti
 		scope = agentmodule.ScopeProject
 	}
 
-	if !query.Refresh {
-		if cached, ok := c.cache.load(flightKey); ok {
-			return cached, nil
-		}
+	providers := c.capabilityProviders(scope)
+	// Repeated refreshes join the scope's active discovery, even when a
+	// faster sibling has already finished.
+	force := query.Refresh && !c.cache.refreshingScope(flightKey+":provider:")
+	entries := make([]*catalogCacheEntry, len(providers))
+	for i, provider := range providers {
+		key := flightKey + ":provider:" + string(provider.ID())
+		entries[i] = c.cache.start(key, force, func() agent.Capabilities {
+			return c.probe(ctx, provider, containerName, scope)
+		})
 	}
-
-	return c.flights.do(ctx, flightKey, func(discoveryCtx context.Context) ([]agent.Capabilities, error) {
-		// A catalog may have completed between the optimistic cache check and
-		// this caller becoming the flight leader.
-		if !query.Refresh {
-			if cached, ok := c.cache.load(flightKey); ok {
-				return cached, nil
+	result := make([]agent.Capabilities, len(providers))
+	for i, entry := range entries {
+		if !query.Progressive {
+			if err := c.cache.wait(ctx, entry); err != nil {
+				return nil, err
 			}
 		}
-		providers := c.capabilityProviders(scope)
-		result := make([]agent.Capabilities, len(providers))
-		var wait sync.WaitGroup
-		for index, provider := range providers {
-			wait.Add(1)
-			go func() {
-				defer wait.Done()
-				probeCtx := discoveryCtx
-				cancel := func() {}
-				if c.capabilityTimeout > 0 {
-					probeCtx, cancel = context.WithTimeout(discoveryCtx, c.capabilityTimeout)
-				}
-				defer cancel()
-				caps, err := provider.Capabilities(
-					probeCtx,
-					agent.CapabilityRequest{ContainerName: containerName},
-				)
-				caps.Provider = provider.ID()
-				c.decorate(&caps)
-				if caps.Source == "" {
-					caps.Source = agent.CapabilitySourceFallback
-				}
-				if err != nil && caps.Warning == "" {
-					caps.Warning = "Provider capabilities are temporarily unavailable"
-				}
-				if caps.Models == nil {
-					caps.Models = []agent.ModelCapability{}
-				}
-				if caps.Modes == nil {
-					caps.Modes = []agent.CapabilityOption{}
-				}
-				result[index] = caps
-			}()
+		caps, refreshing := c.cache.snapshot(entry)
+		if caps.Provider == "" {
+			caps = agent.Capabilities{Provider: providers[i].ID(), Source: agent.CapabilitySourceFallback, Models: agent.WithAutoModel(nil, "Provider default"), Modes: []agent.CapabilityOption{}}
+			c.decorate(&caps)
 		}
-		wait.Wait()
-		c.cache.store(flightKey, result)
-		return result, nil
-	})
+		caps.Refreshing = refreshing
+		result[i] = caps
+	}
+	return result, nil
 }
 
 func (c *Service) decorate(capabilities *agent.Capabilities) {

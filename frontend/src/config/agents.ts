@@ -11,3 +11,7 @@ export const EMPTY_AGENT_CAPABILITY_CATALOG_SNAPSHOT: AgentCapabilityCatalogSnap
   refreshing: false,
   error: "",
 };
+
+export const AGENT_CATALOG_SCOPE_LIMIT = 32;
+export const AGENT_CATALOG_INITIAL_POLL_MS = 50;
+export const AGENT_CATALOG_MAX_POLL_MS = 2000;

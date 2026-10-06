@@ -1,5 +1,5 @@
 import type { ComponentChildren } from "preact";
-import { AuthProvider } from "../state/context/AuthContext";
+import { AgentCapabilityAuthProvider as AuthProvider } from "./containers/AgentCapabilityAuthProvider.tsx";
 import { ConfirmProvider } from "./containers/ConfirmProvider";
 import { UserSettingsProvider } from "../state/context/UserSettingsContext";
 

@@ -41,6 +41,7 @@ func (h *AgentCapabilitiesHandler) HandleCollection(w http.ResponseWriter, r *ht
 		ProjectID:     serviceproject.ID(strings.TrimSpace(r.URL.Query().Get("projectId"))),
 		SessionCookie: httptransport.SessionCookieValue(r),
 		Refresh:       r.URL.Query().Get("refresh") == "1",
+		Progressive:   r.URL.Query().Get("progressive") == "1",
 	})
 	if err != nil {
 		sendAgentCapabilitiesError(w, err)
