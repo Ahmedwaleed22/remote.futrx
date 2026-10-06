@@ -2,6 +2,7 @@ import { useId, useState } from "preact/hooks";
 import { useDismissKeyDown } from "../../../state/hooks/shared/useDismissKeyDown.ts";
 import { CalendarClock, Clock, Folder, Monitor, Terminal } from "../../primitives/icons";
 import { ExtensionSlot } from "../../primitives/ExtensionSlot";
+import { workspaceActionTooltipClass } from "../../primitives/workspaceActionTooltip.ts";
 import { EXTENSION_SLOTS } from "../../../config/extensions";
 import { DEFAULT_WORKSPACE_PATH } from "../../../config/workspace";
 
@@ -59,6 +60,7 @@ export function WorkspaceActions({
         chatId={chatId}
         projectId={projectId}
         cwd={workspacePath}
+        tooltipPlacement={tooltipPlacement}
       />
       <WorkspaceAction
         Icon={Terminal}
@@ -170,11 +172,7 @@ function WorkspaceAction({
       <span
         id={tooltipId}
         role="tooltip"
-        class={`workspace-action-tooltip pointer-events-none absolute z-50 whitespace-nowrap rounded-control border border-line bg-raised px-2 py-1 text-[11px] font-medium text-ink-100 shadow-pop transition-[opacity,transform] duration-150 motion-reduce:transition-none ${
-          tooltipPlacement === "below"
-            ? `right-0 top-full mt-2 ${isTooltipOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"}`
-            : `right-full top-1/2 mr-2 -translate-y-1/2 ${isTooltipOpen ? "translate-x-0 opacity-100" : "translate-x-1 opacity-0"}`
-        }`}
+        class={workspaceActionTooltipClass(tooltipPlacement, isTooltipOpen)}
       >
         {tooltip}
       </span>
