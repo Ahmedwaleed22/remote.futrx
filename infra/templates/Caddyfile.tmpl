@@ -13,7 +13,7 @@
     # if you want renewal-failure emails from LE.
     # email you@example.com
 
-    # On-demand TLS for dev, code, and application subdomains. Caddy queries the
+    # On-demand TLS for dev and application subdomains. Caddy queries the
     # backend's /internal/tls-ask before issuing each cert so attackers
     # can't burn through ACME rate limits by hitting random subdomains.
     on_demand_tls {
