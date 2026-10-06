@@ -6,9 +6,10 @@ import { ApiError } from "./apiError.ts";
 export async function requestJson<T>(
   method: HttpMethod,
   url: string,
-  body?: unknown
+  body?: unknown,
+  init?: RequestInit
 ): Promise<T> {
-  const response = await sendHttpRequest(method, url, body);
+  const response = await sendHttpRequest(method, url, body, init);
   if (response.status === API_RESPONSE_STATUS.unauthorized) {
     location.reload();
     return new Promise<T>(() => {});

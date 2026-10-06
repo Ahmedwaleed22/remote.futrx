@@ -190,3 +190,17 @@ func (p *recordingProbes) InspectCredentials(
 	*p.events = append(*p.events, "credentials:"+containerName+":"+string(state))
 	return []serviceproject.AuthBundleStatus{{Name: "claude"}}
 }
+
+func TestResourceInspectionSkipsGuestAgentAndCredentialProbes(t *testing.T) {
+	events := []string{}
+	probes := &recordingProbes{events: &events}
+	service := NewService(Dependencies{States: recordingStateReader{events: &events, state: serviceproject.ContainerStateRunning}, Configuration: probes, Runtime: probes, Guest: probes, Agents: probes, Credentials: probes})
+	result, err := service.InspectResources(context.Background(), "c1")
+	if err != nil || result.State != serviceproject.ContainerStateRunning {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+	expected := []string{"state:c1", "configuration:c1", "runtime:c1"}
+	if !reflect.DeepEqual(events, expected) {
+		t.Fatalf("events=%v want=%v", events, expected)
+	}
+}

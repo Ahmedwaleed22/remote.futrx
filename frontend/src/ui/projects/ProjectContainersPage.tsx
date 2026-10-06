@@ -1,3 +1,4 @@
+import type { ProjectSettingsTab } from "../../models/project.ts";
 import { ExtensionSlot } from "../primitives/ExtensionSlot";
 import { EXTENSION_SLOTS } from "../../config/extensions";
 import type { ComponentChildren, ComponentType } from "preact";
@@ -45,7 +46,7 @@ import {
 } from "../primitives/icons";
 import { useConfirm } from "../../state/context/ConfirmContext";
 
-export type ProjectSettingsTab = "info" | "settings" | "secrets" | "applications" | "sharing";
+
 
 const tabs: Array<{
   id: ProjectSettingsTab;

@@ -209,6 +209,7 @@ export interface CreateProjectValidation {
 
 /** Lets an in-flight project load see that its caller has moved on. */
 export interface ProjectDataLoadSignal {
+  abortSignal?: AbortSignal;
   cancelled: boolean;
 }
 
@@ -238,3 +239,5 @@ export interface AccessRecord {
   data?: string[];
   error?: string;
 }
+
+export type ProjectSettingsTab = "info" | "settings" | "secrets" | "applications" | "sharing";

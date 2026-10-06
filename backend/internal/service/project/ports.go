@@ -86,3 +86,9 @@ type ContainerDependencies struct {
 	Listeners   ContainerListeners
 	Browser     ContainerBrowser
 }
+
+// ContainerResourceInspector is the optional lightweight inspection capability.
+// Inspect-only implementations retain their full diagnostic fallback.
+type ContainerResourceInspector interface {
+	InspectResources(ctx context.Context, containerName string) (ContainerInspect, error)
+}

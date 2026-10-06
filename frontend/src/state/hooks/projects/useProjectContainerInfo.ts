@@ -7,7 +7,7 @@ import type {
   ProjectMeta,
 } from "../../../models/project";
 
-export function useProjectContainerInfo(project: ProjectMeta | null) {
+export function useProjectContainerInfo(project: ProjectMeta | null, resourcesOnly = false) {
   const [record, setRecord] = useState<ProjectContainerRecord>({ loading: false });
 
   const load = useCallback(
@@ -18,7 +18,7 @@ export function useProjectContainerInfo(project: ProjectMeta | null) {
       }
       setRecord((current) => ({ ...current, loading: true, error: undefined }));
       try {
-        const data = await projectApi.fetchContainerInfo(project.id);
+        const data = await projectApi.fetchContainerInfo(project.id, resourcesOnly, signal?.abortSignal);
         if (signal?.cancelled) return;
         setRecord({ loading: false, data, refreshedAt: Date.now() });
       } catch (error) {
@@ -30,20 +30,20 @@ export function useProjectContainerInfo(project: ProjectMeta | null) {
         });
       }
     },
-    [project]
+    [project?.id, resourcesOnly]
   );
 
   const repairNetwork = useCallback(async () => {
     if (!project) return;
     const data = await projectApi.repairNetwork(project.id);
     setRecord({ loading: false, data, refreshedAt: Date.now() });
-  }, [project]);
+  }, [project?.id, resourcesOnly]);
 
   const setLimits = useCallback(async (limits: ContainerLimits) => {
     if (!project) return;
     const data = await projectApi.setContainerLimits(project.id, limits);
     setRecord({ loading: false, data, refreshedAt: Date.now() });
-  }, [project]);
+  }, [project?.id, resourcesOnly]);
 
   const start = useCallback(async () => {
     if (!project) return;

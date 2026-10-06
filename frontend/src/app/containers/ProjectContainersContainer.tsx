@@ -1,9 +1,8 @@
 import { useCallback, useState } from "preact/hooks";
 import {
   ProjectContainersPage,
-  type ProjectSettingsTab,
 } from "../../ui/projects/ProjectContainersPage";
-import type { ProjectMeta } from "../../models/project";
+import type { ProjectMeta, ProjectSettingsTab } from "../../models/project";
 import { useProjectContainersController } from "../../state/hooks/projects/useProjectContainersController";
 import { useAuthContext } from "../../state/context/AuthContext";
 import { useServerInfo } from "../../state/hooks/server/useServerInfo";
@@ -25,9 +24,9 @@ export function ProjectContainersContainer({
   onDeleteProject: (projectId: string) => Promise<void>;
 }) {
   const { auth } = useAuthContext();
-  const controller = useProjectContainersController(projects, selectedProjectId);
-  const { selectedProject, info, secrets, access, shares } = controller;
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("info");
+  const controller = useProjectContainersController(projects, selectedProjectId, activeTab);
+  const { selectedProject, info, secrets, access, shares } = controller;
   const serverInfo = useServerInfo(activeTab === "settings");
   const usage = useProjectUsage(selectedProject?.id);
   const applications = useProjectApplications({
