@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { chatApi } from "../../../api/chatApi";
 import {
   CHAT_INITIAL_TRANSCRIPT_TURN_LIMIT,
+  CHAT_INDEX_INITIAL_POLL_MS,
+  CHAT_INDEX_MAX_POLL_MS,
   CHAT_TRANSCRIPT_TURN_PAGE_LIMIT,
 } from "../../../config/api.ts";
 import type {
@@ -156,10 +158,10 @@ export function useChat(chatId: string): UseChatResult {
         // the socket's sync event corrects the status.
         setStatus(m.running ? "streaming" : "ready");
 
-        let indexingDelay = 500;
+        let indexingDelay = CHAT_INDEX_INITIAL_POLL_MS;
         while (page.indexing) {
           await new Promise((resolve) => setTimeout(resolve, indexingDelay));
-          indexingDelay = Math.min(indexingDelay * 2, 4000);
+          indexingDelay = Math.min(indexingDelay * 2, CHAT_INDEX_MAX_POLL_MS);
           if (cancelled) return;
           page = await chatApi.fetchTranscript(chatId, {
             limit: CHAT_INITIAL_TRANSCRIPT_TURN_LIMIT, signal: abort.signal,

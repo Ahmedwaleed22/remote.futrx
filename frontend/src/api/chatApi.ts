@@ -1,3 +1,4 @@
+import { WORKSPACE_CHAT_PAGE_SIZE } from "../config/workspace.ts";
 import { requestJson } from "./apiRequest";
 import { chatEventsApi } from "./chat/chatEventsApi";
 import { chatFilesApi } from "./chat/chatFilesApi";
@@ -13,7 +14,7 @@ import { API_ROUTES } from "../config/routes";
 
 export const chatApi = {
   page: (params: { before?: string; q?: string } = {}) => {
-    const search = new URLSearchParams({ limit: "100" });
+    const search = new URLSearchParams({ limit: String(WORKSPACE_CHAT_PAGE_SIZE) });
     if (params.before) search.set("before", params.before);
     if (params.q) search.set("q", params.q);
     return requestJson<ChatMetadataPage>("GET", `${API_ROUTES.chats.collection}?${search}`);

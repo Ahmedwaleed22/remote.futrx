@@ -1,9 +1,8 @@
 import { useCallback, useState } from "preact/hooks";
 import {
   ProjectContainersPage,
-  type ProjectSettingsTab,
 } from "../../ui/projects/ProjectContainersPage";
-import type { ProjectMeta } from "../../models/project";
+import type { ProjectMeta, ProjectSettingsTab } from "../../models/project";
 import { useProjectContainersController } from "../../state/hooks/projects/useProjectContainersController";
 import { useAuthContext } from "../../state/context/AuthContext";
 import { useServerInfo } from "../../state/hooks/server/useServerInfo";

@@ -1,7 +1,7 @@
 import type { ComponentChildren } from "preact";
 import { createContext } from "preact";
 import { useContext, useEffect, useMemo, useRef } from "preact/hooks";
-import { agentCapabilityCatalogStore } from "../stores/agents/agentCapabilityCatalogStore";
+import { useAgentCapabilityContext } from "./AgentCapabilityContext.ts";
 import { agentAuthRegistryService } from "../../services/auth/agentAuthRegistryService.ts";
 import { useAgentAuthRegistry, type AgentAuthRegistryState } from "../hooks/auth/useAgentAuthRegistry";
 import { useAuth, type AuthState } from "../hooks/auth/useAuth";
@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
   // Local State
   ////////////////
   const auth = useAuth();
+  const { catalog } = useAgentCapabilityContext();
   // A valid local-admin or invited-user session may proceed to provider setup.
   const appAuthOk = auth.authenticated && (auth.isRegistered || auth.isAdmin);
   const providerAuthEnabled = appAuthOk && auth.localAdminConfigured;
@@ -60,8 +61,8 @@ export function AuthProvider({ children }: { children: ComponentChildren }) {
 
     // Provider identity and entitlements affect live model discovery. Request
     // a refresh for every capability scope mounted in this browser.
-    agentCapabilityCatalogStore.getState().invalidateUser(current.userId);
-  }, [auth.email, auth.adminEmail, providerAuthChecked, revision]);
+    catalog.invalidateUser(current.userId);
+  }, [auth.email, auth.adminEmail, providerAuthChecked, revision, catalog]);
 
   ////////////////
   // Context Value

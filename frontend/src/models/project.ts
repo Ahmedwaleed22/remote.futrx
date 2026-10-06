@@ -239,3 +239,5 @@ export interface AccessRecord {
   data?: string[];
   error?: string;
 }
+
+export type ProjectSettingsTab = "info" | "settings" | "secrets" | "applications" | "sharing";

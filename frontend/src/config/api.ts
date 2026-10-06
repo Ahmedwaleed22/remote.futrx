@@ -22,3 +22,6 @@ export const CHAT_STREAM_MESSAGE_TYPES = {
 export const USAGE_RECORD_PAGE_LIMIT = 100;
 /** How long typing settles before the workspace file search is sent. */
 export const WORKSPACE_FILE_SEARCH_DEBOUNCE_MS = 250;
+
+export const CHAT_INDEX_INITIAL_POLL_MS = 500;
+export const CHAT_INDEX_MAX_POLL_MS = 4000;

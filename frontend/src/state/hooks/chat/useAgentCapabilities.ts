@@ -1,21 +1,19 @@
+import { useAgentCapabilityContext } from "../../context/AgentCapabilityContext.ts";
 import { useStore } from "zustand";
 import { useCallback, useEffect } from "preact/hooks";
-import {
-  agentCapabilityCatalogStore,
-  selectAgentCapabilityCatalog,
-} from "../../stores/agents/agentCapabilityCatalogStore";
+import { selectAgentCapabilityCatalog } from "../../stores/agents/agentCapabilityCatalogStore";
 import { useAuthContext } from "../../context/AuthContext";
 
 export function useAgentCapabilities(projectId?: string) {
   const { auth } = useAuthContext();
+  const { store, catalog } = useAgentCapabilityContext();
   const userId = auth.email || auth.adminEmail || "anonymous";
   const scope = `${userId.trim().toLowerCase()}\0${projectId || "host"}`;
   const snapshot = useStore(
-    agentCapabilityCatalogStore,
+    store,
     selectAgentCapabilityCatalog(userId, projectId),
   );
-  const observe = useStore(agentCapabilityCatalogStore, (state) => state.observe);
-  const load = useStore(agentCapabilityCatalogStore, (state) => state.load);
+  const { observe, load } = catalog;
 
   useEffect(() => {
     const unobserve = observe(userId, projectId);
