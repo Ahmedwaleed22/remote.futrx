@@ -19,6 +19,10 @@ class ChatMessageBlockBuilder {
     return events.reduce<ChatMessageBlock[]>((blocks, event) => this.append(blocks, event), []);
   }
 
+  appendEvents(blocks: ChatMessageBlock[], events: ChatEvent[]): ChatMessageBlock[] {
+    return events.reduce((current, event) => this.append(current, event), blocks);
+  }
+
   private append(blocks: ChatMessageBlock[], event: ChatEvent): ChatMessageBlock[] {
     switch (event.type) {
       case "user": {

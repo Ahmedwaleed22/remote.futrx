@@ -37,8 +37,38 @@ class ChatEventStateProjector {
 
   append(state: ChatRenderState, events: ChatEvent[]): ChatRenderState {
     if (events.length === 0) return state;
+    const tail = state.events.at(-1);
+    // Streaming normally appends ordered events. Fold only the new batch,
+    // retaining block identity for old messages instead of replaying history.
+    if (events.every((event, index) => {
+      const previous = index === 0 ? tail : events[index - 1];
+      return !previous || this.eventOrder(event) > this.eventOrder(previous);
+    })) {
+      return {
+        ...state,
+        events: [...state.events, ...events],
+        blocks: chatMessageBlockBuilder.appendEvents(state.blocks, events),
+        usageTotals: events.reduce(
+          (totals, event) => chatUsageAccumulator.add(totals, event),
+          state.usageTotals,
+        ),
+        eventCount: state.eventCount + events.length,
+      };
+    }
     const merged = this.mergeEvents(state.events, events);
     return this.fromEvents(merged, {
+      hasMore: state.hasOlder,
+      nextBefore: state.nextBefore,
+    });
+  }
+
+  replaceWindow(state: ChatRenderState, page: ChatEventPage): ChatRenderState {
+    const firstSeq = page.events.find((event) => event.seq)?.seq;
+    if (!firstSeq || page.indexing) return state;
+    const retained = state.events.filter(
+      (event) => !event.seq || event.seq < firstSeq || event.seq > page.lastSeq,
+    );
+    return this.fromEvents(this.mergeEvents(retained, page.events), {
       hasMore: state.hasOlder,
       nextBefore: state.nextBefore,
     });

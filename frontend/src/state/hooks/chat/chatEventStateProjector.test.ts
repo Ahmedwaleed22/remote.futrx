@@ -355,3 +355,63 @@ test("prepends an older event page before current blocks and adopts hasMore", ()
   ]);
   assert.equal(state.hasOlder, false);
 });
+
+test("live batches preserve old block identity and match a complete replay", () => {
+  const initial: ChatEvent[] = [
+    { type: "user", text: "old", seq: 1, t: 1 },
+    { type: "assistant_text", text: "response", seq: 2, t: 2 },
+    { type: "complete", seq: 3, t: 3 },
+    { type: "user", text: "new", seq: 4, t: 4 },
+  ];
+  const batch: ChatEvent[] = [
+    { type: "assistant_text", text: "new ", seq: 5, t: 5 },
+    { type: "assistant_text", text: "response", seq: 6, t: 6 },
+    { type: "complete", usage: { input_tokens: 3, output_tokens: 5 }, seq: 7, t: 7 },
+  ];
+  const before = chatEventStateProjector.fromEvents(initial, { hasMore: false });
+  const next = chatEventStateProjector.append(before, batch);
+  assert.equal(next.blocks[0], before.blocks[0]);
+  assert.equal(next.blocks[1], before.blocks[1]);
+  assert.deepEqual(next, chatEventStateProjector.fromEvents(
+    [...initial, ...batch], { hasMore: false },
+  ));
+  // Replays and late events retain the merge path, without double usage.
+  assert.deepEqual(chatEventStateProjector.append(next, batch), next);
+  const late: ChatEvent = { type: "thinking", text: "late", seq: 2.5, t: 2.5 };
+  assert.deepEqual(chatEventStateProjector.append(next, [late]),
+    chatEventStateProjector.fromEvents(
+      [...initial.slice(0, 2), late, ...initial.slice(2), ...batch],
+      { hasMore: false },
+    ),
+  );
+});
+
+test("a compact completed turn replaces live payloads without losing newer events", () => {
+  const raw: ChatEvent[] = [
+    { type: "user", seq: 1, t: 1, text: "old" },
+    { type: "assistant_text", seq: 2, t: 2, text: "old" },
+    { type: "complete", seq: 3, t: 3 },
+    { type: "user", seq: 4, t: 4, text: "new" },
+    { type: "assistant_text", seq: 5, t: 5, text: "large live text" },
+    { type: "complete", seq: 6, t: 6, usage: { input_tokens: 3, output_tokens: 5 } },
+    { type: "user", seq: 7, t: 7, text: "latest" },
+  ];
+  const before = chatEventStateProjector.fromEvents(raw, { hasMore: true, nextBefore: 1 });
+  const page = {
+    events: [raw[3], { ...raw[4], text: "compact text" }, raw[5]],
+    lastSeq: 6,
+    hasMore: true,
+  };
+  const after = chatEventStateProjector.replaceWindow(before, page);
+  assert.deepEqual(after.events, [
+    ...raw.slice(0, 3), ...page.events, raw[6],
+  ]);
+  assert.equal(after.events.at(-1), raw[6]);
+  assert.equal(after.nextBefore, 1);
+  assert.equal(after.hasOlder, true);
+  assert.deepEqual(after.usageTotals, before.usageTotals);
+  assert.equal(chatEventStateProjector.replaceWindow(before, {
+    ...page,
+    indexing: { indexedBytes: 0, totalBytes: 100, tailSeqKnown: true },
+  }), before);
+});
