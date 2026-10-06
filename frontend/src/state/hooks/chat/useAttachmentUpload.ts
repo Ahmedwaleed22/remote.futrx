@@ -1,4 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { API_ROUTES } from "../../../config/routes.ts";
+import { useStore } from "zustand";
+import { attachmentDraftStore, attachmentUploadHandles, attachmentUploadCompletions } from "../../stores/chat/attachmentDraftStore.ts";
+import { EMPTY_DRAFT_ATTACHMENTS } from "../../../config/chat.ts";
+import { useCallback, useEffect, useRef } from "preact/hooks";
 import type { Attachment } from "../../../models/upload";
 import { startChatUpload } from "../../../api/uploadApi";
 import type { UploadHandle } from "../../../types/uploadApi";
@@ -11,38 +15,43 @@ export function useAttachmentUpload(
   attachmentBasePath: string,
   projectId?: string
 ) {
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const attachments = useStore(
+    attachmentDraftStore,
+    (state) => state.attachments.get(chatId) ?? EMPTY_DRAFT_ATTACHMENTS,
+  );
+  const uploading = useStore(
+    attachmentDraftStore,
+    (state) => (state.pending.get(chatId) ?? 0) > 0,
+  );
+  const setAttachments = useCallback((change: (previous: Attachment[]) => Attachment[], save = false) => {
+    attachmentDraftStore.getState().update(chatId, change, save);
+  }, [chatId]);
 
   // Read when an upload finishes rather than captured: doUpload is keyed on
   // chatId alone and outlives an edit to either of these.
   const attachmentBasePathRef = useRef(attachmentBasePath);
   const projectIdRef = useRef(projectId);
   // Outstanding tus handles, keyed by attachment id. Lets us abort on remove.
-  const handlesRef = useRef<Map<string, UploadHandle>>(new Map());
+  let handles = attachmentUploadHandles.get(chatId);
+  if (!handles) {
+    handles = new Map<string, UploadHandle>();
+    attachmentUploadHandles.set(chatId, handles);
+  }
+  const handlesRef = { current: handles };
 
-  // Reaches state only through handlesRef and a setAttachments updater, so it
-  // closes over nothing that can go stale — which is what makes [] honest here,
-  // and what made the previous capture harmless rather than a bug.
+  // Clear only on send or explicit discard. Navigation does not own uploads.
   const clearAttachments = useCallback(() => {
-    for (const handle of handlesRef.current.values()) void handle.abort();
+    for (const [id, handle] of handlesRef.current) {
+      void handle.abort().catch(() => undefined);
+      attachmentUploadCompletions.get(id)?.();
+      attachmentUploadCompletions.delete(id);
+    }
     handlesRef.current.clear();
     setAttachments((prev) => {
       prev.forEach((attachment) => chatAttachmentService.revokeObjectUrl(attachment));
       return [];
-    });
-  }, []);
-
-  useEffect(() => {
-    clearAttachments();
-  }, [chatId, clearAttachments]);
-
-  useEffect(
-    () => () => {
-      clearAttachments();
-    },
-    [clearAttachments]
-  );
+    }, true);
+  }, [chatId, setAttachments]);
 
   useEffect(() => {
     attachmentBasePathRef.current = attachmentBasePath;
@@ -84,13 +93,15 @@ export function useAttachmentUpload(
       }));
 
       setAttachments((prev) => [...prev, ...queued]);
-      setUploading(true);
+      attachmentDraftStore.getState().begin(chatId);
 
       const finishedFlags: Promise<void>[] = [];
       for (let i = 0; i < items.length; i++) {
         const { uploadFile } = items[i];
         const att = queued[i];
-        const done = new Promise<void>((resolve) => {
+        const done = new Promise<void>((resolvePromise) => {
+          const resolve = () => { attachmentUploadCompletions.delete(att.id); resolvePromise(); };
+          attachmentUploadCompletions.set(att.id, resolve);
           const handle = startChatUpload(chatId, uploadFile, {
             onProgress(loaded, total) {
               const ratio = total > 0 ? loaded / total : 0;
@@ -100,17 +111,24 @@ export function useAttachmentUpload(
             },
             onSuccess() {
               handlesRef.current.delete(att.id);
+              if (!attachmentDraftStore.getState().attachments.get(chatId)?.some((item) => item.id === att.id)) {
+                resolve();
+                return;
+              }
               const directory = attachmentBasePathRef.current;
               const serverPath = chatAttachmentService.absoluteUploadPath(
                 directory,
                 uploadFile.name
               );
+              // The server now owns the file; release the full-size blob.
+              chatAttachmentService.revokeObjectUrl(att);
               setAttachments((prev) =>
                 prev.map((a) =>
                   a.id === att.id
-                    ? { ...a, progress: 1, serverPath, error: undefined }
+                    ? { ...a, progress: 1, serverPath, objectUrl: a.isImage ? API_ROUTES.chats.mediaOpen(chatId, serverPath) : undefined, error: undefined }
                     : a
-                )
+                ),
+                true,
               );
               // Announced after the attachment is on disk and before the
               // prompt can reference it. A handler that only observes costs
@@ -132,8 +150,9 @@ export function useAttachmentUpload(
                 if (relocated) {
                   setAttachments((prev) =>
                     prev.map((a) =>
-                      a.id === att.id ? { ...a, serverPath: relocated } : a
-                    )
+                      a.id === att.id ? { ...a, serverPath: relocated, objectUrl: a.isImage ? API_ROUTES.chats.mediaOpen(chatId, relocated) : undefined } : a
+                    ),
+                    true,
                   );
                 }
                 resolve();
@@ -155,23 +174,25 @@ export function useAttachmentUpload(
       }
 
       await Promise.all(finishedFlags);
-      setUploading(false);
+      attachmentDraftStore.getState().finish(chatId);
     },
-    [chatId]
+    [chatId, setAttachments]
   );
 
   const removeAttachment = useCallback((id: string) => {
     const handle = handlesRef.current.get(id);
     if (handle) {
-      void handle.abort();
+      void handle.abort().catch(() => undefined);
+      attachmentUploadCompletions.get(id)?.();
+      attachmentUploadCompletions.delete(id);
       handlesRef.current.delete(id);
     }
     setAttachments((prev) => {
       const target = prev.find((attachment) => attachment.id === id);
       if (target) chatAttachmentService.revokeObjectUrl(target);
       return prev.filter((attachment) => attachment.id !== id);
-    });
-  }, []);
+    }, true);
+  }, [chatId, setAttachments]);
 
   return {
     attachments,

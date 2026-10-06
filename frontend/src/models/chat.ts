@@ -139,6 +139,7 @@ export interface ChatComposerSessionStoreState {
 }
 
 export interface ChatComposerSessionStoreActions {
+  reset: () => void;
   setDraft: (chatId: string, text: string) => void;
   setQueuedPrompts: (chatId: string, prompts: QueuedPrompt[]) => void;
 }

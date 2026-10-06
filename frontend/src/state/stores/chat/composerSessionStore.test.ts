@@ -64,3 +64,14 @@ test("store works without any storage backend", () => {
   store.getState().setQueuedPrompts("chat-1", [{ id: "q1", text: "queued" }]);
   assert.deepEqual(store.getState().promptQueues.get("chat-1"), [{ id: "q1", text: "queued" }]);
 });
+
+test("sign-out clears persisted drafts and prompt queues",()=>{
+ const storage=fakeStorage();
+ const store=createChatComposerSessionStore(storage);
+ store.getState().setDraft("aaaa","private draft");
+ store.getState().setQueuedPrompts("aaaa",[{id:"q1",text:"queued"}]);
+ store.getState().reset();
+ const next=createChatComposerSessionStore(storage);
+ assert.equal(next.getState().drafts.size,0);
+ assert.equal(next.getState().promptQueues.size,0);
+});

@@ -19,6 +19,12 @@ export function createChatComposerSessionStore(
   return createStore<ChatComposerSessionStoreState & ChatComposerSessionStoreActions>()(
     (set) => ({
       ...hydrated,
+      reset: () => set(() => {
+        const drafts = new Map<string, string>();
+        const promptQueues = new Map<string, QueuedPrompt[]>();
+        persist(storage, drafts, promptQueues);
+        return { drafts, promptQueues };
+      }),
       setDraft: (chatId, text) => set((state) => {
         const drafts = new Map(state.drafts);
         if (text) drafts.set(chatId, text);

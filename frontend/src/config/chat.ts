@@ -128,3 +128,5 @@ export const CHAT_FIND_SKIP_ATTRIBUTE = "data-find-skip";
  */
 export const CHAT_FIND_SKIP_SELECTOR =
   `script, style, [hidden], [${CHAT_FIND_SKIP_ATTRIBUTE}]`;
+
+export const EMPTY_DRAFT_ATTACHMENTS: import("../models/upload").Attachment[] = [];
