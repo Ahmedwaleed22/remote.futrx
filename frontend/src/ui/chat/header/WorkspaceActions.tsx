@@ -1,9 +1,9 @@
 import { useId, useState } from "preact/hooks";
 import { useDismissKeyDown } from "../../../state/hooks/shared/useDismissKeyDown.ts";
-import { CalendarClock, Clock, Code, Folder, Monitor, Terminal } from "../../primitives/icons";
+import { CalendarClock, Clock, Folder, Monitor, Terminal } from "../../primitives/icons";
 import { ExtensionSlot } from "../../primitives/ExtensionSlot";
+import { workspaceActionTooltipClass } from "../../primitives/workspaceActionTooltip.ts";
 import { EXTENSION_SLOTS } from "../../../config/extensions";
-import { buildIdeUrl } from "../ideLinks";
 import { DEFAULT_WORKSPACE_PATH } from "../../../config/workspace";
 
 // Two states only, and they never fight over the same property: Tailwind emits
@@ -51,7 +51,6 @@ export function WorkspaceActions({
   orientation: "horizontal" | "vertical";
 }) {
   const workspacePath = cwd && cwd !== "~" ? cwd : DEFAULT_WORKSPACE_PATH;
-  const ideUrl = buildIdeUrl(workspacePath);
   const tooltipPlacement = orientation === "horizontal" ? "below" : "left";
 
   return (
@@ -61,12 +60,6 @@ export function WorkspaceActions({
         chatId={chatId}
         projectId={projectId}
         cwd={workspacePath}
-      />
-      <WorkspaceAction
-        Icon={Code}
-        href={ideUrl}
-        label="Workspace IDE"
-        tooltip="Open workspace in IDE"
         tooltipPlacement={tooltipPlacement}
       />
       <WorkspaceAction
@@ -131,17 +124,15 @@ function WorkspaceAction({
   Icon,
   label,
   tooltip,
-  href,
   onClick,
   expanded,
   controls,
   action,
   tooltipPlacement,
 }: {
-  Icon: typeof Code;
+  Icon: typeof Terminal;
   label: string;
   tooltip: string;
-  href?: string;
   onClick?: () => void;
   expanded?: boolean;
   controls?: string;
@@ -181,30 +172,12 @@ function WorkspaceAction({
       <span
         id={tooltipId}
         role="tooltip"
-        class={`workspace-action-tooltip pointer-events-none absolute z-50 whitespace-nowrap rounded-control border border-line bg-raised px-2 py-1 text-[11px] font-medium text-ink-100 shadow-pop transition-[opacity,transform] duration-150 motion-reduce:transition-none ${
-          tooltipPlacement === "below"
-            ? `right-0 top-full mt-2 ${isTooltipOpen ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"}`
-            : `right-full top-1/2 mr-2 -translate-y-1/2 ${isTooltipOpen ? "translate-x-0 opacity-100" : "translate-x-1 opacity-0"}`
-        }`}
+        class={workspaceActionTooltipClass(tooltipPlacement, isTooltipOpen)}
       >
         {tooltip}
       </span>
     </>
   );
-
-  if (href) {
-    return (
-      <a
-        {...interactionProps}
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        class={actionIdle}
-      >
-        {content}
-      </a>
-    );
-  }
 
   return (
     <button

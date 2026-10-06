@@ -37,8 +37,6 @@ export const API_ROUTES = {
       `/api/chats/${encodeURIComponent(id)}/files/download-folder${path ? `?path=${encodeURIComponent(path)}` : ""}`,
     mediaOpen: (id: string, path: string) =>
       `/api/chats/${encodeURIComponent(id)}/media-open?path=${encodeURIComponent(path)}`,
-    ideOpen: (id: string, path: string) =>
-      `/api/chats/${encodeURIComponent(id)}/ide-open?path=${encodeURIComponent(path)}`,
     transcript: (id: string, query: string) =>
       `/api/chats/${encodeURIComponent(id)}/transcript${query ? `?${query}` : ""}`,
     transcriptContent: (id: string, query: string) =>
@@ -172,6 +170,7 @@ export const API_ROUTES = {
   serverInfo: "/api/server/info",
   selfUpdate: {
     status: "/api/admin/update/status",
+    releaseNotes: (tag: string) => `/api/admin/update/release-notes?tag=${encodeURIComponent(tag)}`,
     check: "/api/admin/update/check",
     apply: "/api/admin/update/apply",
   },
