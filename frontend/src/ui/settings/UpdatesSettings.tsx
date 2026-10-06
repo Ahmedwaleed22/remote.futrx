@@ -1,3 +1,4 @@
+import { selfUpdateService } from "../../services/server/selfUpdateService";
 import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import { Download, Loader, RotateCcw } from "../primitives/icons";
 import { UpdateRunCard } from "./updates/UpdateRunCard";
@@ -34,7 +35,7 @@ export function UpdatesSettings({
   const lastCheck = status?.lastCheck ?? null;
   const runActive = run?.state === "running";
   const latestTag = lastCheck?.latestTag ?? "";
-  const updateAvailable = !runActive && lastCheck?.updateAvailable === true && latestTag !== "";
+  const updateAvailable = selfUpdateService.availableTag(status) !== null;
   const updateKind = lastCheck?.updateKind ?? "infrastructure";
   const infrastructureUpdate = updateKind === "infrastructure";
 

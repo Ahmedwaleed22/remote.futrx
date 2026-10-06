@@ -8,7 +8,7 @@ import { useUserSettingsContext } from "../../state/context/UserSettingsContext"
 import { useUserDirectory } from "../../state/hooks/users/useUserDirectory";
 import { useSecuritySettings } from "../../state/hooks/auth/useSecuritySettings";
 import { useServerInfo } from "../../state/hooks/server/useServerInfo";
-import { useSelfUpdate } from "../../state/hooks/server/useSelfUpdate";
+import type { SelfUpdateController } from "../../state/hooks/server/useSelfUpdate";
 import { usePushNotifications } from "../../state/hooks/push/usePushNotifications";
 import { useUsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
 import { usageApi } from "../../api/usageApi";
@@ -16,11 +16,13 @@ import { useGlobalApplications } from "../../state/hooks/applications/useApplica
 import { extensionHost } from "../extensions/extensionHost";
 
 export function SettingsContainer({
+  selfUpdate,
   onBack,
   onHamburger,
   activeTab,
   onTabChange,
 }: {
+  selfUpdate: SelfUpdateController;
   onBack: () => void;
   onHamburger: () => void;
   activeTab: SettingsTab;
@@ -30,7 +32,6 @@ export function SettingsContainer({
   const userSettings = useUserSettingsContext();
   const userDirectory = useUserDirectory(auth.isAdmin);
   const serverInfo = useServerInfo(activeTab === "info");
-  const selfUpdate = useSelfUpdate(activeTab === "updates" && auth.isAdmin);
   const security = useSecuritySettings(activeTab === "security");
   const applications = useGlobalApplications({
     enabled: activeTab === "applications" && auth.isAdmin,
