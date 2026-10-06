@@ -30,6 +30,7 @@ const (
 )
 
 const (
+	ChatMetadataPageLimit        = 100
 	ChatTailInitialReadBytes     = 4096
 	ChatTailSequenceCacheEntries = 128
 )

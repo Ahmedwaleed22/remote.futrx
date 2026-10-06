@@ -2,22 +2,11 @@ package chat
 
 import (
 	"encoding/base64"
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	"sort"
 	"strconv"
 	"strings"
 )
-
-// ChatPageQuery selects metadata only, after visibility has been enforced.
-type ChatPageQuery struct {
-	Limit          int
-	Before, Search string
-}
-type ChatPage struct {
-	Chats      []Meta `json:"chats"`
-	NextBefore string `json:"nextBefore,omitempty"`
-	HasMore    bool   `json:"hasMore"`
-	Total      int    `json:"total"`
-}
 
 func ValidChatCursor(cursor string) bool {
 	if cursor == "" {
@@ -40,8 +29,8 @@ func parseChatCursor(cursor string) (int64, ID, bool) {
 }
 func SelectChatPage(metas []Meta, query ChatPageQuery) ChatPage {
 	limit := query.Limit
-	if limit <= 0 || limit > 100 {
-		limit = 100
+	if limit <= 0 || limit > configconstants.ChatMetadataPageLimit {
+		limit = configconstants.ChatMetadataPageLimit
 	}
 	page := ChatPage{Chats: []Meta{}, Total: len(metas)}
 	beforeT, beforeID, _ := parseChatCursor(query.Before)
