@@ -17,14 +17,9 @@ type UpdaterLaunch struct {
 type HostClient interface {
 	ListRemoteTags(ctx context.Context, installDir string) ([]string, error)
 	ListRemoteTagsForCommit(ctx context.Context, installDir, commitPrefix string) ([]string, error)
+	ReadReleaseNotes(ctx context.Context, installDir, tag string) (string, error)
 	StartUpdater(launch UpdaterLaunch) (int, error)
 	ProcessAlive(pid int) bool
-}
-
-// ReleaseNotesReader reads the published notes for an exact tag on the
-// installation's origin, independently of update discovery and deployment.
-type ReleaseNotesReader interface {
-	ReadReleaseNotes(ctx context.Context, installDir, tag string) (ReleaseNotes, error)
 }
 
 // UpdateLifecyclePublisher is the lifecycle notification capability used by

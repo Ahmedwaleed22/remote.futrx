@@ -24,7 +24,6 @@ import (
 	applicationbackends "github.com/futrx-com/remote.futrx.com/internal/integration/applications"
 	containerapplications "github.com/futrx-com/remote.futrx.com/internal/integration/containers/applications"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/gitcli"
-	"github.com/futrx-com/remote.futrx.com/internal/integration/githubreleases"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostfs"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostinfo"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/lxc"
@@ -148,7 +147,6 @@ func main() {
 		cfg.InstallDir,
 		cfg.DataDir,
 		updatecli.New(),
-		githubreleases.New(),
 		updateLifecycle,
 	)
 

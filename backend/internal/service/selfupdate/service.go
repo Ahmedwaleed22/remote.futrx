@@ -29,7 +29,6 @@ type Service struct {
 	currentVersion string
 	installDir     string
 	host           HostClient
-	releaseNotes   ReleaseNotesReader
 	lifecycle      UpdateLifecyclePublisher
 	runs           runState
 
@@ -42,23 +41,17 @@ type Service struct {
 	launching       bool
 	reconciling     bool
 	dispatching     bool
-
-	notesMu        sync.Mutex
-	cachedNotes    ReleaseNotes
-	notesCheckedAt time.Time
 }
 
 func New(
 	currentVersion, installDir, dataDir string,
 	host HostClient,
-	releaseNotes ReleaseNotesReader,
 	lifecycle UpdateLifecyclePublisher,
 ) *Service {
 	return &Service{
 		currentVersion: currentVersion,
 		installDir:     installDir,
 		host:           host,
-		releaseNotes:   releaseNotes,
 		lifecycle:      lifecycle,
 		runs:           newRunState(dataDir),
 	}
@@ -70,6 +63,16 @@ func (s *Service) Status(context.Context) Status {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.statusLocked()
+}
+
+// ReleaseNotes reads the tagged commit's body, which is also the source used
+// by the release workflow. Notes failures never change update availability.
+func (s *Service) ReleaseNotes(ctx context.Context, tag string) (ReleaseNotes, error) {
+	if _, ok := parseReleaseTag(tag); !ok {
+		return ReleaseNotes{}, ErrInvalidReleaseTag
+	}
+	body, err := s.host.ReadReleaseNotes(ctx, s.installDir, tag)
+	return ReleaseNotes{Tag: tag, Body: body}, err
 }
 
 // Check queries origin for release tags and records whether one is newer

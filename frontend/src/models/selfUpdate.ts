@@ -2,10 +2,7 @@ export type SelfUpdateKind = "application" | "infrastructure";
 
 export interface SelfUpdateReleaseNotes {
   tag: string;
-  title?: string;
   body?: string;
-  url?: string;
-  publishedAt?: string;
 }
 
 export interface SelfUpdateCheck {

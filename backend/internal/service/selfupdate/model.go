@@ -62,11 +62,8 @@ type Status struct {
 }
 
 type ReleaseNotes struct {
-	Tag         string `json:"tag"`
-	Title       string `json:"title,omitempty"`
-	Body        string `json:"body,omitempty"`
-	URL         string `json:"url,omitempty"`
-	PublishedAt string `json:"publishedAt,omitempty"`
+	Tag  string `json:"tag"`
+	Body string `json:"body,omitempty"`
 }
 
 type runRecord struct {
