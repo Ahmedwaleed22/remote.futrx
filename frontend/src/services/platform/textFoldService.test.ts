@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { textFoldService } from "./textFoldService.ts";
+import { TextFoldService, textFoldService } from "./textFoldService.ts";
 
 test("folding preserves length so highlight spans stay aligned", () => {
   assert.equal(textFoldService.fold("Café Ünicode").length, "Café Ünicode".length);
@@ -18,4 +18,13 @@ test("folding settles Arabic spelling variants and digits", () => {
   assert.equal(textFoldService.fold("مدرسة"), textFoldService.fold("مدرسه"));
   assert.equal(textFoldService.fold("علي"), textFoldService.fold("على"));
   assert.equal(textFoldService.fold("٥٧"), "57");
+});
+
+test("find-in-chat cannot retain large transcript strings in the global fold cache", () => {
+ const fold = new TextFoldService();
+ fold.fold("a".repeat(100_000));
+ assert.equal(fold.cachedCharacters, 0);
+ for (let i=0;i<300;i++) fold.fold(`${i}-${"text".repeat(2000)}`);
+ assert.ok(fold.cachedCharacters <= 1_000_000);
+ assert.equal(fold.fold("Café"), "cafe");
 });
