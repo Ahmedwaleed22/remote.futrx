@@ -3,10 +3,11 @@ package filechat
 import (
 	"bytes"
 	"errors"
-	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
-	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	"io"
 	"os"
+
+	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
+	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 )
 
 func lastStoredEventSeq(eventsPath string, fileSize int64) (int64, error) {

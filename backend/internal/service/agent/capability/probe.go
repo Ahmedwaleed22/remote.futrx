@@ -2,11 +2,12 @@ package capability
 
 import (
 	"context"
+	"log"
+	"time"
+
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	configconstants "github.com/futrx-com/remote.futrx.com/internal/config/constants"
 	agentmodule "github.com/futrx-com/remote.futrx.com/internal/service/agent/module"
-	"log"
-	"time"
 )
 
 // probe owns the bounded provider execution and normalization. Its deadline
