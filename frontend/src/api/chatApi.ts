@@ -1,3 +1,4 @@
+import { WORKSPACE_CHAT_PAGE_SIZE } from "../config/workspace.ts";
 import { requestJson } from "./apiRequest";
 import { chatEventsApi } from "./chat/chatEventsApi";
 import { chatFilesApi } from "./chat/chatFilesApi";
@@ -8,11 +9,17 @@ import {
   fetchTranscript,
   fetchTranscriptContent,
 } from "./chat/chatTranscriptApi";
-import type { ChatMeta, CreateChatInput, UpdateChatInput } from "../models/chat";
+import type { ChatMetadataPage, ChatMeta, CreateChatInput, UpdateChatInput } from "../models/chat";
 import { API_ROUTES } from "../config/routes";
 
 export const chatApi = {
-  list: () => requestJson<ChatMeta[]>("GET", API_ROUTES.chats.collection),
+  page: (params: { before?: string; q?: string } = {}) => {
+    const search = new URLSearchParams({ limit: String(WORKSPACE_CHAT_PAGE_SIZE) });
+    if (params.before) search.set("before", params.before);
+    if (params.q) search.set("q", params.q);
+    return requestJson<ChatMetadataPage>("GET", `${API_ROUTES.chats.collection}?${search}`);
+  },
+  list: (signal?: AbortSignal) => requestJson<ChatMeta[]>("GET", API_ROUTES.chats.collection, undefined, { signal }),
   create: (body: CreateChatInput = {}) =>
     requestJson<ChatMeta>("POST", API_ROUTES.chats.collection, body),
   fetch: (id: string) =>

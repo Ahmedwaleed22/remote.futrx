@@ -8,3 +8,5 @@ export const EMPTY_WORKSPACE_SNAPSHOT: WorkspaceSnapshot = {
   projects: [],
   loaded: false,
 };
+
+export const WORKSPACE_CHAT_PAGE_SIZE = 100;

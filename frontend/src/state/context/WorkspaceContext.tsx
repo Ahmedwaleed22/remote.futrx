@@ -23,6 +23,9 @@ interface WorkspaceContextValue {
   /** False until the first workspace snapshot lands. An empty list before that
    *  means "not known yet" — surfaces must show placeholders, not empty states. */
   loaded: boolean;
+  hasMoreChats: boolean;
+  loadingMoreChats: boolean;
+  loadMoreChats: () => Promise<void>;
   ui: WorkspaceUiState;
   selectChat: (chatId: string | null) => void;
   openSidebar: () => void;
@@ -60,7 +63,7 @@ export function WorkspaceProvider({
   const {
     ui, selectChat, openSidebar, closeSidebar, showChat, showSettings,
     selectSettingsTab, showProjectContainers, openCreateProject, closeCreateProject,
-  } = useWorkspaceNavigation(data.chats, data.loaded, enabled);
+  } = useWorkspaceNavigation(data.chats, data.loaded, enabled, data.ensureChat);
   const activeChat = workspaceSidebarService.activeChat(data.chats, ui.activeChatId);
   const account = auth.email || auth.adminEmail;
   const capabilityUserId = account || "anonymous";
@@ -146,6 +149,9 @@ export function WorkspaceProvider({
     projects: data.projects,
     activeChat,
     loaded: data.loaded,
+    hasMoreChats: !!data.hasMore,
+    loadingMoreChats: data.loadingMore,
+    loadMoreChats: data.loadMore,
     ui,
     selectChat,
     openSidebar,
@@ -167,6 +173,7 @@ export function WorkspaceProvider({
     data.chats,
     data.projects,
     data.loaded,
+    data.hasMore, data.loadingMore, data.loadMore,
     activeChat,
     ui,
     selectChat,

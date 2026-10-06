@@ -23,6 +23,7 @@ const ghostIconClass =
 export function Sidebar({
   open,
   model,
+  hasMore, loadingMore, onLoadMore,
   loading,
   search,
   collapsed,
@@ -47,6 +48,9 @@ export function Sidebar({
 }: {
   open: boolean;
   model: WorkspaceSidebarModel;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
   /** The first workspace snapshot has not landed yet. */
   loading: boolean;
   search: WorkspaceSearch;
@@ -271,6 +275,7 @@ export function Sidebar({
               </div>
             </div>
           )}
+          {hasMore && <button type="button" onClick={onLoadMore} disabled={loadingMore} class="w-full rounded-control px-3 py-2 text-xs text-ink-300 hover:bg-tint-strong">{loadingMore ? "Loading chats…" : "Load older chats"}</button>}
         </div>
 
         {account?.authenticated && (

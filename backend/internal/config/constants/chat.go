@@ -2,6 +2,7 @@
 package constants
 
 const (
+	ChatMetadataPageLimit = 100
 	// DefaultChatTranscriptTurnLimit applies when no positive limit is requested.
 	DefaultChatTranscriptTurnLimit = 20
 	// MaxChatTranscriptTurnLimit caps transcript page sizes.

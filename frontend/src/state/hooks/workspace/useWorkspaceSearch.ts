@@ -1,4 +1,5 @@
-import { useMemo } from "preact/hooks";
+import { chatApi } from "../../../api/chatApi";
+import { useEffect, useState, useMemo } from "preact/hooks";
 import { useStore } from "zustand";
 import type { ChatMeta } from "../../../models/chat.ts";
 import type { ProjectMeta } from "../../../models/project.ts";
@@ -112,9 +113,28 @@ export function useWorkspaceSearch(
     setDateFilter, clearDate, resetFilters, clearAll,
   } = selection;
 
+  const [remoteChats, setRemoteChats] = useState<ChatMeta[]>([]);
+  const searching = !!query.trim() || searchFilterService.countActive(filters) > 0;
+  useEffect(() => {
+    const abort = new AbortController();
+    setRemoteChats([]);
+    if (!searching) return;
+    // Fetch metadata on demand so global fuzzy matching and every existing
+    // facet continue to include old chats. Normal navigation stays paginated.
+    // This snapshot is released as soon as search/filters are cleared.
+    const timer = setTimeout(() => {
+      void chatApi.list(abort.signal).then((chats) => {
+        if (!abort.signal.aborted) setRemoteChats(chats);
+      }).catch(() => undefined);
+    }, 250);
+    return () => { abort.abort(); clearTimeout(timer); };
+  }, [searching]);
   const docs = useMemo(
-    () => workspaceSearchService.buildIndex(chats, projects),
-    [chats, projects],
+    () => {
+      const known = new Set(chats.map((chat) => chat.id));
+      return workspaceSearchService.buildIndex([...chats, ...remoteChats.filter((chat) => !known.has(chat.id))], projects);
+    },
+    [chats, projects, remoteChats],
   );
 
   // `now` is pinned per render pass rather than read inside the search, so a

@@ -203,3 +203,5 @@ export interface ResolvedChatMeta extends ChatMeta {
   approvalPolicy: ApprovalPolicy;
   sandboxPolicy: SandboxPolicy;
 }
+
+export interface ChatMetadataPage { chats: ChatMeta[]; nextBefore?: string; hasMore: boolean; total: number; }

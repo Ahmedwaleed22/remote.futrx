@@ -113,3 +113,21 @@ test("connecting twice opens one feed, and disconnecting twice closes it once", 
   store.getState().setConnected(false);
   assert.equal(closedCount(), 1);
 });
+
+test("metadata pages append without erasing the live workspace feed",()=>{
+ const {store,send}=connectedStore();
+ send({type:"workspace.snapshot",chats:[chat("a")],projects:[],hasMore:true,nextBefore:"older",totalChats:3});
+ store.getState().appendPage({chats:[chat("b")],hasMore:false,total:3});
+ assert.equal(store.getState().snapshot.chats.length,2);
+ assert.equal(store.getState().snapshot.hasMore,false);
+});
+
+test("connection generations isolate pending pages across sign-out/reconnect",()=>{
+ const {store}=connectedStore();
+ const first=store.getState().connectionGeneration();
+ store.getState().setConnected(true);
+ assert.equal(store.getState().connectionGeneration(),first);
+ store.getState().setConnected(false);
+ store.getState().setConnected(true);
+ assert.ok(store.getState().connectionGeneration()>first);
+});

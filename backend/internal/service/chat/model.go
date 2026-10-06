@@ -400,3 +400,15 @@ func TitleFromPrompt(prompt string) string {
 	}
 	return t
 }
+
+// ChatPageQuery selects metadata only, after visibility has been enforced.
+type ChatPageQuery struct {
+	Limit          int
+	Before, Search string
+}
+type ChatPage struct {
+	Chats      []Meta `json:"chats"`
+	NextBefore string `json:"nextBefore,omitempty"`
+	HasMore    bool   `json:"hasMore"`
+	Total      int    `json:"total"`
+}

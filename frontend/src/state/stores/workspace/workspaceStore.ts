@@ -25,6 +25,7 @@ export function createWorkspaceStore(subscribe: SubscribeToWorkspace) {
   // api layer, which is what lets a test drive it with a hand-held feed and
   // what lets the node test runner load it at all.
   let disconnect: (() => void) | undefined;
+  let generation = 0;
 
   return createStore<WorkspaceStoreState & WorkspaceStoreActions>()(
     (set, get) => {
@@ -34,7 +35,7 @@ export function createWorkspaceStore(subscribe: SubscribeToWorkspace) {
           if (chats === current.chats && projects === current.projects && loaded === current.loaded) {
             return state;
           }
-          return { snapshot: { chats, projects, loaded } };
+          return { snapshot: { ...current, chats, projects, loaded } };
         });
       }
 
@@ -47,6 +48,7 @@ export function createWorkspaceStore(subscribe: SubscribeToWorkspace) {
         const { chats, projects, loaded } = get().snapshot;
         switch (message.type) {
           case "workspace.snapshot":
+            set({ snapshot: { ...get().snapshot, nextBefore: message.nextBefore, hasMore: !!message.hasMore, totalChats: message.totalChats ?? message.chats.length } });
             commit(
               workspaceDataProjector.replaceChats(message.chats, chats),
               workspaceDataProjector.replaceProjects(message.projects, projects),
@@ -70,6 +72,7 @@ export function createWorkspaceStore(subscribe: SubscribeToWorkspace) {
 
       return {
         snapshot: EMPTY_WORKSPACE_SNAPSHOT,
+        connectionGeneration: () => generation,
         // A chat created or forked from this client exists on the server before
         // its `chat.upsert` reaches us. Seeding it closes that window: without
         // it the freshly selected chat reads as missing from the list and the
@@ -78,16 +81,27 @@ export function createWorkspaceStore(subscribe: SubscribeToWorkspace) {
         // list has one projection path and an early arrival is
         // indistinguishable from the message it beat.
         seedChat: upsertChat,
+        appendPage: (page) => {
+          const current = get().snapshot;
+          let chats = current.chats;
+          const known = new Set(chats.map((chat) => chat.id));
+          for (const chat of page.chats) {
+            // A live upsert may have newer metadata than this HTTP snapshot.
+            if (!known.has(chat.id)) chats = workspaceDataProjector.upsertChat(chats, chat);
+          }
+          set({ snapshot: { ...current, chats, nextBefore: page.nextBefore, hasMore: page.hasMore, totalChats: page.total } });
+        },
         /** Opens the feed, or closes it and clears what it delivered. Repeating a
          *  state is a no-op, so callers may drive this from an effect. */
         setConnected: (connected) => {
           if (connected) {
-            if (!disconnect) disconnect = subscribe(apply);
+            if (!disconnect) { generation++; disconnect = subscribe(apply); }
             return;
           }
+          generation++;
           disconnect?.();
           disconnect = undefined;
-          commit(EMPTY_WORKSPACE_SNAPSHOT.chats, EMPTY_WORKSPACE_SNAPSHOT.projects, false);
+          set({ snapshot: EMPTY_WORKSPACE_SNAPSHOT });
         },
       };
     },
