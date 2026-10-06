@@ -18,11 +18,12 @@ Paths below are relative to the repository; draft paths belong to `fix/preserve-
 | Draft `frontend/src/state/hooks/chat/useAttachmentUpload.ts:34` | The presentation hook coordinated upload handles, file naming, previews, persistence and extension claims | `frontend/src/services/chat/attachmentUploadService.ts:14` owns the session workflow behind injected boundaries; the hook selects state and binds target updates |
 | Draft `frontend/src/state/stores/chat/attachmentDraftStore.ts:8` | Public mutable upload maps and browser/storage details leaked from the reactive data layer | Handles and completion callbacks are private to the upload service; `api/chat/attachmentDraftStorage.ts:7` owns serialization and preview reconstruction; the store owns draft state |
 | Draft `frontend/src/state/stores/workspace/workspaceStore.ts:62` | Workspace state mutations also coordinated attachment and composer cleanup | `frontend/src/services/chat/chatDraftSessionService.ts:5` owns explicit discard order, invoked before the deletion reaches the workspace feed |
-| `scripts/performance/seed-huge-chat.py:12` | One function mixed CLI parsing, metadata selection, event generation and filesystem publication | `parse_arguments`, `template_metadata`, `fixture_events`, and `publish_chat`, with the existing CLI coordinating them |
 
 Behavioral dependency contracts are in `port/`; application data stays with existing `models/` owners. New settings are centralized in the existing configuration directories. Services are framework-independent; app composition constructs concrete dependencies and contexts expose them to hooks. Importing the new composition modules starts no sockets, requests or polling timers.
 
-## Behavior preserved by
+## Historical verification
+
+The fixture generator and performance/load-test harnesses were subsequently removed from the branch. The measurements below record verification performed before their removal.
 
 - Both frontend production builds and final TypeScript checks passed. Full frontend suites: **560/560** on performance and **557/557** on drafts, including the store architecture check.
 - Full backend `go test ./...` passed. Race checks passed for capability discovery, project inspection, inspection probes and HTTP handlers. Chat paging and filechat tests passed after extraction and final import cleanup.
@@ -30,7 +31,6 @@ Behavioral dependency contracts are in `port/`; application data stays with exis
 - Streaming and search memory fixtures passed. The refactored performance UI completed 12 navigation cycles and telemetry injection with **zero page errors** and **5,907,092 bytes retained JS heap**, consistent with the earlier approximately 5.9 MB fixture result. This is not total tab RAM or a navigation-latency claim.
 - The draft Chromium fixture passed text/image restoration, three navigation cycles, reload and explicit removal: **one upload, zero navigation-triggered upload deletions, zero page errors**.
 - Focused runtime checks verified completion across remount, explicit upload discard, stale metadata rejection, current deep-link seeding, and the existing pending behavior during an extension claim.
-- The generator characterization test pins metadata, event types/order, sequence/timestamps, payloads, preservation of the source chat, omission of provider session IDs, collision errors and staging cleanup. It passed before and after extraction. `bash -n scripts/performance/run.sh` passed.
 
 ## Commit history and verification
 
@@ -41,8 +41,6 @@ Behavioral dependency contracts are in `port/`; application data stays with exis
 | `f9b9cb83` | Keep chat paging contracts with chat models and configuration | Paging tests and backend build/tests |
 | `0904c142` | Name full and resource-only container inspection operations | Project/inspection/handler race suites |
 | `a053288d` | Extract loading workflows from stores and presentation hooks | TypeScript, production build, 560 frontend tests, browser and runtime fixtures |
-| `f81dd6fa` | Characterize the huge-chat fixture format and collision behavior | Characterization test against the original generator |
-| `5403812d` | Separate fixture generation from CLI and file publication | The same characterization test after extraction |
 | `f4e463c6` | Group extracted backend imports by dependency layer | Capability/filechat suites |
 | Draft `d26462ca` | Give chat draft uploads and cleanup explicit session owners | TypeScript, production build, 557 frontend tests, Chromium draft scenario and focused upload checks |
 
