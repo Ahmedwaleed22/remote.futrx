@@ -359,6 +359,10 @@ Before using Remote with valuable code or credentials, read the [threat model](d
 
 ## Updating
 
+Administrator workspaces check for new releases on opening and hourly while
+visible. An **Update available** notice in the sidebar opens **Settings → Updates**
+to read its release notes and install the release. Checking for a release never installs it automatically.
+
 The in-app updater selects the deployment path from the release version:
 patch releases rebuild and restart only the frontend/backend application,
 while major or minor releases also converge host infrastructure, rebuild the

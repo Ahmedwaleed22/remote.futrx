@@ -170,6 +170,7 @@ export const API_ROUTES = {
   serverInfo: "/api/server/info",
   selfUpdate: {
     status: "/api/admin/update/status",
+    releaseNotes: (tag: string) => `/api/admin/update/release-notes?tag=${encodeURIComponent(tag)}`,
     check: "/api/admin/update/check",
     apply: "/api/admin/update/apply",
   },
