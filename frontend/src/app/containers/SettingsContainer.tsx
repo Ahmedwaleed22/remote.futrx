@@ -9,6 +9,7 @@ import { useUserDirectory } from "../../state/hooks/users/useUserDirectory";
 import { useSecuritySettings } from "../../state/hooks/auth/useSecuritySettings";
 import { useServerInfo } from "../../state/hooks/server/useServerInfo";
 import type { SelfUpdateController } from "../../state/hooks/server/useSelfUpdate";
+import { useReleaseNotes } from "../../state/hooks/server/useReleaseNotes";
 import { usePushNotifications } from "../../state/hooks/push/usePushNotifications";
 import { useUsageDashboard } from "../../state/hooks/usage/useUsageDashboard";
 import { usageApi } from "../../api/usageApi";
@@ -32,6 +33,10 @@ export function SettingsContainer({
   const userSettings = useUserSettingsContext();
   const userDirectory = useUserDirectory(auth.isAdmin);
   const serverInfo = useServerInfo(activeTab === "info");
+  const releaseNotes = useReleaseNotes(
+    activeTab === "updates" && auth.isAdmin && !selfUpdate.status?.lastCheck?.error,
+    selfUpdate.status?.lastCheck?.latestTag,
+  );
   const security = useSecuritySettings(activeTab === "security");
   const applications = useGlobalApplications({
     enabled: activeTab === "applications" && auth.isAdmin,
@@ -75,6 +80,7 @@ export function SettingsContainer({
       serverInfoRefreshing={serverInfo.refreshing}
       serverInfoError={serverInfo.error}
       selfUpdate={selfUpdate.status}
+      releaseNotes={releaseNotes}
       selfUpdateLoading={selfUpdate.loading}
       selfUpdateChecking={selfUpdate.checking}
       selfUpdateApplying={selfUpdate.applying}

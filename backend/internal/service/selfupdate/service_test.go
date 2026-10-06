@@ -58,7 +58,7 @@ func (noopUpdateLifecyclePublisher) PublishUpdateSucceeded(context.Context, stri
 func (noopUpdateLifecyclePublisher) PublishUpdateFailed(context.Context, string, string, string) {}
 
 func newTestService(currentVersion, installDir, dataDir string, host HostClient) *Service {
-	return New(currentVersion, installDir, dataDir, host, noopUpdateLifecyclePublisher{})
+	return New(currentVersion, installDir, dataDir, host, &fakeReleaseNotes{}, noopUpdateLifecyclePublisher{})
 }
 
 func (f *fakeHost) ListRemoteTags(context.Context, string) ([]string, error) {
@@ -352,7 +352,7 @@ func TestApplyLifecycle(t *testing.T) {
 			t.Fatalf("updater launched before update-started dispatch: %+v", lifecycle.events)
 		}
 	}
-	svc := New("0.1", "/opt/x", t.TempDir(), host, lifecycle)
+	svc := New("0.1", "/opt/x", t.TempDir(), host, &fakeReleaseNotes{}, lifecycle)
 
 	status, err := svc.Apply(context.Background(), "admin@example.com", "")
 	if err != nil {
@@ -440,7 +440,7 @@ func TestReconcileLifecycleCheckpointsTerminalEventAcrossRestart(t *testing.T) {
 			dataDir := t.TempDir()
 			host := &fakeHost{}
 			publisher := &recordingUpdateLifecyclePublisher{}
-			svc := New("0.4.0", "/opt/x", dataDir, host, publisher)
+			svc := New("0.4.0", "/opt/x", dataDir, host, &fakeReleaseNotes{}, publisher)
 			record := runRecord{
 				Target: "0.5.0", UpdateKind: UpdateKindInfrastructure,
 				StartedAt: 10, StartedBy: "admin@example.com", PID: 4242,
@@ -472,7 +472,7 @@ func TestReconcileLifecycleCheckpointsTerminalEventAcrossRestart(t *testing.T) {
 				t.Fatal(err)
 			}
 			restartedPublisher := &recordingUpdateLifecyclePublisher{}
-			restarted := New("0.5.0", "/opt/x", dataDir, host, restartedPublisher)
+			restarted := New("0.5.0", "/opt/x", dataDir, host, &fakeReleaseNotes{}, restartedPublisher)
 			if err := restarted.reconcileLifecycle(context.Background()); err != nil {
 				t.Fatal(err)
 			}
@@ -592,7 +592,7 @@ func TestApplyRetryReclassifiesWhenTargetChanges(t *testing.T) {
 func TestApplyStartUpdaterFailureClearsStaleRecord(t *testing.T) {
 	host := &fakeHost{tags: []string{"0.11.0", "0.12.0"}, pid: 4242}
 	lifecycle := &recordingUpdateLifecyclePublisher{}
-	svc := New("0.11.0", "/opt/x", t.TempDir(), host, lifecycle)
+	svc := New("0.11.0", "/opt/x", t.TempDir(), host, &fakeReleaseNotes{}, lifecycle)
 
 	// Land a prior failed infrastructure run on disk so the retry starts
 	// from the realistic partial-install state.

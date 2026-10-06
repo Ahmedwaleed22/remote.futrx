@@ -17,9 +17,10 @@ import (
 )
 
 var (
-	ErrUpdateInProgress = errors.New("an update is already running")
-	ErrNoReleaseTag     = errors.New("no release tags found on origin")
-	ErrUnknownTag       = errors.New("tag does not exist on origin")
+	ErrUpdateInProgress  = errors.New("an update is already running")
+	ErrNoReleaseTag      = errors.New("no release tags found on origin")
+	ErrUnknownTag        = errors.New("tag does not exist on origin")
+	ErrInvalidReleaseTag = errors.New("invalid release tag")
 )
 
 const lifecycleReconcileInterval = time.Second
@@ -28,6 +29,7 @@ type Service struct {
 	currentVersion string
 	installDir     string
 	host           HostClient
+	releaseNotes   ReleaseNotesReader
 	lifecycle      UpdateLifecyclePublisher
 	runs           runState
 
@@ -40,17 +42,23 @@ type Service struct {
 	launching       bool
 	reconciling     bool
 	dispatching     bool
+
+	notesMu        sync.Mutex
+	cachedNotes    ReleaseNotes
+	notesCheckedAt time.Time
 }
 
 func New(
 	currentVersion, installDir, dataDir string,
 	host HostClient,
+	releaseNotes ReleaseNotesReader,
 	lifecycle UpdateLifecyclePublisher,
 ) *Service {
 	return &Service{
 		currentVersion: currentVersion,
 		installDir:     installDir,
 		host:           host,
+		releaseNotes:   releaseNotes,
 		lifecycle:      lifecycle,
 		runs:           newRunState(dataDir),
 	}

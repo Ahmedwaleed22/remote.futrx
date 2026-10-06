@@ -3,9 +3,12 @@ import type { SelfUpdateStatus } from "../../models/selfUpdate";
 import { Download, Loader, RotateCcw } from "../primitives/icons";
 import { UpdateRunCard } from "./updates/UpdateRunCard";
 import { formatUpdateTime } from "./updates/updateTime";
+import { ReleaseNotes } from "./updates/ReleaseNotes";
+import type { ReleaseNotesController } from "../../state/hooks/server/useReleaseNotes";
 
 export function UpdatesSettings({
   status,
+  releaseNotes,
   loading,
   checking,
   applying,
@@ -15,6 +18,7 @@ export function UpdatesSettings({
   onApply,
 }: {
   status: SelfUpdateStatus | null;
+  releaseNotes: ReleaseNotesController;
   loading: boolean;
   checking: boolean;
   applying: boolean;
@@ -82,6 +86,10 @@ export function UpdatesSettings({
           </div>
         )}
       </section>
+
+      {latestTag && !lastCheck?.error && (
+        <ReleaseNotes tag={latestTag} controller={releaseNotes} />
+      )}
 
       {updateAvailable && (
         <section class="rounded-lg border border-accent-blue/25 bg-accent-blue/[0.06] p-4">

@@ -209,6 +209,16 @@ Use **Check for updates** for an immediate check. Installing still requires an
 administrator to select the update action; discovery never starts an update.
 The notice is hidden while an update is running.
 
+The Updates screen also displays the published release notes for the exact
+version offered, with a **View on GitHub** link. Notes are fetched from the
+installation's GitHub origin when you open this screen. If notes have not been
+published or cannot be loaded, use **Retry release notes**; checking for and
+installing updates still work independently. Public GitHub release notes do
+not require an additional token. Private or non-GitHub origins may not provide
+notes in the app.
+
+![Release notes shown before the update action](../assets/update-release-notes.png)
+
 ## Info
 
 Use **Info** to inspect the parent host rather than one project container.

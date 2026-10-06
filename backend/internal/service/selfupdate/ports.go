@@ -21,6 +21,12 @@ type HostClient interface {
 	ProcessAlive(pid int) bool
 }
 
+// ReleaseNotesReader reads the published notes for an exact tag on the
+// installation's origin, independently of update discovery and deployment.
+type ReleaseNotesReader interface {
+	ReadReleaseNotes(ctx context.Context, installDir, tag string) (ReleaseNotes, error)
+}
+
 // UpdateLifecyclePublisher is the lifecycle notification capability used by
 // the self-update workflow. The concrete publisher is supplied at composition.
 type UpdateLifecyclePublisher interface {
