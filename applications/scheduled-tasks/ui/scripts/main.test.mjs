@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import activate, { installed, openTasks, taskState, scheduleSummary, friendlyError, readableTime, isArchived } from './main.js';
+import activate, { installed } from './main.js';
+import { openTasks } from './tasksPanel.js';
+import { taskState, scheduleSummary, friendlyError, readableTime, isArchived } from './taskView.js';
 
 test('past and finished reminders are distinguished from resumable paused tasks', () => {
   const task = { kind: 'once', at: '2026-10-06T12:00:00Z', enabled: false, runCount: 0 };
