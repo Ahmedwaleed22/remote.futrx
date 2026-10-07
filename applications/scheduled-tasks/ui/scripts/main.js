@@ -33,4 +33,3 @@ export default function activate(remote) {
     when: (context) => Boolean(context.chatId && installed(remote, context.projectId)),
   });
 }
-

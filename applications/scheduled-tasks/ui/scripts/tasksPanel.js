@@ -1,5 +1,5 @@
 import { ACTION_ICONS } from "./config.js";
-import { actionIcon, friendlyError, isArchived, renderTask, renderEmpty } from "./taskView.js";
+import { actionIcon, friendlyError, isArchived, renderTask, renderEmpty, renderSkeleton } from "./taskView.js";
 import { openPopover } from "./popover.js";
 
 export function openTasks(remote, context, anchor, onClose = () => {}) {
@@ -73,11 +73,7 @@ export function openTasks(remote, context, anchor, onClose = () => {}) {
             chrome.count.classList.add("scheduled-tasks-skeleton-count");
           }
           for (let index = 0; index < 3; index++) {
-            const skeleton = document.createElement("section");
-            skeleton.className = "scheduled-tasks-skeleton";
-            skeleton.setAttribute("aria-hidden", "true");
-            skeleton.innerHTML = '<span class="scheduled-tasks-skeleton-line scheduled-tasks-skeleton-title"></span><span class="scheduled-tasks-skeleton-line scheduled-tasks-skeleton-meta"></span><span class="scheduled-tasks-skeleton-line"></span><span class="scheduled-tasks-skeleton-line scheduled-tasks-skeleton-meta"></span><span class="scheduled-tasks-skeleton-actions"><i></i><i></i><i></i></span>';
-            list.append(skeleton);
+            list.append(renderSkeleton());
           }
         }
         try {

@@ -51,7 +51,6 @@ export function friendlyError(error) {
   return `Couldn’t complete the request. ${message}`;
 }
 
-
 export function renderTask(task, action) {
   const row = document.createElement("section");
   const title = document.createElement("h3"); title.textContent = task.name;
@@ -104,4 +103,12 @@ export function renderEmpty() {
   example.textContent = "“Watch the deploy every 5 minutes and stop when it is healthy.”";
   empty.append(symbol, title, help, example);
   return empty;
+}
+
+export function renderSkeleton() {
+  const skeleton = document.createElement("section");
+  skeleton.className = "scheduled-tasks-skeleton";
+  skeleton.setAttribute("aria-hidden", "true");
+  skeleton.innerHTML = '<span class="scheduled-tasks-skeleton-line scheduled-tasks-skeleton-title"></span><span class="scheduled-tasks-skeleton-line scheduled-tasks-skeleton-meta"></span><span class="scheduled-tasks-skeleton-line"></span><span class="scheduled-tasks-skeleton-line scheduled-tasks-skeleton-meta"></span><span class="scheduled-tasks-skeleton-actions"><i></i><i></i><i></i></span>';
+  return skeleton;
 }
