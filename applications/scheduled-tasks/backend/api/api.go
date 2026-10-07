@@ -8,9 +8,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"futrx.local/catalog/applications/scheduled-tasks/backend/lifecycle"
@@ -49,18 +47,16 @@ type Task struct {
 }
 
 type API struct {
-	mu       sync.Mutex
-	instance applications.Instance
-	tasks    map[string]Task
-	events   lifecycle.TaskEvents
-	now      func() time.Time
-	router   *applications.Router
+	taskStore
+	events lifecycle.TaskEvents
+	now    func() time.Time
+	router *applications.Router
 	// retry deadlines are volatile; claims themselves are durable.
 	retry map[string]time.Time
 }
 
 func New(events lifecycle.TaskEvents) *API {
-	a := &API{events: events, now: time.Now, tasks: map[string]Task{}, retry: map[string]time.Time{}, router: applications.NewRouter()}
+	a := &API{events: events, now: time.Now, taskStore: taskStore{tasks: map[string]Task{}}, retry: map[string]time.Time{}, router: applications.NewRouter()}
 	a.router.GET("health", "Scheduler health", a.health)
 	a.router.GET("tasks", "List tasks owned by the caller", a.list)
 	a.router.POST("tasks", "Create an active schedule", a.create)
@@ -74,21 +70,8 @@ func (a *API) Init(instance applications.Instance) error {
 	if instance.Scope != "project" || instance.ProjectID == "" || instance.DataDir == "" {
 		return errors.New("scheduled tasks require a project instance and data directory")
 	}
-	if err := os.MkdirAll(instance.DataDir, 0700); err != nil {
+	if err := a.taskStore.load(instance); err != nil {
 		return err
-	}
-	a.instance = instance
-	data, err := os.ReadFile(a.filename())
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	if err == nil {
-		if err = json.Unmarshal(data, &a.tasks); err != nil {
-			return fmt.Errorf("read scheduled tasks: %w", err)
-		}
-		if a.tasks == nil {
-			a.tasks = map[string]Task{}
-		}
 	}
 	go a.loop()
 	return nil
@@ -152,10 +135,9 @@ func (a *API) create(r applications.Request) applications.Response {
 	}
 	updated := maps.Clone(a.tasks)
 	updated[t.ID] = t
-	if err = a.save(updated); err != nil {
+	if err = a.commit(updated); err != nil {
 		return applications.Errorf(500, "%s", err)
 	}
-	a.tasks = updated
 	return applications.JSON(201, t)
 }
 func nextOccurrence(t Task, after time.Time) (time.Time, error) {
@@ -302,46 +284,13 @@ func (a *API) task(r applications.Request) applications.Response {
 	default:
 		return applications.Errorf(405, "method not allowed")
 	}
-	if err := a.save(updated); err != nil {
+	if err := a.commit(updated); err != nil {
 		return applications.Errorf(500, "%s", err)
 	}
-	a.tasks = updated
 	if r.Method == "DELETE" {
 		return applications.JSON(200, map[string]bool{"ok": true})
 	}
 	return applications.JSON(200, t)
-}
-func (a *API) filename() string { return filepath.Join(a.instance.DataDir, "tasks.json") }
-func (a *API) save(tasks map[string]Task) error {
-	data, err := json.Marshal(tasks)
-	if err != nil {
-		return err
-	}
-	f, err := os.CreateTemp(a.instance.DataDir, "tasks-*.tmp")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(f.Name())
-	if _, err = f.Write(data); err != nil {
-		f.Close()
-		return err
-	}
-	if err = f.Sync(); err != nil {
-		f.Close()
-		return err
-	}
-	if err = f.Close(); err != nil {
-		return err
-	}
-	if err = os.Rename(f.Name(), a.filename()); err != nil {
-		return err
-	}
-	dir, err := os.Open(a.instance.DataDir)
-	if err != nil {
-		return err
-	}
-	defer dir.Close()
-	return dir.Sync()
 }
 func newID() (string, error) {
 	var b [12]byte
@@ -397,10 +346,9 @@ func (a *API) claimDue() ([]Task, error) {
 		}
 	}
 	if len(due) > 0 {
-		if err := a.save(updated); err != nil {
+		if err := a.commit(updated); err != nil {
 			return nil, err
 		}
-		a.tasks = updated
 		for _, t := range due {
 			a.retry[t.ID] = now.Add(retryInterval)
 		}
