@@ -5,9 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"maps"
-	"os"
 	"strings"
 	"time"
 
@@ -20,31 +18,6 @@ const (
 	maxPromptBytes = 32 << 10
 	retryInterval  = 15 * time.Second
 )
-
-var (
-	ErrInvalidCron     = errors.New("invalid five-field cron expression")
-	ErrInvalidTimezone = errors.New("invalid IANA timezone")
-)
-
-type Task struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Prompt      string `json:"prompt"`
-	ChatID      string `json:"chatId"`
-	OwnerEmail  string `json:"ownerEmail"`
-	Kind        string `json:"kind"`
-	At          string `json:"at,omitempty"`
-	Cron        string `json:"cron,omitempty"`
-	Timezone    string `json:"timezone"`
-	Enabled     bool   `json:"enabled"`
-	Archived    bool   `json:"archived"`
-	NextRunAt   int64  `json:"nextRunAt,omitempty"`
-	RunCount    int    `json:"runCount"`
-	MaxRuns     int    `json:"maxRuns,omitempty"`
-	ActiveRunID string `json:"activeRunId,omitempty"`
-	LastError   string `json:"lastError,omitempty"`
-	LastRunAt   int64  `json:"lastRunAt,omitempty"`
-}
 
 type API struct {
 	taskStore
@@ -139,30 +112,6 @@ func (a *API) create(r applications.Request) applications.Response {
 		return applications.Errorf(500, "%s", err)
 	}
 	return applications.JSON(201, t)
-}
-func nextOccurrence(t Task, after time.Time) (time.Time, error) {
-	loc, err := time.LoadLocation(t.Timezone)
-	if err != nil {
-		return time.Time{}, ErrInvalidTimezone
-	}
-	switch t.Kind {
-	case "once":
-		at, err := time.Parse(time.RFC3339Nano, t.At)
-		if err != nil || !at.After(after) {
-			return time.Time{}, errors.New("at must be a future RFC3339 time with offset")
-		}
-		if t.Cron != "" {
-			return time.Time{}, errors.New("choose at or cron")
-		}
-		return at, nil
-	case "cron":
-		if t.At != "" {
-			return time.Time{}, errors.New("choose at or cron")
-		}
-		return nextCron(t.Cron, after, loc)
-	default:
-		return time.Time{}, errors.New("kind must be once or cron")
-	}
 }
 func (a *API) task(r applications.Request) applications.Response {
 	parts := strings.Split(strings.TrimPrefix(r.Path, "tasks/"), "/")
@@ -298,60 +247,4 @@ func newID() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b[:]), nil
-}
-func (a *API) loop() {
-	for range time.Tick(time.Second) {
-		if err := a.tick(); err != nil {
-			fmt.Fprintf(os.Stderr, "scheduled tasks: %v\n", err)
-		}
-	}
-}
-func (a *API) tick() error {
-	due, err := a.claimDue()
-	if err != nil {
-		return err
-	}
-	for _, t := range due {
-		if err := a.events.Due(t.ID, t.ActiveRunID); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// claimDue durably claims every due task before its event is published.
-func (a *API) claimDue() ([]Task, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	now := a.now()
-	updated := maps.Clone(a.tasks)
-	due := []Task{}
-	for id, t := range updated {
-		if !t.Enabled && t.ActiveRunID == "" {
-			continue
-		}
-		if t.ActiveRunID == "" {
-			if t.NextRunAt <= 0 || t.NextRunAt > now.UnixMilli() {
-				continue
-			}
-			runID, err := newID()
-			if err != nil {
-				return nil, err
-			}
-			t.ActiveRunID = runID
-			updated[id] = t
-		}
-		if !a.retry[id].After(now) {
-			due = append(due, t)
-		}
-	}
-	if len(due) > 0 {
-		if err := a.commit(updated); err != nil {
-			return nil, err
-		}
-		for _, t := range due {
-			a.retry[t.ID] = now.Add(retryInterval)
-		}
-	}
-	return due, nil
 }
