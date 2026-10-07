@@ -1,0 +1,35 @@
+{
+  "id": "scheduled-tasks",
+  "name": "Scheduled Tasks",
+  "description": "Wake the agent in the same project chat at a specific time or on a recurring cron schedule.",
+  "category": "productivity",
+  "version": "4",
+  "icon": "clock",
+  "scopes": [
+    "project"
+  ],
+  "install": "infra/install.sh",
+  "uninstall": "infra/uninstall.sh",
+  "backend": {
+    "access": "registered",
+    "timeoutMs": 30000
+  },
+  "publishers": [
+    {
+      "name": "tasks",
+      "events": [
+        {
+          "name": "due",
+          "version": 1,
+          "description": "A durable scheduled message is ready for the project agent."
+        }
+      ]
+    }
+  ],
+  "ui": {
+    "entry": "scripts/main.js",
+    "styles": [
+      "style/tasks.css"
+    ]
+  }
+}
