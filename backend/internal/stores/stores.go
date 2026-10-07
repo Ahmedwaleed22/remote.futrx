@@ -115,10 +115,6 @@ func New(dataDir string) (Stores, error) {
 		return Stores{}, fmt.Errorf("init project shares store: %w", err)
 	}
 
-	if err != nil {
-		return Stores{}, fmt.Errorf("init scheduled tasks store: %w", err)
-	}
-
 	users, err := fileusers.New(dataDir)
 	if err != nil {
 		return Stores{}, fmt.Errorf("init users store: %w", err)
