@@ -412,7 +412,7 @@ The design principle is:
 
 Remote does not choose between autonomy and control. It separates their timescales:
 
-- **before work**, the human chooses the project, agent, mode, skills, resources, access, credentials, and whether an agent-created schedule should be armed;
+- **before work**, the human chooses the project, agent, mode, skills, resources, access, credentials, and whether to install the Scheduled Tasks application;
 - **during work**, the agent can act without constant local approval while provider-emitted progress and tool activity stream back;
 - **at judgment boundaries**, the human can answer a question, take over the browser, inspect a rendered element, or work directly in the IDE or terminal;
 - **after work**, the human can review artifacts, diffs, commits, processes, resource use, and the running application;

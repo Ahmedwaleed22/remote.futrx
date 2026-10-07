@@ -164,29 +164,25 @@ Every `{id}` project route first requires admin status or project membership. Re
 | GET | `/api/chats/{id}/history/commits?repo=&limit=` | List commits |
 | GET | `/api/chats/{id}/history/diff?repo=&sha=` | Read one commit patch |
 | POST | `/api/chats/{id}/history/checkout` | Optional checkpoint and detached checkout |
-| GET, POST | `/api/chats/{id}/schedules` | List the caller's tasks for a project chat, or create one through the user API |
 
 All chat routes resolve the caller and enforce the chat's project membership. Loose chats have no project membership check.
 
-## Scheduled-task routes
+## Scheduled-task application routes
 
-| Method | Route | Purpose |
-| --- | --- | --- |
-| PATCH, DELETE | `/api/schedules/{id}` | Edit/pause/resume or delete a visible owned task; admins can manage all |
-| POST | `/api/schedules/{id}/run` | Request an immediate occurrence without moving its regular deadline |
-| GET, POST | `/agent-api/schedules` | List or create tasks inside the capability's chat/project fence |
-| PATCH, DELETE | `/agent-api/schedules/{id}` | Pause or delete a capability-scoped task; an agent cannot enable it |
-| POST | `/agent-api/schedules/{id}/run` | Request a capability-scoped immediate occurrence |
-| POST | `/agent-api/schedules/current/complete` | Complete only the task/run named by a `complete-self` capability |
+Scheduled Tasks uses the installed-application backend transport. Its `tasks`
+resource supports list/create, read/delete, pause/resume via PATCH, run-now via
+POST `tasks/{id}/run`, and completion of a claimed run. Tasks become active when
+created. The application's chat-header action manages them.
 
-Browser routes use the signed user session. Agent routes require a short-lived
-bearer capability issued for one owner, chat, and project; they do not accept a
-platform session cookie. Agent-created tasks are forced to `createdByAgent` and
-start disabled until a user arms them.
+`/agent-api/schedules` and its task subpaths remain a capability-only bridge to
+the installed application. A short-lived bearer grant fences requests to one
+owner, project, and chat. Scheduled turns receive only `current/complete`
+access for their current task/run. Browser clients use the application backend
+transport and its signed caller instead.
 
-Schedule request bodies cap at 64 KiB and reject unknown fields. Stored prompts
-cap at 32 KiB. The service re-checks the owner, chat, project, registration,
-and access on every fire.
+Agent request bodies cap at 64 KiB; stored prompts cap at 32 KiB. Before waking
+an agent, core re-checks the task owner's registration and project/chat access.
+The application owns cron parsing, deadlines, claims, and persistence.
 
 ## Upload and auxiliary routes
 

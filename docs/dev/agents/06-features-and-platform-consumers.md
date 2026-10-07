@@ -338,17 +338,14 @@ during an enabled run so the browser reaper does not stop an active session.
 
 ## Scheduled Tasks consumers
 
-`ScheduledTools=true` allows both interactive and scheduled turns to use
-Remote's provider-neutral schedule tooling. The prompt service rejects this
-feature in loose chats, issues the appropriate short-lived grant, places only
-valid backend-issued variables in `RuntimeEnv`, and revokes the grant at the
-end of the run.
-
-Providers do not parse the grant. Shared project preparation calls
-`ScheduleTools.Ensure`; the provider passes `RuntimeEnv` through the common
-container-command builder. The same provider run/event pipeline is used for
-interactive and scheduled turns;
-the resulting chat events receive `ScheduledTaskID` at the prompt boundary.
+`ScheduledTools=true` allows a provider to receive short-lived access to the
+installed Scheduled Tasks application. When its project installation is running,
+the prompt service adds the skill and supplies the API URL and scoped grant in
+`RuntimeEnv`, even if the skill was not explicitly selected. Providers forward
+that environment through the common command builder and never persist grants.
+The application installer publishes the CLI and skill; shared agent preparation
+no longer provisions scheduler assets. Scheduled turns use the same normal run
+pipeline and carry `ScheduledTaskID` for transcript and notification attribution.
 
 ## Provisioning and diagnostic consumers
 

@@ -138,14 +138,10 @@ controls switch ports, resize or reload the pane, and open the app in a new tab.
 
 ### Run work later
 
-<p align="center">
-  <img src="docs/assets/readme/feature-scheduled-tasks.webp" alt="Remote scheduled tasks drawer" width="900">
-</p>
-
-Select the Scheduled Tasks skill and ask in normal language for a one-time or
-recurring job. New schedules start paused for human review; the drawer can arm,
-edit, pause, resume, run, inspect, and delete them. Runs return to the same chat
-even when your browser is closed.
+Install the Scheduled Tasks application in a project and ask in normal language
+for a one-time or recurring reminder. Tasks become active immediately and return
+to the same chat even when your browser is closed. The application clock action
+lets you pause, resume, run and delete tasks.
 
 ### Operate and share each project
 
@@ -245,7 +241,7 @@ See the continuous five-step product tour at [remote.futrx.com](https://remote.f
 - **A complete development surface** — chat, root terminal, files, uploads, Git history, structured diffs, reusable skills, and optional editor applications.
 - **Live applications** — Remote finds listening ports, creates project URLs, adds HTTPS, and shows the app beside the conversation.
 - **A browser agents and humans can share** — reuse authenticated sessions, let an agent browse visually, watch it work, or take over.
-- **Scheduled work** — create reviewed one-time or recurring prompts that run later, even when your browser is closed.
+- **Scheduled work** — install Scheduled Tasks and create one-time or recurring prompts that run later, even when your browser is closed.
 - **Controls outside the workspace** — manage access, secrets, CPU, memory, lifecycle, provider connections, usage, notifications, security, updates, and recovery from the Remote host.
 
 ## How it works

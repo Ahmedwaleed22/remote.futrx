@@ -141,21 +141,16 @@ These are the constraints worth understanding before you deploy or rely on remot
 
 ## Scheduled tasks
 
-- **Repeated runs grow one provider session.** A scheduled task resumes the
-  same chat/provider session, so long-lived recurrence accumulates context and
-  token cost. Use `maxRuns`, complete bounded monitors, and periodically create
-  a fresh task/chat.
-- **Missed occurrences are coalesced, not replayed.** After downtime or a busy
-  chat, Remote runs at most one overdue follow-up under the default overlap
-  policy. It is not a durable event-processing queue with exactly-once replay.
-- **Creation currently starts through the agent.** The drawer can arm, edit,
-  pause, resume, run, and delete tasks, but it has no direct create form.
-  Select the Scheduled Tasks skill and explicitly ask the agent to create the
-  parked definition.
-- **The scheduler is still single-process and file-backed.** Claims survive in
-  `scheduled-tasks/tasks.json`, but timer ownership, concurrency accounting,
-  and execution live in the one backend process. There is no distributed
-  scheduler or external queue.
+- Recurrence resumes the same provider session and consumes context and quota.
+  Use bounded `maxRuns` where appropriate.
+- The project application must be installed and running. Stop pauses delivery;
+  uninstall deletes instance tasks.
+- Missed cron occurrences are coalesced. Claims retry after host crashes, so
+  interrupted work may repeat; delivery is at least once across restarts.
+- Definitions are created through the agent. The application popup manages
+  existing tasks but has no definition editor.
+- Legacy built-in task definitions remain on disk and must be recreated through
+  the application.
 
 ## Previews, IDE, and the Agent Browser
 

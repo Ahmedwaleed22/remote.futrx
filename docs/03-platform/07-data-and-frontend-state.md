@@ -20,7 +20,7 @@ The application does not use an external database service. Durable metadata is s
 ├── smtp.json                           provider-neutral SMTP configuration; mode `0600`
 ├── agent-quota.json                    last reported plan windows per provider account
 ├── session.key
-├── scheduled-tasks/tasks.json          standing definitions, claims, and run state
+├── applications/data/<instance>/tasks.json  application-owned schedules and claims
 └── uploads/tmp/                        tus chunks and sidecars
 
 /var/lib/remote/projects/<slug>/
@@ -145,11 +145,11 @@ browser initially requests 10 complete turns and requests older history in
 [durable chat transcript index developer guide](../dev/chat-transcript-index/)
 for the layer ownership and read, write, and recovery flows.
 
-Scheduled-task definitions are separate from chat metadata. One versioned
-`scheduled-tasks/tasks.json` document holds every task plus persisted active
-claims, pending occurrence state, retry deadline, counts, and last result.
-Writes atomically replace the document. The scheduler loop is in-memory, but it
-reconstructs deadlines and abandons stale claims after a backend restart.
+Scheduled-task definitions live in each installed application’s host `DataDir`
+as `tasks.json`. The application atomically persists definitions and active run
+claims before emitting due messages. Claims are retried after a backend restart;
+core acknowledges agent results. Stop/start and upgrades retain state; uninstall
+removes it.
 
 Rewind rewrites `events.jsonl` atomically with only events before the selected timestamp and best-effort rebuilds that chat's derived index rows. Chat deletion removes the chat directory and corresponding index rows.
 
@@ -360,9 +360,9 @@ The initial snapshot is filtered to permitted projects for members. Current live
 - Store composition: [`backend/internal/stores/stores.go`](../../backend/internal/stores/stores.go)
 - Chat store: [`backend/internal/stores/filechat/store.go`](../../backend/internal/stores/filechat/store.go)
 - Project store: [`backend/internal/stores/fileproject/store.go`](../../backend/internal/stores/fileproject/store.go)
-- Scheduled-task store: [`backend/internal/stores/fileschedule/store.go`](../../backend/internal/stores/fileschedule/store.go)
+- Scheduled-task persistence and clock: [`applications/scheduled-tasks/backend/api/`](../../applications/scheduled-tasks/backend/api/)
 - Workspace context: [`frontend/src/state/context/WorkspaceContext.tsx`](../../frontend/src/state/context/WorkspaceContext.tsx)
 - Workspace data hook: [`frontend/src/state/hooks/workspace/useWorkspaceData.ts`](../../frontend/src/state/hooks/workspace/useWorkspaceData.ts)
 - Per-tab composer persistence: [`frontend/src/state/stores/chat/composerSessionStore.ts`](../../frontend/src/state/stores/chat/composerSessionStore.ts)
 - Frontend build sync: [`frontend/src/state/hooks/server/useFrontendBuildSync.ts`](../../frontend/src/state/hooks/server/useFrontendBuildSync.ts), [`frontend/src/state/hooks/server/frontendBuildReloadState.ts`](../../frontend/src/state/hooks/server/frontendBuildReloadState.ts), [`frontend/src/state/stores/server/frontendBuildStore.ts`](../../frontend/src/state/stores/server/frontendBuildStore.ts), and the stamp plugin in [`frontend/vite.config.ts`](../../frontend/vite.config.ts)
-- Scheduled-task drawer and client API: [`frontend/src/ui/chat/schedules/`](../../frontend/src/ui/chat/schedules/), [`frontend/src/api/chat/chatScheduleApi.ts`](../../frontend/src/api/chat/chatScheduleApi.ts)
+- Scheduled-task UI: [`applications/scheduled-tasks/ui/`](../../applications/scheduled-tasks/ui/)

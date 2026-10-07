@@ -265,44 +265,13 @@ capability cache. Invalid or negative values fall back to 30 seconds.
 
 ## Scheduled-task guardrails
 
-Scheduled tasks are host-owned unattended runs, so the backend applies three
-independent limits:
-
-| Environment variable | Default | Meaning |
-| --- | ---: | --- |
-| `SCHEDULE_MIN_INTERVAL` | `5m` | Minimum time between starts of one recurring task; Go duration syntax |
-| `SCHEDULE_MAX_CONCURRENT` | `2` | Simultaneous scheduled runs across all chats |
-| `SCHEDULE_MAX_TASKS_PER_PROJECT` | `20` | Non-terminal standing tasks in one project |
-
-An explicit `0` disables a limit. **Run now** bypasses the interval and
-concurrency admission limits, but the forced run still counts while active.
-Terminal completed/exhausted/error definitions do not consume the
-per-project task quota.
-
-Create a systemd override rather than editing the installed unit template:
-
-```bash
-sudo systemctl edit remote.futrx
-```
-
-```ini
-[Service]
-Environment=SCHEDULE_MIN_INTERVAL=10m
-Environment=SCHEDULE_MAX_CONCURRENT=1
-Environment=SCHEDULE_MAX_TASKS_PER_PROJECT=10
-```
-
-Then apply it:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart remote.futrx
-```
-
-Restarting the backend interrupts control of interactive and scheduled runs.
-Use a maintenance window. Before raising the limits, account for the fact that
-each scheduled occurrence can start a project container and consume provider
-quota, CPU, memory, network, and disk without an open browser.
+Scheduled Tasks is installed and controlled through a project’s Applications
+page. Its instance data is retained by stop/start and upgrades and removed by
+uninstall. The core bridge admits two simultaneous scheduled turns; a chat
+retains its normal single-turn boundary. Each application keeps at most 100
+definitions. Use `maxRuns` for bounded monitoring. The retired core scheduler’s
+deployment environment settings are no longer used. See the
+[application README](../../applications/scheduled-tasks/README.md).
 
 ## Health and recovery
 
