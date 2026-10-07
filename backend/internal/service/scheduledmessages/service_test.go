@@ -3,6 +3,7 @@ package scheduledmessages
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -188,5 +189,76 @@ func TestUnavailableAppAndRevokedMembershipRefuseCapabilityUse(t *testing.T) {
 	}
 	if err := s.authorize(ctx, "other-project", "chat", "owner@example.com"); err == nil {
 		t.Fatal("cross-project wake accepted")
+	}
+}
+
+// dispatchBackend pins acknowledgment and admission behavior without a child process.
+type dispatchBackend struct {
+	finishStatus int
+	finished     chan struct{}
+}
+
+func (b *dispatchBackend) RestoreBackend(context.Context, string) error { return nil }
+func (b *dispatchBackend) CallBackend(_ context.Context, _ string, r applications.Request, _ applications.Caller) (applications.Response, error) {
+	if r.Method == "GET" {
+		return applications.JSON(200, map[string]string{
+			"chatId": "chat", "ownerEmail": "owner@example.com", "prompt": "Review deployment",
+			"name": "Review", "activeRunId": "run",
+		}), nil
+	}
+	b.finished <- struct{}{}
+	return applications.JSON(b.finishStatus, map[string]bool{"ok": true}), nil
+}
+
+func TestDispatchRetainsAdmissionUntilCompletionAcknowledged(t *testing.T) {
+	for _, status := range []int{200, 404, 409, 500} {
+		t.Run(fmt.Sprintf("finish=%d", status), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			apps := &dispatchBackend{finishStatus: status, finished: make(chan struct{}, 4)}
+			store := &instanceStore{instance: serviceapps.Instance{ID: "instance", ApplicationID: ApplicationID, ProjectID: "project", Status: serviceapps.StatusRunning}}
+			prompts := &promptStarter{inputs: make(chan prompt.StartInput, 4), done: make(chan prompt.RunResult, 1)}
+			s := New(ctx, "https://remote.example.com", apps, store, chatLookup{"project"}, projectAccess{true}, identity{true}, prompts)
+			defer s.Close()
+			payload, _ := json.Marshal(map[string]string{"taskId": "task", "runId": "run"})
+			event := applications.Event{Source: applications.EventSource{InstanceID: "instance", ProjectID: "project"}, Payload: payload}
+			s.dispatch(event)
+			input := <-prompts.inputs
+			if input.Prompt != "[Scheduled task: Review]\n\nReview deployment" || input.ScheduledRunID != "run" {
+				t.Fatalf("prompt changed: %+v", input)
+			}
+			s.dispatch(event)
+			select {
+			case <-prompts.inputs:
+				t.Fatal("duplicate pending prompt")
+			default:
+			}
+			prompts.done <- prompt.RunResult{Output: "done\nSCHEDULE_STATUS=COMPLETE"}
+			select {
+			case <-apps.finished:
+			case <-time.After(time.Second):
+				t.Fatal("completion not attempted")
+			}
+			active := func() bool { s.mu.Lock(); defer s.mu.Unlock(); return s.active["instance:run"] }
+			if status == 500 {
+				if !active() {
+					t.Fatal("failed acknowledgment released admission")
+				}
+				s.dispatch(event)
+				select {
+				case <-prompts.inputs:
+					t.Fatal("failed acknowledgment reran prompt")
+				default:
+				}
+				cancel()
+			}
+			deadline := time.Now().Add(time.Second)
+			for active() {
+				if time.Now().After(deadline) {
+					t.Fatal("admission not released after acknowledgment or cancellation")
+				}
+				time.Sleep(time.Millisecond)
+			}
+		})
 	}
 }
