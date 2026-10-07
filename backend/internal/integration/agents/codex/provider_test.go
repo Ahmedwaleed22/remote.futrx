@@ -290,9 +290,8 @@ func TestBuildCmdPassesRuntimeEnvironmentOnHostAndIntoContainer(t *testing.T) {
 		codexContainerDependencies(nil, &fakeCodexBrowser{}),
 	)
 	containerRequest := agent.RunRequest{
-		ProjectID:           string(project.ID),
-		RuntimeEnv:          runtimeEnv,
-		EnableScheduleTools: true,
+		ProjectID:  string(project.ID),
+		RuntimeEnv: runtimeEnv,
 	}
 	containerCmd, containerName, err := containerProvider.buildCmd(
 		context.Background(),
@@ -596,10 +595,6 @@ type fakeCodexLifecycle struct{}
 
 func (fakeCodexLifecycle) EnsureBootAutostart(context.Context, string) error { return nil }
 
-type fakeCodexScheduleTools struct{}
-
-func (fakeCodexScheduleTools) Ensure(context.Context, string) error { return nil }
-
 func codexContainerDependencies(
 	credentials *fakeCodexCredentials,
 	browser provisioning.BrowserProvisioner,
@@ -613,7 +608,6 @@ func codexContainerDependencies(
 		Workspace:     fakeCodexWorkspace{},
 		RuntimeAssets: fakeCodexRuntimeAssets{},
 		Browser:       browser,
-		ScheduleTools: fakeCodexScheduleTools{},
 		Lifecycle:     fakeCodexLifecycle{},
 	}
 }

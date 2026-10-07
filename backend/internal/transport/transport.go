@@ -79,9 +79,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		workspaceSocket = workspaceSocket.WithVisibility(gate)
 	}
 	scheduleHandler := httphandlers.NewScheduleHandler(
-		deps.Services.Schedules,
 		deps.Services.ScheduleCaps,
-		deps.Services.Auth,
 	)
 	usageHandler := httphandlers.NewUsageHandler(deps.Services.Usage, deps.Services.Auth)
 	agentQuotaHandler := httphandlers.NewAgentQuotaHandler(deps.Services.AgentQuota, deps.Services.Auth)
@@ -91,7 +89,7 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		deps.Services.Auth,
 		deps.Files,
 		deps.GitHistory,
-	).WithSchedules(scheduleHandler)
+	)
 
 	applicationsHandler := httphandlers.NewApplicationsHandler(
 		deps.Services.Applications,

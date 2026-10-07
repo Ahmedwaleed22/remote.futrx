@@ -178,3 +178,19 @@ func (s *Service) moveBackend(ctx context.Context, application Application, inst
 	}
 	return s.stopBackend(ctx, application, instance)
 }
+
+// RestoreBackend restores an already-running installation after a host restart
+// or child crash. It uses the normal startup deadline, which includes a cold
+// generated-module build, rather than the shorter per-request API deadline.
+func (s *Service) RestoreBackend(ctx context.Context, id string) error {
+	unlock := s.instanceLocks.rlock(id)
+	defer unlock()
+	instance, application, err := s.load(ctx, id)
+	if err != nil {
+		return err
+	}
+	if instance.Status != StatusRunning {
+		return ErrNotRunning
+	}
+	return s.startBackend(ctx, application, instance)
+}

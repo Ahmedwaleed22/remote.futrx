@@ -112,6 +112,8 @@ func WithStartGate(gate StartGate) Option {
 	}
 }
 
+func (s *Service) SetScheduleToolIssuer(issuer ScheduleToolIssuer) { s.scheduleTools = issuer }
+
 func WithScheduleToolIssuer(issuer ScheduleToolIssuer) Option {
 	return func(service *Service) {
 		service.scheduleTools = issuer
@@ -338,8 +340,19 @@ func (rnr *Service) runPromptAs(
 			return ErrUnsupportedAgentScope
 		}
 	}
+	enableScheduleTools := descriptor.Features.ScheduledTools &&
+		(hasScheduledTasksSkill(meta.SelectedSkills) || input.ScheduledTaskID != "")
+	if availability, ok := rnr.scheduleTools.(interface {
+		Available(context.Context, serviceproject.ID) bool
+	}); ok {
+		enableScheduleTools = descriptor.Features.ScheduledTools && meta.ProjectID != "" &&
+			availability.Available(ctx, serviceproject.ID(meta.ProjectID))
+		if input.ScheduledTaskID != "" && !enableScheduleTools {
+			return errors.New("Scheduled Tasks application is not running")
+		}
+	}
 	promptSkills := meta.SelectedSkills
-	if input.ScheduledTaskID != "" && !hasScheduledTasksSkill(promptSkills) {
+	if enableScheduleTools && !hasScheduledTasksSkill(promptSkills) {
 		promptSkills = append(
 			append([]servicechat.SkillRef(nil), promptSkills...),
 			servicechat.SkillRef{
@@ -383,8 +396,6 @@ func (rnr *Service) runPromptAs(
 		return err
 	}
 
-	enableScheduleTools := descriptor.Features.ScheduledTools &&
-		(hasScheduledTasksSkill(meta.SelectedSkills) || input.ScheduledTaskID != "")
 	runtimeEnv := map[string]string(nil)
 	if enableScheduleTools {
 		if meta.ProjectID == "" {
@@ -449,7 +460,6 @@ func (rnr *Service) runPromptAs(
 				SandboxPolicy:   servicechat.NormalizeSandboxPolicy(meta.SandboxPolicy),
 			},
 			EnableBrowser:        enableBrowser,
-			EnableScheduleTools:  enableScheduleTools,
 			RuntimeEnv:           runtimeEnv,
 			InteractionResponses: interactionResponses,
 		}, relay.forward)

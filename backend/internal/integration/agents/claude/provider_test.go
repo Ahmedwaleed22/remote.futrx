@@ -400,9 +400,8 @@ func TestBuildCmdPassesRuntimeEnvironmentOnHostAndIntoContainer(t *testing.T) {
 		claudeContainerDependencies(&fakeClaudeBrowser{}),
 	)
 	containerRequest := agent.RunRequest{
-		ProjectID:           string(project.ID),
-		RuntimeEnv:          runtimeEnv,
-		EnableScheduleTools: true,
+		ProjectID:  string(project.ID),
+		RuntimeEnv: runtimeEnv,
 	}
 	containerCmd, containerName, err := containerProvider.buildCmd(
 		context.Background(),
@@ -440,7 +439,7 @@ func TestBuildCmdRejectsPartialContainerDependencies(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected partial container dependencies to fail")
 	}
-	const want = "incomplete container dependencies: missing credentials, workspace, runtime assets, browser, schedule tools, lifecycle"
+	const want = "incomplete container dependencies: missing credentials, workspace, runtime assets, browser, lifecycle"
 	if err.Error() != want {
 		t.Fatalf("buildCmd error = %q, want %q", err, want)
 	}
@@ -512,10 +511,6 @@ type fakeClaudeLifecycle struct{}
 
 func (fakeClaudeLifecycle) EnsureBootAutostart(context.Context, string) error { return nil }
 
-type fakeClaudeScheduleTools struct{}
-
-func (fakeClaudeScheduleTools) Ensure(context.Context, string) error { return nil }
-
 func claudeContainerDependencies(browser provisioning.BrowserProvisioner) provisioning.ContainerDependencies {
 	return provisioning.ContainerDependencies{
 		CLI:           fakeClaudeCLI{},
@@ -523,7 +518,6 @@ func claudeContainerDependencies(browser provisioning.BrowserProvisioner) provis
 		Workspace:     fakeClaudeWorkspace{},
 		RuntimeAssets: fakeClaudeRuntimeAssets{},
 		Browser:       browser,
-		ScheduleTools: fakeClaudeScheduleTools{},
 		Lifecycle:     fakeClaudeLifecycle{},
 	}
 }

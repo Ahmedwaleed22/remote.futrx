@@ -3,6 +3,7 @@ package prompt
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
+	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 )
@@ -171,7 +173,7 @@ func TestStartWithScheduledTasksSkillIssuesManageCapabilityAndReturnsOutput(t *t
 	if request.AccountID != "work-account" {
 		t.Fatalf("run account = %q, want work-account", request.AccountID)
 	}
-	if !request.EnableScheduleTools {
+	if len(request.RuntimeEnv) == 0 {
 		t.Fatal("scheduled-tasks skill did not enable schedule tools")
 	}
 	if request.RuntimeEnv["REMOTE_SCHEDULE_API"] != issuer.access.APIURL ||
@@ -243,7 +245,7 @@ func TestStartScheduledTaskRequestsCompletionOnlyCapability(t *testing.T) {
 		t.Fatalf("scheduled run ID = %q, want %q", issued.ScheduledRunID, scheduledRunID)
 	}
 	request := provider.request(t, 0)
-	if !request.EnableScheduleTools {
+	if len(request.RuntimeEnv) == 0 {
 		t.Fatal("scheduled run did not enable completion tooling")
 	}
 	if request.RuntimeEnv["REMOTE_SCHEDULE_GRANT"] != "complete-only-token" {
@@ -359,5 +361,53 @@ func awaitScheduleRun(t *testing.T, handle RunHandle) RunResult {
 	case <-time.After(3 * time.Second):
 		t.Fatal("timed out waiting for run result")
 		return RunResult{}
+	}
+}
+
+type installedScheduleIssuer struct {
+	*recordingScheduleIssuer
+	available bool
+}
+
+func (i installedScheduleIssuer) Available(context.Context, serviceproject.ID) bool {
+	return i.available
+}
+func TestInstalledSchedulerInjectsAccessWithoutSelectedSkill(t *testing.T) {
+	for _, installed := range []bool{true, false} {
+		t.Run(fmt.Sprintf("installed=%t", installed), func(t *testing.T) {
+			ctx := context.Background()
+			store, err := filechat.New(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			meta, err := store.Create(ctx, servicechat.Meta{ID: "aabbcc66", Provider: servicechat.ProviderCodex, ProjectID: "project"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			provider := &schedulePromptProvider{}
+			registry := agent.NewRegistry()
+			if err := registry.Register(provider); err != nil {
+				t.Fatal(err)
+			}
+			issuer := installedScheduleIssuer{recordingScheduleIssuer: &recordingScheduleIssuer{access: ScheduleToolAccess{APIURL: "https://remote.test/agent-api/schedules", Token: "grant"}}, available: installed}
+			service := New(store, nil, nil, runhub.New(store), registry, WithScheduleToolIssuer(issuer), WithAgentPolicy(codexTestAgentPolicy()))
+			handle, err := service.Start(StartInput{ChatID: meta.ID, Prompt: "notify me daily at 15:00 UTC", Actor: Actor{Email: "owner@example.com"}}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result := awaitScheduleRun(t, handle); result.Err != nil {
+				t.Fatal(result.Err)
+			}
+			request := provider.request(t, 0)
+			if (len(request.RuntimeEnv) > 0) != installed {
+				t.Fatalf("tools enabled=%t", len(request.RuntimeEnv) > 0)
+			}
+			if installed && (request.RuntimeEnv["REMOTE_SCHEDULE_API"] == "" || request.RuntimeEnv["REMOTE_SCHEDULE_GRANT"] == "" || !strings.Contains(request.Prompt, "$scheduled-tasks")) {
+				t.Fatal("installed app missing runtime access or skill")
+			}
+			if !installed && len(request.RuntimeEnv) != 0 {
+				t.Fatal("uninstalled app received runtime grant")
+			}
+		})
 	}
 }

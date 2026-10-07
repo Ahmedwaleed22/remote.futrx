@@ -31,7 +31,7 @@ func TestRegistryIssuesScopedRevocableCapabilities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if grant.OwnerEmail != "user@example.com" || grant.Scope != ScopeManage || !grant.IsAdmin {
+	if grant.OwnerEmail != "user@example.com" || grant.Scope != ScopeManage {
 		t.Fatalf("grant = %#v", grant)
 	}
 	access.Revoke()

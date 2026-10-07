@@ -50,12 +50,6 @@ export const API_ROUTES = {
       `/api/chats/${encodeURIComponent(id)}/history/diff?${query}`,
     historyCheckout: (id: string) =>
       `/api/chats/${encodeURIComponent(id)}/history/checkout`,
-    schedules: (id: string) =>
-      `/api/chats/${encodeURIComponent(id)}/schedules`,
-  },
-  schedules: {
-    item: (id: string) => `/api/schedules/${encodeURIComponent(id)}`,
-    run: (id: string) => `/api/schedules/${encodeURIComponent(id)}/run`,
   },
   agentAuth: {
     catalog: "/api/agent-auth",

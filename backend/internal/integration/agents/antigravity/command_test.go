@@ -105,10 +105,9 @@ func TestBuildCmdUsesAntigravityProjectPreparationPolicy(t *testing.T) {
 	}
 	provider := runtime.Lookup(agent.ProviderAntigravity).(*Provider)
 	request := agent.RunRequest{
-		ProjectID:           string(project.ID),
-		Prompt:              "test",
-		EnableBrowser:       true,
-		EnableScheduleTools: true,
+		ProjectID:     string(project.ID),
+		Prompt:        "test",
+		EnableBrowser: true,
 		RuntimeEnv: map[string]string{
 			"REMOTE_SCHEDULE_API": "https://remote.test/agent-api/schedules",
 		},
@@ -130,7 +129,7 @@ func TestBuildCmdUsesAntigravityProjectPreparationPolicy(t *testing.T) {
 		t.Fatalf("preparation events = %v", subtypes)
 	}
 	if calls.start != 1 || calls.cli != 1 || calls.instructions != 1 ||
-		calls.skillLinks != 1 || calls.schedule != 1 || calls.lifecycle != 1 {
+		calls.skillLinks != 1 || calls.lifecycle != 1 {
 		t.Fatalf("required preparation calls = %#v", calls)
 	}
 	if calls.credentials != 0 || calls.browserSkill != 0 || calls.browserScript != 0 ||
@@ -158,7 +157,6 @@ type antigravityPreparationCalls struct {
 	browserScript int
 	browserMCP    int
 	browserCore   int
-	schedule      int
 	lifecycle     int
 }
 
@@ -239,13 +237,6 @@ func (f antigravityTestBrowser) EnsureCore(context.Context, string) error {
 	return nil
 }
 
-type antigravityTestSchedule struct{ calls *antigravityPreparationCalls }
-
-func (f antigravityTestSchedule) Ensure(context.Context, string) error {
-	f.calls.schedule++
-	return nil
-}
-
 type antigravityTestLifecycle struct{ calls *antigravityPreparationCalls }
 
 func (f antigravityTestLifecycle) EnsureBootAutostart(context.Context, string) error {
@@ -260,7 +251,6 @@ func antigravityContainerDependencies(calls *antigravityPreparationCalls) provis
 		Workspace:     antigravityTestWorkspace{calls},
 		RuntimeAssets: antigravityTestRuntimeAssets{},
 		Browser:       antigravityTestBrowser{calls},
-		ScheduleTools: antigravityTestSchedule{calls},
 		Lifecycle:     antigravityTestLifecycle{calls},
 	}
 }

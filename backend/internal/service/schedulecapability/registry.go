@@ -25,7 +25,6 @@ const (
 
 type Grant struct {
 	OwnerEmail      string
-	IsAdmin         bool
 	ChatID          servicechat.ID
 	ProjectID       serviceproject.ID
 	ScheduledTaskID string
@@ -74,7 +73,6 @@ func (r *Registry) IssueScheduleTool(
 	r.deleteExpiredLocked()
 	r.grants[token] = Grant{
 		OwnerEmail:      email,
-		IsAdmin:         request.Actor.IsAdmin,
 		ChatID:          request.ChatID,
 		ProjectID:       request.ProjectID,
 		ScheduledTaskID: request.ScheduledTaskID,

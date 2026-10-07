@@ -157,7 +157,6 @@ func main() {
 		ProjectSecrets:    storeSet.ProjectSecrets,
 		ProjectAccess:     storeSet.ProjectAccess,
 		ProjectShares:     storeSet.ProjectShares,
-		Schedules:         storeSet.Schedules,
 		Auth:              storeSet.Auth,
 		Users:             storeSet.Users,
 		UserSettings:      storeSet.UserSettings,
@@ -187,13 +186,8 @@ func main() {
 			SessionHistoryLimit: cfg.Auth.SessionHistoryLimit,
 			SetupTokenTTL:       cfg.Auth.SetupTokenTTL,
 		},
-		TmuxClient:    tmuxClient,
-		ValidTmuxName: tmuxcli.ValidName,
-		ScheduleLimits: service.ScheduleLimits{
-			MinInterval:        cfg.Schedule.MinInterval,
-			MaxConcurrentRuns:  cfg.Schedule.MaxConcurrentRuns,
-			MaxTasksPerProject: cfg.Schedule.MaxTasksPerProject,
-		},
+		TmuxClient:           tmuxClient,
+		ValidTmuxName:        tmuxcli.ValidName,
 		AppStore:             storeSet.Applications,
 		AppRegistry:          appRegistry,
 		AppInstaller:         containerStack.AppInstaller,
@@ -212,6 +206,7 @@ func main() {
 	if serviceSet.Applications != nil {
 		defer serviceSet.Applications.Close()
 	}
+	defer serviceSet.ScheduleCaps.Close()
 	// Terminal self-update events are reconciled from disk so a backend
 	// replacement can deliver the completion started by its predecessor.
 	if err := selfUpdateService.StartLifecycleReconciler(ctx); err != nil {
