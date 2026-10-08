@@ -142,6 +142,25 @@ inherits project membership exactly. A project you are not a member of never
 enters the list, so its extensions can never reach you — the frontend filter
 never even sees them.
 
+## Agent access
+
+Agent capabilities use server-side installation and owner checks independently
+of whether an extension is currently rendered. They require explicit backend
+opt-ins and a running installation:
+
+| Capability | Scope |
+|---|---|
+| `agentTurns` start/read | A project installation can target only its own project's chats; a global installation can target chats the captured owner currently has access to |
+| `agentTools` in interactive turns | Eligible global installations and installations in the chat's project; a project copy wins over a global copy of the same app |
+| `agentTools` in application-started turns | Only the installation that started the turn, with its accepted request ID and context |
+| `background` recovery | Only installations already marked running; stopped copies remain stopped |
+
+Current registration and project authority are rechecked on starts, reads, and
+tool calls. `access: "admin"` also restricts agent tool calls to current
+administrators. Remote stamps the caller and agent context; the application
+still controls permissions for its own actions. See
+[25 — Application agent runtime](25-application-agent-runtime.md).
+
 ## Changing scope mid-session
 
 If an application goes from global to project-only (or the reverse) while the user is

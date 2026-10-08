@@ -108,6 +108,7 @@ separately from `/root/.codex`. Its key remains in the project secret store.
 | --- | --- | --- |
 | Application actions | Install a project application to add its chat actions | Available only while the application runs in that project |
 | Installable apps | Use the Applications page in Remote | App web routes check project membership and installation status |
+| Application agent workflows | An enabled app can start work in an existing chat, read its results, and offer its own commands to the agent | Requires the app's declared capabilities, a running installation, and the owner's current access; uses the chat's existing agent settings |
 | Open Terminal | Choose **Open Terminal** | Resizable pane; hiding it in the same chat preserves the PTY; socket loss or page/chat change ends it |
 | Open History | Choose **History** | Git repositories only |
 | Open Files | Choose **Files** | Lazy workspace tree |

@@ -263,12 +263,33 @@ Environment=AGENT_CAPABILITY_TIMEOUT=45s
 Restarting the service applies the value and also clears the process-local
 capability cache. Invalid or negative values fall back to 30 seconds.
 
+## Application agent workflows
+
+Applications independently opt into `backend.agentTurns` (start/read/forget),
+`backend.agentTools` (agent access to their backend commands), and
+`backend.background` (process recovery). Running background backends are
+restored at startup and checked every 15 seconds after child crashes; stopped
+installations stay stopped. Default backends recover on a later call or event.
+
+The shared application runtime admits two active agent turns server-wide,
+across all applications, and preserves the normal single-turn-per-chat and
+maintenance boundaries. Turns use the existing chat settings and the captured
+owner's current registration/project authority.
+
+Workflow state belongs in the application's `DataDir`; core stores execution
+receipts under `DATA_DIR/application-turns/`. Completed receipts survive server
+restarts; unfinished ones become interrupted and may be retried with the same
+request ID. Host-crash delivery is at least once, so application side effects
+must tolerate retries. Tool grants are issued per run, revoked when it ends,
+and expire after four hours. See the
+[agent runtime guide](../dev/installable-applications/25-application-agent-runtime.md).
+
 ## Scheduled-task guardrails
 
 Scheduled Tasks is installed and controlled through a project’s Applications
 page. Its instance data is retained by stop/start and upgrades and removed by
-uninstall. The core bridge admits two simultaneous scheduled turns; a chat
-retains its normal single-turn boundary. Each application keeps at most 100
+uninstall. Scheduled work uses the shared application agent runtime and its
+admission limits. Each Scheduled Tasks installation keeps at most 100
 definitions. Use `maxRuns` for bounded monitoring. The retired core scheduler’s
 deployment environment settings are no longer used. See the
 [application README](../../applications/scheduled-tasks/README.md).

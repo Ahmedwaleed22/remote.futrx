@@ -17,13 +17,29 @@ application does from its files and manifest fields.
 
 Capabilities compose freely. A single application may provision software,
 expose it on a port, run a backend, extend the UI, and publish skills. Removing
-one folder removes only that capability; no manifest discriminator needs to be
-kept in sync with the package layout.
+one folder removes the capability discovered from it. Backend runtime controls
+are declared separately in the manifest; there is no application type
+discriminator to keep in sync with the package layout.
 
 Directories such as `backend/api/` and `backend/lifecycle/` are packages within
 the backend capability, not capabilities of their own. `backend/main.go`
 imports and composes them, and Remote runs the result as one per-instance
 process.
+
+## Agent and background controls
+
+These flags require a host backend, are independent, and default to `false`:
+
+| Manifest flag | Application API |
+|---|---|
+| `backend.agentTurns` | `Runtime.AgentTurns.Start(request)`, `Read(query)`, and `Forget(requestID)`, bound before `Init` through `rpc.ServeWithRuntime` |
+| `backend.agentTools` | Agent calls to application-defined routes through `/agent-api/applications/<application-id>/<path>`, with Remote-stamped `Request.Caller` and `Request.Agent` |
+| `backend.background` | Restores running backend processes at server startup and on the 15-second recovery sweep; stopped installations remain stopped |
+
+Turns inherit the existing chat's provider, model, and settings. Applications
+keep job definitions, timing, retries, and result acknowledgments in their own
+`DataDir`. Remote keeps installation-scoped execution receipts and enforces
+owner/project access. See [25 — Application agent runtime](25-application-agent-runtime.md).
 
 ## Infrastructure and scope
 

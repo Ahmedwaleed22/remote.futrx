@@ -21,6 +21,7 @@ The application does not use an external database service. Durable metadata is s
 ├── agent-quota.json                    last reported plan windows per provider account
 ├── session.key
 ├── applications/data/<instance>/tasks.json  application-owned schedules and claims
+├── application-turns/<instance-sha256>/<request-sha256>.json  generic agent execution receipts
 └── uploads/tmp/                        tus chunks and sidecars
 
 /var/lib/remote/projects/<slug>/
@@ -36,6 +37,16 @@ The application does not use an external database service. Durable metadata is s
     ├── kimi/                            mounted at /root/.kimi-code
     └── antigravity/                     mounted at /root/.gemini/antigravity-cli
 ```
+
+Application `DataDir` holds workflow state: Scheduled Tasks stores its own
+definitions, claims, retries, and acknowledgments there. The separate
+`application-turns/` store holds accepted SDK requests and agent execution
+results, with hashed paths, private files, and atomic writes. Receipts survive
+stop/start, upgrades, and server restarts; uninstall removes them. Applications
+save their results before `AgentTurns.Forget`, which removes the receipt and
+retains chat history. A server restart makes unfinished receipts interrupted;
+retrying the same request can run it again. See
+[Application agent runtime](../dev/installable-applications/25-application-agent-runtime.md).
 
 The host-wide credential sources use provider-owned paths in the host user's home. Credential synchronizers seed or update project-specific credential locations, primarily the mounted provider homes. Claude also requires `/root/.claude.json` outside its mounted home; that file survives replacement through host synchronization rather than the project mount.
 When a chat selects a saved Claude or Codex account, its run uses a stable

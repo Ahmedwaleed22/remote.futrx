@@ -98,6 +98,13 @@ for the default `registered` means every signed-in user.
 
 - **Does it authorize?** If any route does something not every signed-in user
   should be able to do, it must check `request.Caller` itself.
+- **Does it start agent work?** Capture the owner from `Request.Caller` when
+  accepting work, and persist that attribution with the request ID. Do not
+  accept a browser-supplied owner or administrator role as authority.
+- **Does it expose agent commands?** Check Remote-stamped `Request.Agent` and
+  `Request.Caller` before interpreting the application's own context or
+  allowing a mutation. Background turns should receive only the actions their
+  workflow needs.
 - **What does it do with `Instance.Env`?** Those are real secrets. Using them
   is the point; returning them to a browser is a decision, and
   `backend-playground` shows the pattern — redact by caller.
@@ -110,10 +117,9 @@ for the default `registered` means every signed-in user.
 
 ### What a backend does not get
 
-- **A capability model.** There is no per-backend permission set; there is the
-  package-admission boundary and `access`. Event declarations constrain which
-  publisher names and versions a backend may emit, but do not sandbox its OS,
-  filesystem, network, or process access.
+- **An OS sandbox.** Event declarations and agent opt-ins constrain the
+  supported runtime APIs, alongside package admission and `access`. They do
+  not sandbox a backend's filesystem, network, or process access.
 - **A resource limit.** No cgroup, no memory cap, no CPU share. A backend that
   allocates without bound affects the host.
 - **A supply chain.** Backends may import only the standard library and this
@@ -143,9 +149,9 @@ There are three important non-guarantees:
 
 - **`OnEvent` is machine-to-machine.** It has no signed-in user and no
   `Request.Caller`. The manifest backend `access` setting authorizes browser
-  calls only; it does not restrict event delivery. A handler must base its
-  decision on the declared publisher, host-stamped source, scope, and validated
-  payload rather than inventing a user identity.
+  and agent tool calls; it does not restrict event delivery. A handler must
+  base its decision on the declared publisher, host-stamped source, scope, and
+  validated payload rather than inventing a user identity.
 - **Custom payloads are not redacted.** Remote validates their shape and size
   but does not understand their fields, remove passwords, or filter values for
   individual recipients. A publisher must never include a secret it does not
@@ -332,12 +338,21 @@ become catalog defaults. Package defaults must not contain real credentials.
 
 ## Agent runtime capabilities
 
-Backend `agentTurns` and `agentTools` flags opt into the shared agent runtime.
-Execution rechecks the captured owner's registration and project access; a
-project installation cannot execute or read turns in another project. Tool
-grants are turn-scoped, revocable, and expiring. Remote stamps `Request.Agent`
-and clears it on ordinary browser calls; applications enforce permissions
-using that context and `Request.Caller`.
+Backend `agentTurns` and `agentTools` flags are independent opt-ins and default
+to `false`. `background` controls backend recovery and does not grant agent
+authority by itself.
+
+| Runtime guarantee | Boundary |
+|---|---|
+| Start/read require a running, opted-in installation and the captured owner's current registration and chat/project access | Authority is checked for each SDK call; a project installation is confined to its project |
+| Receipts and reads belong to one installation | A request ID cannot read another installation's work or an arbitrary chat turn |
+| Tool grants cover eligible running installations with the current backend audience | Interactive grants cover global/same-project copies; application-started turns can reach only their own installation |
+| Agent context is stamped by Remote | `Request.Agent` is cleared on browser calls; its background request ID and context come from accepted execution input |
+| Grants expire and are revocable | Four-hour expiry, revocation when the provider run ends, and current owner/installation checks on use |
+
+Applications enforce their own route permissions using `Request.Caller` and
+`Request.Agent`. Core treats the application's context as opaque JSON; it does
+not recognize task IDs, completion commands, or workflow permission scopes.
 
 These controls prevent caller/context forgery through the supported API. They
 do not sandbox admitted host backend code, which supplies the owner it captured
