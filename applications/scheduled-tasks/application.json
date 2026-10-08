@@ -1,7 +1,7 @@
 {
   "id": "scheduled-tasks",
   "name": "Scheduled Tasks",
-  "description": "Wake the agent in the same project chat at a specific time or on a recurring cron schedule.",
+  "description": "Wake the agent in the same project chat at a specific time",
   "category": "productivity",
   "version": "5",
   "icon": "clock",
