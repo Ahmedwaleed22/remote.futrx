@@ -104,6 +104,7 @@ jobs:
           bash infra/tests/host-agent-install-test.sh
           bash infra/tests/remote-cli-test.sh
           bash infra/tests/dns-resolve-test.sh
+          bash infra/tests/container-api-dns-test.sh
           bash infra/tests/container-forwarding-test.sh
           bash infra/tests/caddy-template-test.sh
           bash infra/tests/swap-provision-test.sh

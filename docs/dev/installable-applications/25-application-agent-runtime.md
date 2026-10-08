@@ -140,8 +140,19 @@ running installations plus their discovered application skills, without manual
 skill selection. Provider modules declare `Features.ApplicationTools` and
 forward the issued runtime environment through their normal launch adapter:
 
-- `REMOTE_APPLICATION_API` is the `/agent-api/applications` base URL.
+- `REMOTE_APPLICATION_API` is the installation's public base URL with
+  `/agent-api/applications` appended, issued in the provider's turn environment.
 - `REMOTE_APPLICATION_GRANT` is a bearer capability for the current turn.
+
+For project containers using the LXD bridge resolver, host convergence pins
+the public API hostname to the bridge's IPv4 gateway and disables importing
+the host's `/etc/hosts` into bridge DNS. This prevents a host loopback alias
+from directing application tools back into the container. The API URL and
+normal HTTPS certificate verification remain unchanged; application CLIs do
+not need an IP-address override. Fresh installs and full infrastructure updates
+apply the pin, while application-only deployments do not. See
+[Container-to-host API DNS](../../04-operations/09-deployment-and-operations.md#container-to-host-api-dns)
+for the managed settings, operational effects, and verification commands.
 
 An application CLI calls `${REMOTE_APPLICATION_API}/<application-id>/<path>`
 with that bearer value. Remote forwards method, path, query and body to the
