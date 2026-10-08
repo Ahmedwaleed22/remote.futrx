@@ -32,7 +32,8 @@
   "ui": {
     "entry": "scripts/main.js",
     "styles": [
-      "style/tasks.css"
+      "style/tasks.css",
+      "style/deleteConfirmation.css"
     ]
   }
 }
