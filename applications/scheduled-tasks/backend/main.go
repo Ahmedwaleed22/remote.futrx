@@ -9,6 +9,6 @@ import (
 
 func main() {
 	rpc.ServeWithRuntime(func(runtime applications.Runtime) applications.Backend {
-		return api.New(lifecycle.NewTasks(runtime.Events))
+		return api.New(lifecycle.NewTasks(runtime.Events), runtime.AgentTurns)
 	})
 }

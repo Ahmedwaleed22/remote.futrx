@@ -3,7 +3,7 @@
   "name": "Scheduled Tasks",
   "description": "Wake the agent in the same project chat at a specific time or on a recurring cron schedule.",
   "category": "productivity",
-  "version": "4",
+  "version": "5",
   "icon": "clock",
   "scopes": [
     "project"
@@ -12,7 +12,10 @@
   "uninstall": "infra/uninstall.sh",
   "backend": {
     "access": "registered",
-    "timeoutMs": 30000
+    "timeoutMs": 30000,
+    "background": true,
+    "agentTurns": true,
+    "agentTools": true
   },
   "publishers": [
     {

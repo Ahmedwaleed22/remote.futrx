@@ -189,6 +189,7 @@ func main() {
 		TmuxClient:           tmuxClient,
 		ValidTmuxName:        tmuxcli.ValidName,
 		AppStore:             storeSet.Applications,
+		AppTurns:             storeSet.ApplicationTurns,
 		AppRegistry:          appRegistry,
 		AppInstaller:         containerStack.AppInstaller,
 		AppPorts:             containerStack.AppPorts,
@@ -206,7 +207,6 @@ func main() {
 	if serviceSet.Applications != nil {
 		defer serviceSet.Applications.Close()
 	}
-	defer serviceSet.ScheduleCaps.Close()
 	// Terminal self-update events are reconciled from disk so a backend
 	// replacement can deliver the completion started by its predecessor.
 	if err := selfUpdateService.StartLifecycleReconciler(ctx); err != nil {

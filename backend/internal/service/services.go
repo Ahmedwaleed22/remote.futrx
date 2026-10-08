@@ -24,7 +24,6 @@ import (
 	"github.com/futrx-com/remote.futrx.com/internal/service/prompt"
 	servicepush "github.com/futrx-com/remote.futrx.com/internal/service/push"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
-	"github.com/futrx-com/remote.futrx.com/internal/service/scheduledmessages"
 	serviceshare "github.com/futrx-com/remote.futrx.com/internal/service/share"
 	serviceskills "github.com/futrx-com/remote.futrx.com/internal/service/skills"
 	servicetmux "github.com/futrx-com/remote.futrx.com/internal/service/tmux"
@@ -91,6 +90,7 @@ type Dependencies struct {
 
 	// Installable-application capabilities. When AppStore and
 	// AppRegistry are set the Applications service is enabled.
+	AppTurns     serviceapplications.AgentTurnRepository
 	AppStore     serviceapplications.Store
 	AppRegistry  serviceapplications.Registry
 	AppInstaller serviceapplications.Installer
@@ -137,7 +137,6 @@ type Services struct {
 	Projects          *serviceproject.Service
 	Shares            *serviceshare.Service
 	Prompt            *prompt.Service
-	ScheduleCaps      *scheduledmessages.Service
 	Agents            *agentmodule.Runtime
 	AgentCapabilities *agentcapability.Service
 	Runs              *runhub.Hub
@@ -337,18 +336,19 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 			serviceapplications.WithPackageCatalog(deps.AppPackages),
 			serviceapplications.WithLifecyclePublisher(deps.ApplicationLifecycle),
 			serviceapplications.WithEventSource(ctx, deps.ApplicationEvents),
+			serviceapplications.WithAgentRuntime(ctx, serviceapplications.AgentDependencies{Chats: chatService, Projects: projectService, Identities: authService, Prompts: promptService, Turns: deps.AppTurns}),
+			serviceapplications.WithAgentToolURL(deps.AuthBaseURL),
 		)
 		projectService.SetContainerRestorer(applicationsService.RestoreProject)
 	}
 
-	var schedulingApplications scheduledmessages.ApplicationService
 	if applicationsService != nil {
-		schedulingApplications = applicationsService
+		if host, ok := deps.AppBackends.(serviceapplications.AgentRuntimeHost); ok {
+			host.SetAgentTurns(applicationsService)
+		}
+		promptService.SetApplicationToolIssuer(applicationsService)
+		applicationsService.StartBackground(ctx)
 	}
-	scheduleCaps := scheduledmessages.New(ctx, deps.AuthBaseURL, schedulingApplications, deps.AppStore,
-		chatService, projectService, authService, promptService)
-	promptService.SetScheduleToolIssuer(scheduleCaps)
-	scheduleCaps.Start(deps.ApplicationEvents)
 
 	pushNotifier.push = pushService
 	pushNotifier.audience.projects = projectService
@@ -367,7 +367,6 @@ func New(ctx context.Context, deps Dependencies) (Services, error) {
 		Projects:          projectService,
 		Shares:            shareService,
 		Prompt:            promptService,
-		ScheduleCaps:      scheduleCaps,
 		Agents:            agentRuntime,
 		AgentCapabilities: agentCapabilities,
 		Runs:              runs,

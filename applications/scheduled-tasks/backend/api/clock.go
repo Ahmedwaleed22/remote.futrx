@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -19,12 +20,17 @@ func (a *API) tick() error {
 	if err != nil {
 		return err
 	}
+	var result error
 	for _, t := range due {
-		if err := a.events.Due(t.ID, t.ActiveRunID); err != nil {
-			return err
+		// Events remain observability; delivery uses an acknowledged SDK call.
+		if a.events != nil {
+			_ = a.events.Due(t.ID, t.ActiveRunID)
+		}
+		if err := a.execute(t); err != nil {
+			result = errors.Join(result, err)
 		}
 	}
-	return nil
+	return result
 }
 
 // claimDue durably claims every due task before its event is published.

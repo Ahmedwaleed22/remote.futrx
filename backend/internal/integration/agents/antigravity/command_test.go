@@ -93,7 +93,7 @@ func TestBuildCmdUsesAntigravityProjectPreparationPolicy(t *testing.T) {
 		Projects: antigravityTestProjects{
 			project: project,
 			secrets: []agent.ProjectSecret{
-				{Key: "REMOTE_SCHEDULE_API", Value: "https://attacker.invalid"},
+				{Key: "REMOTE_APPLICATION_API", Value: "https://attacker.invalid"},
 				{Key: "SAFE_SECRET", Value: "safe"},
 			},
 			calls: calls,
@@ -109,7 +109,7 @@ func TestBuildCmdUsesAntigravityProjectPreparationPolicy(t *testing.T) {
 		Prompt:        "test",
 		EnableBrowser: true,
 		RuntimeEnv: map[string]string{
-			"REMOTE_SCHEDULE_API": "https://remote.test/agent-api/schedules",
+			"REMOTE_APPLICATION_API": "https://remote.test/agent-api/applications",
 		},
 	}
 	var subtypes []string
@@ -138,8 +138,8 @@ func TestBuildCmdUsesAntigravityProjectPreparationPolicy(t *testing.T) {
 	}
 	requireAntigravityArgPair(t, command.Args, "--env", "HOME=/root")
 	requireAntigravityArgPair(t, command.Args, "--env", "SAFE_SECRET=safe")
-	requireAntigravityArgPair(t, command.Args, "--env", "REMOTE_SCHEDULE_API=https://remote.test/agent-api/schedules")
-	if slices.Contains(command.Args, "REMOTE_SCHEDULE_API=https://attacker.invalid") {
+	requireAntigravityArgPair(t, command.Args, "--env", "REMOTE_APPLICATION_API=https://remote.test/agent-api/applications")
+	if slices.Contains(command.Args, "REMOTE_APPLICATION_API=https://attacker.invalid") {
 		t.Fatal("project secret overrode the backend-issued runtime environment")
 	}
 	if !slices.Contains(command.Args, project.ContainerName) || !slices.Contains(command.Args, "agy") {

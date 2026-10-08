@@ -22,7 +22,7 @@ func (e *recordingEvents) Due(task, run string) error {
 }
 func testAPI(t *testing.T, e *recordingEvents) *API {
 	t.Helper()
-	a := New(e)
+	a := New(e, nil)
 	a.instance = applications.Instance{Scope: "project", ProjectID: "project", DataDir: t.TempDir()}
 	a.now = func() time.Time { return time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC) }
 	return a
@@ -87,9 +87,8 @@ func TestCreateActiveTaskPersistsAndFiresAtRequestedTime(t *testing.T) {
 	if saved[task.ID].ActiveRunID != run || run == "" {
 		t.Fatal("published before claim was durable")
 	}
-	r := call(t, a, "POST", "tasks/"+task.ID+"/finish", map[string]any{"runId": run}, applications.Caller{IsAdmin: true})
-	if r.Status != 200 {
-		t.Fatalf("finish: %d %s", r.Status, r.Body)
+	if err := a.finish(task.ID, run, applications.AgentTurn{Status: "succeeded"}); err != nil {
+		t.Fatal(err)
 	}
 	if a.tasks[task.ID].Enabled || a.tasks[task.ID].RunCount != 1 {
 		t.Fatal("one-time task did not finish")
@@ -113,8 +112,8 @@ func TestRejectInvalidDefinitionAndKeepOwnerIsolation(t *testing.T) {
 			t.Fatalf("%s crossed ownership", method)
 		}
 	}
-	if r := call(t, a, "POST", "tasks/"+task.ID+"/finish", map[string]string{"runId": "forged"}, applications.Caller{IsAdmin: true, Email: owner.Email}); r.Status != 403 {
-		t.Fatal("browser admin forged core acknowledgment")
+	if r := call(t, a, "POST", "tasks/"+task.ID+"/finish", map[string]string{"runId": "forged"}, applications.Caller{IsAdmin: true, Email: owner.Email}); r.Status != 405 {
+		t.Fatal("removed core acknowledgment route is still exposed")
 	}
 }
 func TestFailedPublicationRetriesSameDurableClaimAfterRestart(t *testing.T) {
@@ -123,8 +122,8 @@ func TestFailedPublicationRetriesSameDurableClaimAfterRestart(t *testing.T) {
 	task := createOnce(t, a)
 	now := a.now().Add(5 * time.Second)
 	a.now = func() time.Time { return now }
-	if err := a.tick(); err == nil {
-		t.Fatal("expected publication failure")
+	if err := a.tick(); err != nil {
+		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(a.filename())
 	if err != nil {
@@ -172,8 +171,8 @@ func TestRecurringTaskReschedulesAndStopsAtMaxRuns(t *testing.T) {
 			t.Fatal(err)
 		}
 		run := a.tasks[task.ID].ActiveRunID
-		if r := call(t, a, "POST", "tasks/"+task.ID+"/finish", map[string]any{"runId": run}, applications.Caller{IsAdmin: true}); r.Status != 200 {
-			t.Fatalf("finish: %s", r.Body)
+		if err := a.finish(task.ID, run, applications.AgentTurn{Status: "succeeded"}); err != nil {
+			t.Fatal(err)
 		}
 		if got := a.tasks[task.ID]; got.RunCount != n || got.Enabled != (n < 2) {
 			t.Fatalf("run %d: %+v", n, got)
@@ -181,7 +180,7 @@ func TestRecurringTaskReschedulesAndStopsAtMaxRuns(t *testing.T) {
 	}
 }
 func TestInitRejectsCorruptStorageAndGlobalScope(t *testing.T) {
-	a := New(&recordingEvents{})
+	a := New(&recordingEvents{}, nil)
 	if err := a.Init(applications.Instance{Scope: "global", DataDir: t.TempDir()}); err == nil {
 		t.Fatal("accepted global scope")
 	}
@@ -257,31 +256,114 @@ func TestArchiveRejectsUnauthorizedInvalidAndFailedWrites(t *testing.T) {
 func TestBusyRunRetriesThenFinishesAndArchives(t *testing.T) {
 	events := &recordingEvents{}
 	a := testAPI(t, events)
+	turns := &fakeTurns{err: applications.ErrAgentBusy}
+	a.turns = turns
 	task := createOnce(t, a)
 	call(t, a, "POST", "tasks/"+task.ID+"/run", nil, owner)
+	if err := a.tick(); err != nil {
+		t.Fatal(err)
+	}
 	run := a.tasks[task.ID].ActiveRunID
-	dispatcher := applications.Caller{IsAdmin: true}
-	r := call(t, a, "POST", "tasks/"+task.ID+"/finish", map[string]any{"runId": run, "retry": true, "error": "chat busy"}, dispatcher)
-	if r.Status != 200 || a.tasks[task.ID].ActiveRunID != run {
-		t.Fatal("busy run lost claim")
+	if run == "" || a.tasks[task.ID].RunCount != 0 {
+		t.Fatal("busy run lost its durable claim")
 	}
 	if err := a.tick(); err != nil {
 		t.Fatal(err)
 	}
-	if len(events.calls) != 0 {
+	if len(turns.requests) != 1 {
 		t.Fatal("retried early")
 	}
 	now := a.now().Add(15 * time.Second)
 	a.now = func() time.Time { return now }
+	turns.err = nil
+	turns.turn = applications.AgentTurn{Status: "succeeded"}
 	if err := a.tick(); err != nil {
 		t.Fatal(err)
 	}
-	if len(events.calls) != 1 || events.calls[0][1] != run {
-		t.Fatal("did not retry pending run")
-	}
-	r = call(t, a, "POST", "tasks/"+task.ID+"/finish", map[string]any{"runId": run}, dispatcher)
 	got := a.tasks[task.ID]
-	if r.Status != 200 || got.ActiveRunID != "" || !got.Archived || got.Enabled {
-		t.Fatalf("finish: %+v", got)
+	if len(turns.requests) != 2 || turns.requests[1].RequestID != run || got.ActiveRunID != "" || !got.Archived || got.RunCount != 1 {
+		t.Fatalf("retry/finish: %+v", got)
+	}
+}
+
+type fakeTurns struct {
+	requests  []applications.AgentTurnRequest
+	turn      applications.AgentTurn
+	err       error
+	forgotten []string
+}
+
+func (f *fakeTurns) Start(in applications.AgentTurnRequest) (applications.AgentTurn, error) {
+	f.requests = append(f.requests, in)
+	return f.turn, f.err
+}
+func (f *fakeTurns) Read(applications.AgentTurnQuery) (applications.AgentTurn, error) {
+	return f.turn, f.err
+}
+func (f *fakeTurns) Forget(id string) error { f.forgotten = append(f.forgotten, id); return nil }
+
+func TestAcknowledgmentFailureReplaysReceiptBeforeForgetting(t *testing.T) {
+	a := testAPI(t, &recordingEvents{})
+	turns := &fakeTurns{turn: applications.AgentTurn{Status: "succeeded", Output: "TASK_COMPLETE"}}
+	a.turns = turns
+	task := createOnce(t, a)
+	call(t, a, "POST", "tasks/"+task.ID+"/run", nil, owner)
+	task = a.tasks[task.ID]
+	original := a.instance.DataDir
+	a.instance.DataDir = filepath.Join(original, "missing")
+	if err := a.execute(task); err == nil {
+		t.Fatal("acknowledged failed task write")
+	}
+	if a.tasks[task.ID].ActiveRunID != task.ActiveRunID || len(turns.forgotten) != 0 {
+		t.Fatal("forgot receipt before durable acknowledgment")
+	}
+	a.instance.DataDir = original
+	if err := a.execute(task); err != nil {
+		t.Fatal(err)
+	}
+	if a.tasks[task.ID].RunCount != 1 || len(turns.forgotten) != 1 || turns.requests[0].RequestID != turns.requests[1].RequestID {
+		t.Fatal("receipt was not reused")
+	}
+}
+func TestApplicationEnforcesCompletionOnlyAndChatScope(t *testing.T) {
+	a := testAPI(t, &recordingEvents{})
+	task := createOnce(t, a)
+	call(t, a, "POST", "tasks/"+task.ID+"/run", nil, owner)
+	task = a.tasks[task.ID]
+	context, _ := json.Marshal(map[string]string{"taskId": task.ID, "runId": task.ActiveRunID})
+	agent := &applications.AgentContext{ChatID: task.ChatID, Background: true, RequestID: task.ActiveRunID, Context: context}
+	for _, path := range []string{"tasks", "tasks/" + task.ID + "/run"} {
+		r, _ := a.Handle(applications.Request{Method: "POST", Path: path, Caller: owner, Agent: agent})
+		if r.Status != 403 {
+			t.Fatal("background turn gained management access")
+		}
+	}
+	foreign := *agent
+	foreign.ChatID = "another-chat"
+	r, _ := a.Handle(applications.Request{Method: "POST", Path: "tasks/current/complete", Caller: owner, Agent: &foreign})
+	if r.Status != 404 {
+		t.Fatal("completion crossed chat")
+	}
+	r, _ = a.Handle(applications.Request{Method: "POST", Path: "tasks/current/complete", Caller: owner, Agent: agent})
+	if r.Status != 200 || !a.tasks[task.ID].Archived {
+		t.Fatalf("complete current: %d %s", r.Status, r.Body)
+	}
+	if _, err := a.Handle(applications.Request{Method: "GET", Path: "tasks", Caller: owner, Agent: &foreign}); err != nil {
+		t.Fatal(err)
+	}
+}
+func TestRecurringCompletionMarkersAreApplicationOwned(t *testing.T) {
+	for _, output := range []string{"done\nTASK_COMPLETE\n", "done\nSCHEDULE_STATUS=COMPLETE\n"} {
+		a := testAPI(t, &recordingEvents{})
+		r := call(t, a, "POST", "tasks", map[string]any{"name": "monitor", "prompt": "check deployment", "chatId": "chat", "kind": "cron", "cron": "* * * * *", "timezone": "UTC"}, owner)
+		var task Task
+		_ = json.Unmarshal(r.Body, &task)
+		call(t, a, "POST", "tasks/"+task.ID+"/run", nil, owner)
+		if err := a.finish(task.ID, a.tasks[task.ID].ActiveRunID, applications.AgentTurn{Status: "succeeded", Output: output}); err != nil {
+			t.Fatal(err)
+		}
+		if !a.tasks[task.ID].Archived || a.tasks[task.ID].Enabled {
+			t.Fatal("completion marker did not stop recurrence")
+		}
 	}
 }

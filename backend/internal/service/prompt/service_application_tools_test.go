@@ -12,12 +12,11 @@ import (
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
-	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
 	"github.com/futrx-com/remote.futrx.com/internal/service/runhub"
 	"github.com/futrx-com/remote.futrx.com/internal/stores/filechat"
 )
 
-type schedulePromptProvider struct {
+type applicationPromptProvider struct {
 	mu       sync.Mutex
 	requests []agent.RunRequest
 	started  chan struct{}
@@ -26,15 +25,15 @@ type schedulePromptProvider struct {
 	output   []string
 }
 
-func (p *schedulePromptProvider) ID() agent.ProviderID { return agent.ProviderCodex }
+func (p *applicationPromptProvider) ID() agent.ProviderID { return agent.ProviderCodex }
 
-func (p *schedulePromptProvider) Parser(agent.RunRequest) agent.LineParser { return nil }
+func (p *applicationPromptProvider) Parser(agent.RunRequest) agent.LineParser { return nil }
 
-func (p *schedulePromptProvider) Capabilities(context.Context, agent.CapabilityRequest) (agent.Capabilities, error) {
+func (p *applicationPromptProvider) Capabilities(context.Context, agent.CapabilityRequest) (agent.Capabilities, error) {
 	return agent.Capabilities{Provider: agent.ProviderCodex}, nil
 }
 
-func (p *schedulePromptProvider) Run(
+func (p *applicationPromptProvider) Run(
 	ctx context.Context,
 	req agent.RunRequest,
 	emit func(agent.Event),
@@ -59,7 +58,7 @@ func (p *schedulePromptProvider) Run(
 	return nil
 }
 
-func (p *schedulePromptProvider) request(t *testing.T, index int) agent.RunRequest {
+func (p *applicationPromptProvider) request(t *testing.T, index int) agent.RunRequest {
 	t.Helper()
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -69,23 +68,23 @@ func (p *schedulePromptProvider) request(t *testing.T, index int) agent.RunReque
 	return p.requests[index]
 }
 
-type recordingScheduleIssuer struct {
+type recordingApplicationIssuer struct {
 	mu       sync.Mutex
-	requests []ScheduleToolRequest
-	access   ScheduleToolAccess
+	requests []ApplicationToolRequest
+	access   ApplicationToolAccess
 }
 
-func (i *recordingScheduleIssuer) IssueScheduleTool(
+func (i *recordingApplicationIssuer) IssueApplicationTools(
 	_ context.Context,
-	req ScheduleToolRequest,
-) (ScheduleToolAccess, error) {
+	req ApplicationToolRequest,
+) (ApplicationToolAccess, error) {
 	i.mu.Lock()
 	i.requests = append(i.requests, req)
 	i.mu.Unlock()
 	return i.access, nil
 }
 
-func (i *recordingScheduleIssuer) request(t *testing.T, index int) ScheduleToolRequest {
+func (i *recordingApplicationIssuer) request(t *testing.T, index int) ApplicationToolRequest {
 	t.Helper()
 	i.mu.Lock()
 	defer i.mu.Unlock()
@@ -110,7 +109,7 @@ func TestStartWithScheduledTasksSkillIssuesManageCapabilityAndReturnsOutput(t *t
 		ProjectID: "project-1",
 		SelectedSkills: []servicechat.SkillRef{{
 			Name:     "Scheduled Tasks",
-			Command:  scheduledTasksSkillName,
+			Command:  "example-app",
 			Provider: servicechat.ProviderCodex,
 		}},
 	})
@@ -118,15 +117,14 @@ func TestStartWithScheduledTasksSkillIssuesManageCapabilityAndReturnsOutput(t *t
 		t.Fatal(err)
 	}
 
-	provider := &schedulePromptProvider{output: []string{"deployment healthy\n", "TASK_COMPLETE"}}
+	provider := &applicationPromptProvider{output: []string{"deployment healthy\n", "TASK_COMPLETE"}}
 	registry := agent.NewRegistry()
 	if err := registry.Register(provider); err != nil {
 		t.Fatal(err)
 	}
 	var revoked atomic.Bool
-	issuer := &recordingScheduleIssuer{access: ScheduleToolAccess{
-		APIURL: "https://remote.test/agent-api/schedules",
-		Token:  "manage-token",
+	issuer := &recordingApplicationIssuer{access: ApplicationToolAccess{
+		Env: map[string]string{"REMOTE_APPLICATION_API": "https://remote.test/agent-api/schedules", "REMOTE_APPLICATION_GRANT": "manage-token"}, Skills: []servicechat.SkillRef{{Name: "Example App", Command: "example-app", Source: "remote"}},
 		Revoke: func() {
 			revoked.Store(true)
 		},
@@ -137,7 +135,7 @@ func TestStartWithScheduledTasksSkillIssuesManageCapabilityAndReturnsOutput(t *t
 		nil,
 		runhub.New(store),
 		registry,
-		WithScheduleToolIssuer(issuer),
+		WithApplicationToolIssuer(issuer),
 		WithAgentPolicy(codexTestAgentPolicy()),
 	)
 
@@ -166,7 +164,7 @@ func TestStartWithScheduledTasksSkillIssuesManageCapabilityAndReturnsOutput(t *t
 
 	issued := issuer.request(t, 0)
 	if issued.Actor != actor || issued.ChatID != meta.ID ||
-		string(issued.ProjectID) != "project-1" || issued.ScheduledTaskID != "" {
+		string(issued.ProjectID) != "project-1" || issued.ApplicationInstanceID != "" {
 		t.Fatalf("issuer request = %#v", issued)
 	}
 	request := provider.request(t, 0)
@@ -176,11 +174,11 @@ func TestStartWithScheduledTasksSkillIssuesManageCapabilityAndReturnsOutput(t *t
 	if len(request.RuntimeEnv) == 0 {
 		t.Fatal("scheduled-tasks skill did not enable schedule tools")
 	}
-	if request.RuntimeEnv["REMOTE_SCHEDULE_API"] != issuer.access.APIURL ||
-		request.RuntimeEnv["REMOTE_SCHEDULE_GRANT"] != issuer.access.Token {
+	if request.RuntimeEnv["REMOTE_APPLICATION_API"] != issuer.access.Env["REMOTE_APPLICATION_API"] ||
+		request.RuntimeEnv["REMOTE_APPLICATION_GRANT"] != issuer.access.Env["REMOTE_APPLICATION_GRANT"] {
 		t.Fatalf("runtime env = %#v", request.RuntimeEnv)
 	}
-	if !strings.Contains(request.Prompt, "$"+scheduledTasksSkillName) {
+	if !strings.Contains(request.Prompt, "$"+"example-app") {
 		t.Fatalf("provider prompt missing selected skill trigger: %q", request.Prompt)
 	}
 }
@@ -202,14 +200,13 @@ func TestStartScheduledTaskRequestsCompletionOnlyCapability(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	provider := &schedulePromptProvider{}
+	provider := &applicationPromptProvider{}
 	registry := agent.NewRegistry()
 	if err := registry.Register(provider); err != nil {
 		t.Fatal(err)
 	}
-	issuer := &recordingScheduleIssuer{access: ScheduleToolAccess{
-		APIURL: "https://remote.test/agent-api/schedules",
-		Token:  "complete-only-token",
+	issuer := &recordingApplicationIssuer{access: ApplicationToolAccess{
+		Env: map[string]string{"REMOTE_APPLICATION_API": "https://remote.test/agent-api/schedules", "REMOTE_APPLICATION_GRANT": "complete-only-token"}, Skills: []servicechat.SkillRef{{Name: "Example App", Command: "example-app", Source: "remote"}},
 	}}
 	service := New(
 		store,
@@ -217,18 +214,18 @@ func TestStartScheduledTaskRequestsCompletionOnlyCapability(t *testing.T) {
 		nil,
 		runhub.New(store),
 		registry,
-		WithScheduleToolIssuer(issuer),
+		WithApplicationToolIssuer(issuer),
 		WithAgentPolicy(codexTestAgentPolicy()),
 	)
 
 	const scheduledTaskID = "task-123"
 	const scheduledRunID = "run-456"
 	handle, err := service.Start(StartInput{
-		ChatID:          meta.ID,
-		Prompt:          `[Scheduled task "watch deploy", fire 3/12] Continue the standing task.`,
-		Actor:           Actor{Email: "owner@example.com"},
-		ScheduledTaskID: scheduledTaskID,
-		ScheduledRunID:  scheduledRunID,
+		ChatID:                meta.ID,
+		Prompt:                `[Scheduled task "watch deploy", fire 3/12] Continue the standing task.`,
+		Actor:                 Actor{Email: "owner@example.com"},
+		ApplicationInstanceID: scheduledTaskID,
+		ApplicationRequestID:  scheduledRunID,
 	}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -238,20 +235,20 @@ func TestStartScheduledTaskRequestsCompletionOnlyCapability(t *testing.T) {
 	}
 
 	issued := issuer.request(t, 0)
-	if issued.ScheduledTaskID != scheduledTaskID {
-		t.Fatalf("scheduled task ID = %q, want %q", issued.ScheduledTaskID, scheduledTaskID)
+	if issued.ApplicationInstanceID != scheduledTaskID {
+		t.Fatalf("scheduled task ID = %q, want %q", issued.ApplicationInstanceID, scheduledTaskID)
 	}
-	if issued.ScheduledRunID != scheduledRunID {
-		t.Fatalf("scheduled run ID = %q, want %q", issued.ScheduledRunID, scheduledRunID)
+	if issued.ApplicationRequestID != scheduledRunID {
+		t.Fatalf("scheduled run ID = %q, want %q", issued.ApplicationRequestID, scheduledRunID)
 	}
 	request := provider.request(t, 0)
 	if len(request.RuntimeEnv) == 0 {
 		t.Fatal("scheduled run did not enable completion tooling")
 	}
-	if request.RuntimeEnv["REMOTE_SCHEDULE_GRANT"] != "complete-only-token" {
-		t.Fatalf("runtime grant = %q", request.RuntimeEnv["REMOTE_SCHEDULE_GRANT"])
+	if request.RuntimeEnv["REMOTE_APPLICATION_GRANT"] != "complete-only-token" {
+		t.Fatalf("runtime grant = %q", request.RuntimeEnv["REMOTE_APPLICATION_GRANT"])
 	}
-	if !strings.Contains(request.Prompt, "$"+scheduledTasksSkillName) {
+	if !strings.Contains(request.Prompt, "$"+"example-app") {
 		t.Fatalf("scheduled run prompt missing required skill trigger: %q", request.Prompt)
 	}
 }
@@ -273,7 +270,7 @@ func TestStartReturnsBusyWhilePriorRunIsActive(t *testing.T) {
 	}
 
 	release := make(chan struct{})
-	provider := &schedulePromptProvider{
+	provider := &applicationPromptProvider{
 		started: make(chan struct{}),
 		release: release,
 	}
@@ -319,7 +316,7 @@ func TestStartCancelsRunWithParentContext(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	provider := &schedulePromptProvider{
+	provider := &applicationPromptProvider{
 		started: make(chan struct{}),
 		release: make(chan struct{}),
 	}
@@ -365,12 +362,15 @@ func awaitScheduleRun(t *testing.T, handle RunHandle) RunResult {
 }
 
 type installedScheduleIssuer struct {
-	*recordingScheduleIssuer
+	*recordingApplicationIssuer
 	available bool
 }
 
-func (i installedScheduleIssuer) Available(context.Context, serviceproject.ID) bool {
-	return i.available
+func (i installedScheduleIssuer) IssueApplicationTools(ctx context.Context, request ApplicationToolRequest) (ApplicationToolAccess, error) {
+	if !i.available {
+		return ApplicationToolAccess{}, nil
+	}
+	return i.recordingApplicationIssuer.IssueApplicationTools(ctx, request)
 }
 func TestInstalledSchedulerInjectsAccessWithoutSelectedSkill(t *testing.T) {
 	for _, installed := range []bool{true, false} {
@@ -384,13 +384,13 @@ func TestInstalledSchedulerInjectsAccessWithoutSelectedSkill(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			provider := &schedulePromptProvider{}
+			provider := &applicationPromptProvider{}
 			registry := agent.NewRegistry()
 			if err := registry.Register(provider); err != nil {
 				t.Fatal(err)
 			}
-			issuer := installedScheduleIssuer{recordingScheduleIssuer: &recordingScheduleIssuer{access: ScheduleToolAccess{APIURL: "https://remote.test/agent-api/schedules", Token: "grant"}}, available: installed}
-			service := New(store, nil, nil, runhub.New(store), registry, WithScheduleToolIssuer(issuer), WithAgentPolicy(codexTestAgentPolicy()))
+			issuer := installedScheduleIssuer{recordingApplicationIssuer: &recordingApplicationIssuer{access: ApplicationToolAccess{Env: map[string]string{"REMOTE_APPLICATION_API": "https://remote.test/agent-api/applications", "REMOTE_APPLICATION_GRANT": "grant"}, Skills: []servicechat.SkillRef{{Name: "Example App", Command: "example-app", Source: "remote"}}}}, available: installed}
+			service := New(store, nil, nil, runhub.New(store), registry, WithApplicationToolIssuer(issuer), WithAgentPolicy(codexTestAgentPolicy()))
 			handle, err := service.Start(StartInput{ChatID: meta.ID, Prompt: "notify me daily at 15:00 UTC", Actor: Actor{Email: "owner@example.com"}}, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -402,7 +402,7 @@ func TestInstalledSchedulerInjectsAccessWithoutSelectedSkill(t *testing.T) {
 			if (len(request.RuntimeEnv) > 0) != installed {
 				t.Fatalf("tools enabled=%t", len(request.RuntimeEnv) > 0)
 			}
-			if installed && (request.RuntimeEnv["REMOTE_SCHEDULE_API"] == "" || request.RuntimeEnv["REMOTE_SCHEDULE_GRANT"] == "" || !strings.Contains(request.Prompt, "$scheduled-tasks")) {
+			if installed && (request.RuntimeEnv["REMOTE_APPLICATION_API"] == "" || request.RuntimeEnv["REMOTE_APPLICATION_GRANT"] == "" || !strings.Contains(request.Prompt, "$example-app")) {
 				t.Fatal("installed app missing runtime access or skill")
 			}
 			if !installed && len(request.RuntimeEnv) != 0 {

@@ -136,7 +136,7 @@ func recordFromChatEvent(
 		ChatID:           string(chat.ID),
 		RunID:            fmt.Sprintf("%s-%d", chat.ID, event.Seq),
 		UserEmail:        event.UserEmail,
-		Scheduled:        event.ScheduledTaskID != "",
+		Scheduled:        event.ScheduledTaskID != "" || event.ApplicationID != "",
 		Provider:         provider,
 		Model:            model,
 		InputTokens:      usage.InputTokens,

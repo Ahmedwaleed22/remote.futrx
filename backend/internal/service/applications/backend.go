@@ -57,6 +57,10 @@ func (s *Service) CallBackend(
 	request applications.Request,
 	caller applications.Caller,
 ) (applications.Response, error) {
+	request.Agent = nil
+	return s.callBackend(ctx, id, request, caller)
+}
+func (s *Service) callBackend(ctx context.Context, id string, request applications.Request, caller applications.Caller) (applications.Response, error) {
 	unlock := s.instanceLocks.rlock(id)
 	defer unlock()
 
@@ -158,6 +162,7 @@ func backendInstanceDetails(application Application, instance Instance) applicat
 		ApplicationID:      instance.ApplicationID,
 		ApplicationName:    application.Name,
 		ApplicationVersion: application.Version,
+		AgentTurns:         application.Backend != nil && application.Backend.AgentTurns,
 		Publishers:         application.Publishers,
 		Subscriptions:      application.Subscriptions,
 		Service:            application.ServiceName(),

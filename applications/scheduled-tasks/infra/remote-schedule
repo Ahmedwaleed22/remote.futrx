@@ -16,9 +16,9 @@ Usage:
   remote-schedule complete-current
 
 Environment:
-  REMOTE_SCHEDULE_API    Exact schedule collection URL, for example
-                         http://host/agent-api/schedules
-  REMOTE_SCHEDULE_GRANT  Bearer capability grant for the current chat
+  REMOTE_APPLICATION_API    Shared application API URL, for example
+                         http://host/agent-api/applications
+  REMOTE_APPLICATION_GRANT  Bearer capability grant for the current chat
 EOF
 }
 
@@ -28,14 +28,14 @@ die() {
 }
 
 require_runtime() {
-  [ -n "${REMOTE_SCHEDULE_API:-}" ] ||
-    die "REMOTE_SCHEDULE_API is not set; scheduled-task access is unavailable in this run"
-  [ -n "${REMOTE_SCHEDULE_GRANT:-}" ] ||
-    die "REMOTE_SCHEDULE_GRANT is not set; scheduled-task access is unavailable in this run"
+  [ -n "${REMOTE_APPLICATION_API:-}" ] ||
+    die "REMOTE_APPLICATION_API is not set; scheduled-task access is unavailable in this run"
+  [ -n "${REMOTE_APPLICATION_GRANT:-}" ] ||
+    die "REMOTE_APPLICATION_GRANT is not set; scheduled-task access is unavailable in this run"
   command -v curl >/dev/null 2>&1 || die "curl is required"
   command -v jq >/dev/null 2>&1 || die "jq is required"
 
-  API="${REMOTE_SCHEDULE_API%/}"
+  API="${REMOTE_APPLICATION_API%/}/scheduled-tasks/tasks"
 }
 
 require_id() {
@@ -90,7 +90,7 @@ request() {
     )
   fi
 
-  if ! status="$(curl "${curl_args[@]}" "${API}${path}" 3<<<"Authorization: Bearer ${REMOTE_SCHEDULE_GRANT}")"; then
+  if ! status="$(curl "${curl_args[@]}" "${API}${path}" 3<<<"Authorization: Bearer ${REMOTE_APPLICATION_GRANT}")"; then
     rm -f "$response_file"
     die "could not reach the Remote schedule API"
   fi

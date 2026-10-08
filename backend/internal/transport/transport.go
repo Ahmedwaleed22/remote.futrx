@@ -78,9 +78,11 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 		terminalSocket = terminalSocket.WithAccessChecker(gate)
 		workspaceSocket = workspaceSocket.WithVisibility(gate)
 	}
-	scheduleHandler := httphandlers.NewScheduleHandler(
-		deps.Services.ScheduleCaps,
-	)
+	var agentApplications httphandlers.AgentApplications
+	if deps.Services.Applications != nil {
+		agentApplications = deps.Services.Applications
+	}
+	agentApplicationsHandler := httphandlers.NewAgentApplicationsHandler(agentApplications)
 	usageHandler := httphandlers.NewUsageHandler(deps.Services.Usage, deps.Services.Auth)
 	agentQuotaHandler := httphandlers.NewAgentQuotaHandler(deps.Services.AgentQuota, deps.Services.Auth)
 	chatHandler := httphandlers.NewChatHandler(
@@ -125,23 +127,23 @@ func NewHTTPHandler(deps Dependencies) (http.Handler, error) {
 			deps.Services.Auth,
 			deps.Services.Presence,
 		),
-		EmailSettings:    httphandlers.NewEmailSettingsHandler(deps.Services.Email, deps.Services.Auth),
-		ServerInfo:       httphandlers.NewServerInfoHandler(deps.ServerInfo),
-		SelfUpdate:       httphandlers.NewSelfUpdateHandler(deps.SelfUpdate, deps.Services.Auth),
-		Skills:           httphandlers.NewSkillHandler(deps.Services.Skills),
-		BrowserInspector: httphandlers.NewBrowserInspectorHandler(),
-		Schedules:        scheduleHandler,
-		Usage:            usageHandler,
-		AgentQuota:       agentQuotaHandler,
-		Uploads:          uploads,
-		TmuxWS:           wstransport.NewTmuxSocket(deps.TmuxClient),
-		TerminalWS:       terminalSocket,
-		ChatWS:           chatSocket,
-		WorkspaceWS:      workspaceSocket,
-		AgentAuthWS:      wstransport.NewAgentAuthSocket(agentAuthBindings),
-		Auth:             auth,
-		Middleware:       middleware,
-		Static:           httptransport.NewStaticHandler(deps.Static),
+		EmailSettings:     httphandlers.NewEmailSettingsHandler(deps.Services.Email, deps.Services.Auth),
+		ServerInfo:        httphandlers.NewServerInfoHandler(deps.ServerInfo),
+		SelfUpdate:        httphandlers.NewSelfUpdateHandler(deps.SelfUpdate, deps.Services.Auth),
+		Skills:            httphandlers.NewSkillHandler(deps.Services.Skills),
+		BrowserInspector:  httphandlers.NewBrowserInspectorHandler(),
+		AgentApplications: agentApplicationsHandler,
+		Usage:             usageHandler,
+		AgentQuota:        agentQuotaHandler,
+		Uploads:           uploads,
+		TmuxWS:            wstransport.NewTmuxSocket(deps.TmuxClient),
+		TerminalWS:        terminalSocket,
+		ChatWS:            chatSocket,
+		WorkspaceWS:       workspaceSocket,
+		AgentAuthWS:       wstransport.NewAgentAuthSocket(agentAuthBindings),
+		Auth:              auth,
+		Middleware:        middleware,
+		Static:            httptransport.NewStaticHandler(deps.Static),
 	})
 	baseURL := "https://" + deps.PublicHostname
 	if deps.Services.Auth != nil {

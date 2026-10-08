@@ -26,21 +26,21 @@ test('CLI creates and resumes through its authenticated runtime endpoint', async
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   try {
-    const env = { ...process.env, REMOTE_SCHEDULE_API: `http://127.0.0.1:${server.address().port}/agent-api/schedules`, REMOTE_SCHEDULE_GRANT: 'test-grant' };
+    const env = { ...process.env, REMOTE_APPLICATION_API: `http://127.0.0.1:${server.address().port}/agent-api/applications`, REMOTE_APPLICATION_GRANT: 'test-grant' };
     const result = await execute('bash', [cli, 'create', '--name', 'Reminder', '--prompt', 'Remember this', '--at', '2030-01-01T12:00:00Z'], { env });
     assert.equal(JSON.parse(result.stdout).enabled, true);
     await execute('bash', [cli, 'resume', 'task'], { env });
     assert.equal(requests[0].method, 'POST');
-    assert.equal(requests[0].path, '/agent-api/schedules');
+    assert.equal(requests[0].path, '/agent-api/applications/scheduled-tasks/tasks');
     assert.equal(requests[0].authorization, 'Bearer test-grant');
     assert.equal(requests[0].body.kind, 'once');
     assert.equal(requests[0].body.prompt, 'Remember this');
-    assert.deepEqual(requests[1], { method: 'PATCH', path: '/agent-api/schedules/task', authorization: 'Bearer test-grant', body: { enabled: true } });
+    assert.deepEqual(requests[1], { method: 'PATCH', path: '/agent-api/applications/scheduled-tasks/tasks/task', authorization: 'Bearer test-grant', body: { enabled: true } });
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
 });
 
 test('CLI explains unavailable runtime access without calling an endpoint', async () => {
-  await assert.rejects(execute('bash', [cli, 'list'], { env: { ...process.env, REMOTE_SCHEDULE_API: '', REMOTE_SCHEDULE_GRANT: '' } }), error => error.code === 2 && error.stderr.includes('REMOTE_SCHEDULE_API is not set'));
+  await assert.rejects(execute('bash', [cli, 'list'], { env: { ...process.env, REMOTE_APPLICATION_API: '', REMOTE_APPLICATION_GRANT: '' } }), error => error.code === 2 && error.stderr.includes('REMOTE_APPLICATION_API is not set'));
 });

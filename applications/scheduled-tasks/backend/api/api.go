@@ -22,14 +22,15 @@ const (
 type API struct {
 	taskStore
 	events lifecycle.TaskEvents
+	turns  applications.AgentTurns
 	now    func() time.Time
 	router *applications.Router
 	// retry deadlines are volatile; claims themselves are durable.
 	retry map[string]time.Time
 }
 
-func New(events lifecycle.TaskEvents) *API {
-	a := &API{events: events, now: time.Now, taskStore: taskStore{tasks: map[string]Task{}}, retry: map[string]time.Time{}, router: applications.NewRouter()}
+func New(events lifecycle.TaskEvents, turns applications.AgentTurns) *API {
+	a := &API{events: events, turns: turns, now: time.Now, taskStore: taskStore{tasks: map[string]Task{}}, retry: map[string]time.Time{}, router: applications.NewRouter()}
 	a.router.GET("health", "Scheduler health", a.health)
 	a.router.GET("tasks", "List tasks owned by the caller", a.list)
 	a.router.POST("tasks", "Create an active schedule", a.create)
@@ -43,6 +44,9 @@ func (a *API) Init(instance applications.Instance) error {
 	if instance.Scope != "project" || instance.ProjectID == "" || instance.DataDir == "" {
 		return errors.New("scheduled tasks require a project instance and data directory")
 	}
+	if a.turns == nil {
+		return errors.New("scheduled tasks require the application agent runtime")
+	}
 	if err := a.taskStore.load(instance); err != nil {
 		return err
 	}
@@ -50,6 +54,14 @@ func (a *API) Init(instance applications.Instance) error {
 	return nil
 }
 func (a *API) Handle(r applications.Request) (applications.Response, error) {
+	if r.Agent != nil {
+		if r.Path == "tasks/current/complete" {
+			return a.completeCurrent(r), nil
+		}
+		if r.Agent.Background && r.Method != "GET" {
+			return applications.Errorf(403, "scheduled turns may only complete their own task"), nil
+		}
+	}
 	return a.router.Serve(r), nil
 }
 func (a *API) health(applications.Request) applications.Response {
@@ -60,7 +72,7 @@ func (a *API) list(r applications.Request) applications.Response {
 	defer a.mu.Unlock()
 	tasks := []Task{}
 	for _, t := range a.tasks {
-		if authorized(t, r.Caller) && (r.QueryValue("chatId") == "" || r.QueryValue("chatId") == t.ChatID) {
+		if authorized(t, r.Caller) && (r.Agent == nil || r.Agent.ChatID == t.ChatID) && (r.QueryValue("chatId") == "" || r.QueryValue("chatId") == t.ChatID) {
 			tasks = append(tasks, t)
 		}
 	}
@@ -76,6 +88,9 @@ func (a *API) create(r applications.Request) applications.Response {
 	var t Task
 	if err := json.Unmarshal(r.Body, &t); err != nil {
 		return applications.Errorf(400, "invalid JSON")
+	}
+	if r.Agent != nil {
+		t.ChatID = r.Agent.ChatID
 	}
 	t.Name = strings.TrimSpace(t.Name)
 	t.Prompt = strings.TrimSpace(t.Prompt)
@@ -126,7 +141,7 @@ func (a *API) task(r applications.Request) applications.Response {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	t, ok := a.tasks[id]
-	if !ok || !authorized(t, r.Caller) {
+	if !ok || !authorized(t, r.Caller) || (r.Agent != nil && r.Agent.ChatID != t.ChatID) {
 		return applications.Errorf(404, "task not found")
 	}
 	if r.Method == "GET" && action == "" {
@@ -187,48 +202,12 @@ func (a *API) task(r applications.Request) applications.Response {
 		var in struct {
 			RunID string `json:"runId"`
 		}
-		if json.Unmarshal(r.Body, &in) != nil || in.RunID == "" || in.RunID != t.ActiveRunID {
+		if r.Agent == nil || !r.Agent.Background || json.Unmarshal(r.Body, &in) != nil || in.RunID == "" || in.RunID != t.ActiveRunID || r.Agent.RequestID != in.RunID {
 			return applications.Errorf(403, "active run required")
 		}
 		t.Enabled = false
 		t.Archived = true
 		t.NextRunAt = 0
-		updated[id] = t
-	case r.Method == "POST" && action == "finish":
-		// Only the core dispatcher supplies an administrative, ownerless caller.
-		if !r.Caller.IsAdmin || r.Caller.Email != "" {
-			return applications.Errorf(403, "core dispatcher required")
-		}
-		var in struct {
-			RunID    string `json:"runId"`
-			Error    string `json:"error"`
-			Complete bool   `json:"complete"`
-			Retry    bool   `json:"retry"`
-		}
-		if json.Unmarshal(r.Body, &in) != nil || in.RunID == "" || in.RunID != t.ActiveRunID {
-			return applications.Errorf(409, "run claim changed")
-		}
-		t.LastError = in.Error
-		if in.Retry {
-			a.retry[id] = a.now().Add(retryInterval)
-		} else {
-			t.ActiveRunID = ""
-			t.RunCount++
-			t.LastRunAt = a.now().UnixMilli()
-			if t.Kind == "once" || in.Complete || (t.MaxRuns > 0 && t.RunCount >= t.MaxRuns) {
-				t.Enabled = false
-				t.Archived = true
-				t.NextRunAt = 0
-			} else if t.Enabled {
-				next, err := nextOccurrence(t, a.now())
-				if err != nil {
-					t.Enabled = false
-					t.LastError = err.Error()
-				} else {
-					t.NextRunAt = next.UnixMilli()
-				}
-			}
-		}
 		updated[id] = t
 	default:
 		return applications.Errorf(405, "method not allowed")
@@ -247,4 +226,18 @@ func newID() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b[:]), nil
+}
+
+// completeCurrent is application policy, interpreted from Remote-stamped context.
+func (a *API) completeCurrent(r applications.Request) applications.Response {
+	var claim struct {
+		TaskID string `json:"taskId"`
+		RunID  string `json:"runId"`
+	}
+	if r.Agent == nil || !r.Agent.Background || json.Unmarshal(r.Agent.Context, &claim) != nil || claim.TaskID == "" || claim.RunID != r.Agent.RequestID {
+		return applications.Errorf(403, "active scheduled turn required")
+	}
+	r.Path = "tasks/" + claim.TaskID + "/complete"
+	r.Body, _ = json.Marshal(map[string]string{"runId": claim.RunID})
+	return a.task(r)
 }

@@ -172,7 +172,7 @@ func (n *chatPushNotifier) ChatDeleted(chatID servicechat.ID) {
 // the run it starts may notify again. A scheduled prompt has no one behind it
 // and leaves the chat unread.
 func (n *chatPushNotifier) trackUserPrompt(chatID servicechat.ID, event servicechat.Event) {
-	if event.Type != "user" || strings.TrimSpace(event.ScheduledTaskID) != "" {
+	if event.Type != "user" || (strings.TrimSpace(event.ScheduledTaskID) != "" || event.ApplicationID != "") {
 		return
 	}
 	n.mu.Lock()
@@ -217,7 +217,7 @@ func (n *chatPushNotifier) trackParkedRun(
 // event is not worth interrupting anyone for. Streaming deltas, tool traffic,
 // and session bookkeeping all fall through.
 func notificationKind(event servicechat.Event) (kind servicepush.Kind, urgent, ok bool) {
-	scheduled := strings.TrimSpace(event.ScheduledTaskID) != ""
+	scheduled := (strings.TrimSpace(event.ScheduledTaskID) != "" || event.ApplicationID != "")
 	switch event.Type {
 	case "tool_use_start":
 		if event.Name != askUserQuestionTool {

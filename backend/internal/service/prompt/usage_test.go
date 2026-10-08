@@ -55,15 +55,15 @@ func (l *recordingLedger) RecordRun(_ context.Context, event serviceusage.RunEve
 	l.events = append(l.events, event)
 }
 
-// stubScheduleTools satisfies the schedule-tool port so a scheduled turn can
+// stubApplicationTools satisfies the application-tool port so an application turn can
 // reach the provider without a real capability registry.
-type stubScheduleTools struct{}
+type stubApplicationTools struct{}
 
-func (stubScheduleTools) IssueScheduleTool(
+func (stubApplicationTools) IssueApplicationTools(
 	context.Context,
-	ScheduleToolRequest,
-) (ScheduleToolAccess, error) {
-	return ScheduleToolAccess{APIURL: "http://127.0.0.1/agent-api", Token: "grant"}, nil
+	ApplicationToolRequest,
+) (ApplicationToolAccess, error) {
+	return ApplicationToolAccess{Env: map[string]string{"REMOTE_APPLICATION_API": "http://127.0.0.1/agent-api", "REMOTE_APPLICATION_GRANT": "grant"}}, nil
 }
 
 func newUsagePromptService(
@@ -171,16 +171,16 @@ func TestStartMarksScheduledRuns(t *testing.T) {
 	ledger := &recordingLedger{}
 	provider := &usageProvider{usage: json.RawMessage(`{"input_tokens":5,"output_tokens":1}`)}
 	service, _, meta := newUsagePromptService(
-		t, provider, ledger, WithScheduleToolIssuer(stubScheduleTools{}),
+		t, provider, ledger, WithApplicationToolIssuer(stubApplicationTools{}),
 	)
 
 	handle, err := service.Start(StartInput{
-		ChatID:          meta.ID,
-		Prompt:          "nightly report",
-		Actor:           Actor{Email: "owner@example.com"},
-		ScheduledTaskID: "task-1",
-		ScheduledRunID:  "run-1",
-		ParentContext:   context.Background(),
+		ChatID:                meta.ID,
+		Prompt:                "nightly report",
+		Actor:                 Actor{Email: "owner@example.com"},
+		ApplicationInstanceID: "task-1",
+		ApplicationRequestID:  "run-1",
+		ParentContext:         context.Background(),
 	}, nil)
 	if err != nil {
 		t.Fatal(err)
