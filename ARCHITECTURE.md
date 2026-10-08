@@ -261,7 +261,8 @@ A chat with **no project** ("loose chat") runs the CLI directly on the host inst
 | Chat events | `DATA_DIR/chats/<id>/events.jsonl` | JSONL | append-only, monotonic `seq`, no rotation |
 | Agent quota snapshots | `DATA_DIR/agent-quota.json` | JSON | latest provider-reported plan windows per provider account, mode 0600 |
 | Chat event index | `DATA_DIR/transcript-index.sqlite` | SQLite | disposable event-offset and transcript-turn index rebuilt from chat JSONL |
-| Scheduled tasks | `DATA_DIR/scheduled-tasks/tasks.json` | JSON | definitions, deadlines, durable claims, pending state, and last outcomes |
+| Application agent receipts | `DATA_DIR/application-turns/<instance-hash>/<request-hash>.json` | JSON | accepted input, turn identity and execution results |
+| Application workflow state | each backend instance's `DataDir` | application-owned | Scheduled Tasks stores definitions, deadlines and claims in `tasks.json` |
 | Push subscriptions | `DATA_DIR/push-subscriptions/sha256-<hash>.json` | JSON | one file per user, filename hashes the email |
 | Web Push signing key | `DATA_DIR/webpush-vapid.json` | JSON | VAPID P-256 pair, mode 0600; rotating it invalidates every browser subscription |
 | Session key | `DATA_DIR/session.key` | 32 random bytes | mode 0600 |
@@ -273,7 +274,7 @@ A chat with **no project** ("loose chat") runs the CLI directly on the host inst
 | Workspace files | `/var/lib/remote/projects/<slug>/workspace` | on-disk tree | bind-mounted to `/workspace` |
 | Agent homes | `/var/lib/remote/projects/<slug>/agent-home/*` | on-disk tree | bind-mounted to `/root/.claude` etc. |
 
-JSON and metadata writes use temp-file + rename. Chat events are different: they append directly to JSONL with `O_APPEND`. The SQLite chat index is derived state, transactionally refreshed from those logs, and is not a source of truth. The authoritative file paths do not add `fsync`, file locking, or a transaction spanning multiple stores. The design assumes exactly one backend process touching `DATA_DIR`.
+JSON and metadata writes use temp-file + rename. Chat events are different: they append directly to JSONL with `O_APPEND`. The SQLite chat index is derived state, transactionally refreshed from those logs, and is not a source of truth. Most authoritative stores do not add `fsync`, file locking, or a transaction spanning multiple stores. Application agent receipts and Scheduled Tasks snapshots fsync both file and directory. The design assumes exactly one backend process touching `DATA_DIR`.
 
 ## Container model
 
@@ -291,22 +292,23 @@ Containers are **cattle**; durable state lives on the host and is bind-mounted i
 
 The rootfs is disposable — [`upgrade-workspaces`](backend/cmd/upgrade-workspaces/main.go) replaces containers wholesale onto a new base image, so anything installed outside `/workspace` and the agent homes is lost on upgrade.
 
-## Scheduled execution
+## Application-owned agent workflows
 
-Scheduled tasks are a control-plane capability, not container cron jobs. The
-backend stores definitions and persisted claims in
-`DATA_DIR/scheduled-tasks/tasks.json`, owns one timer loop, and injects each due
-prompt through the normal prompt service and one-run-per-chat hub.
+Scheduled Tasks is an installable project application. Its backend owns the
+clock, cron calculation, task definitions, claims, completion rules and next
+occurrences. Its CLI, skill and UI ship in the package. New tasks are active;
+the retired core scheduler's data is not automatically imported.
 
-Interactive agents receive a short-lived, owner/chat/project-fenced `manage`
-capability only when the **Scheduled Tasks** skill is selected. A scheduled
-turn receives a narrower `complete-self` capability for its own task and run.
-Agent-created tasks start disabled and require a human **Arm** action. Default
-guardrails are a five-minute minimum recurrence, two concurrent scheduled
-runs, and twenty standing tasks per project.
+Core provides a generic installation-scoped `Runtime.AgentTurns` capability for
+starting and reading ordinary agent turns, durable execution receipts, scoped
+application tool calls and opt-in background backend recovery. The applications
+service owns policy; the SDK and application process host provide the contract
+and RPC transport; provider integration stays in `internal/integration/agents`.
+Other applications use these same capabilities without scheduler dependencies.
 
-See [Scheduled tasks](docs/02-workspaces/06-scheduled-tasks.md) for the claim,
-overlap, authorization, cron, and crash-recovery state machine.
+See [Application agent runtime](docs/dev/installable-applications/25-application-agent-runtime.md)
+for execution authority and recovery, and [Scheduled tasks](docs/02-workspaces/06-scheduled-tasks.md)
+for the application-owned workflow.
 
 ## Previews, installed applications, and the Agent Browser
 
@@ -376,9 +378,10 @@ info — so `go build` resolves entirely from the module cache the server's buil
 already populated, and the normal path needs no network. Binaries are cached by
 a fingerprint of source, SDK, module files, and Go version, so a cold build
 happens once per edit and every later start is a stat and a handshake. Backends
-restart lazily: a crash, a stop, or a server restart is repaired by the next
-call, which is why the per-instance `DataDir` the host assigns is the only
-storage that survives.
+recover lazily on the next call by default. `backend.background` opts running
+installations into startup and periodic recovery; stopped installations stay
+stopped. The per-instance `DataDir` retains application state. Generic agent
+execution receipts also survive separately under `DATA_DIR/application-turns`.
 
 The trust boundary here is **the build, not the request** — for both halves,
 and it has to carry more weight for the backend one. `ui/` assets are embedded

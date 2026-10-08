@@ -16,18 +16,14 @@ These are deliberate design decisions, not bugs. The threats below are about wha
 
 ### Scheduled execution scope
 
-Scheduled tasks extend project-agent authority beyond an open browser session,
-so an armed task should be treated as unattended code execution with the same
-project files, secrets, network access, and provider identity as an interactive
-turn. The current design narrows that authority in several ways: agent-created
-tasks start paused until a user arms them; interactive schedule grants are
-fenced to one owner, chat, and project; scheduled fires receive only a
-claim-bound `complete-self` grant and cannot create or modify schedules; and
-the service applies recurrence, concurrency, and per-project task limits.
-Operators should still use bounded `maxRuns`, narrowly scoped project secrets,
-and the same egress and credential controls recommended below. See
-[Scheduled tasks](02-workspaces/06-scheduled-tasks.md) for the complete state
-machine and guardrails.
+Installing and running Scheduled Tasks authorizes project reminders to run after
+the browser closes. Tasks created from an explicit request are active immediately.
+Per-turn management grants remain fenced to owner/chat/project; scheduled turns
+receive only claim-bound completion access. Core rechecks registration, project
+membership and chat identity at dispatch and retains the normal chat run lock.
+The app persists claims before publication and retries lost events. A host crash
+may retry an interrupted run, so side-effecting prompts should check their target
+state. See [Scheduled tasks](02-workspaces/06-scheduled-tasks.md).
 
 ## Summary of findings
 

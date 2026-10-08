@@ -1,6 +1,6 @@
 import { useId, useState } from "preact/hooks";
 import { useDismissKeyDown } from "../../../state/hooks/shared/useDismissKeyDown.ts";
-import { CalendarClock, Clock, Folder, Monitor, Terminal } from "../../primitives/icons";
+import { Clock, Folder, Monitor, Terminal } from "../../primitives/icons";
 import { ExtensionSlot } from "../../primitives/ExtensionSlot";
 import { workspaceActionTooltipClass } from "../../primitives/workspaceActionTooltip.ts";
 import { EXTENSION_SLOTS } from "../../../config/extensions";
@@ -23,14 +23,11 @@ export function WorkspaceActions({
   onToggleBrowser,
   onToggleHistory,
   onToggleFiles,
-  onToggleSchedules,
   terminalOpen,
   browserOpen,
   historyOpen,
   filesOpen,
-  schedulesOpen,
   showHistory,
-  showSchedules,
   orientation,
 }: {
   cwd: string;
@@ -40,14 +37,11 @@ export function WorkspaceActions({
   onToggleBrowser: () => void;
   onToggleHistory: () => void;
   onToggleFiles: () => void;
-  onToggleSchedules: () => void;
   terminalOpen: boolean;
   browserOpen: boolean;
   historyOpen: boolean;
   filesOpen: boolean;
-  schedulesOpen: boolean;
   showHistory: boolean;
-  showSchedules: boolean;
   orientation: "horizontal" | "vertical";
 }) {
   const workspacePath = cwd && cwd !== "~" ? cwd : DEFAULT_WORKSPACE_PATH;
@@ -94,18 +88,6 @@ export function WorkspaceActions({
         action="files"
         tooltipPlacement={tooltipPlacement}
       />
-      {showSchedules && (
-        <WorkspaceAction
-          Icon={CalendarClock}
-          onClick={onToggleSchedules}
-          label={schedulesOpen ? "Close scheduled tasks" : "Scheduled tasks"}
-          tooltip={schedulesOpen ? "Close scheduled tasks" : "View scheduled tasks"}
-          expanded={schedulesOpen}
-          controls="workspace-schedules-pane"
-          action="schedules"
-          tooltipPlacement={tooltipPlacement}
-        />
-      )}
       <WorkspaceAction
         Icon={Monitor}
         onClick={onToggleBrowser}
@@ -136,7 +118,7 @@ function WorkspaceAction({
   onClick?: () => void;
   expanded?: boolean;
   controls?: string;
-  action?: "history" | "files" | "schedules" | "browser" | "terminal";
+  action?: "history" | "files" | "browser" | "terminal";
   tooltipPlacement: "below" | "left";
 }) {
   const tooltipId = useId();

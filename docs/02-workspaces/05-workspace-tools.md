@@ -149,14 +149,11 @@ The checkout API supports the checkpoint message, but the current History drawer
 
 ## Scheduled tasks
 
-The Schedules drawer is project-chat-only. It lists host-owned tasks visible to
-the caller, then updates them through the schedule API. The drawer can arm,
-pause/resume, run-now, edit, delete, and refresh tasks. Initial creation in the
-current UI is agent-driven through the **Scheduled Tasks** skill.
-
-Schedule timers do not run inside the container. The backend persists claims,
-starts the project if needed, and injects the stored prompt through the normal
-chat run path. See [Scheduled tasks](06-scheduled-tasks.md).
+Install the Scheduled Tasks project application to add its clock action to the
+chat header. Ask the agent for future work; tasks are active immediately. The
+application UI lists the current chat’s tasks and supports pause, resume, run now,
+delete and refresh. Its host backend owns the clock and wakes normal agent turns.
+See [Scheduled tasks](06-scheduled-tasks.md).
 
 ## Application web routes and workspace links
 
@@ -179,4 +176,4 @@ line and column. Without one, the file downloads.
 - Terminal socket: [`backend/internal/transport/ws/container_terminal_socket.go`](../../backend/internal/transport/ws/container_terminal_socket.go)
 - Git history: [`backend/internal/service/githistory/service.go`](../../backend/internal/service/githistory/service.go)
 - Application web routes: [`backend/internal/transport/http/handlers/applications_web_handler.go`](../../backend/internal/transport/http/handlers/applications_web_handler.go)
-- Schedules UI: [`frontend/src/ui/chat/schedules/ScheduleDrawer.tsx`](../../frontend/src/ui/chat/schedules/ScheduleDrawer.tsx)
+- Schedules UI: [`applications/scheduled-tasks/ui/`](../../applications/scheduled-tasks/ui/)

@@ -254,35 +254,19 @@ The backend supports creating a safety checkpoint before checkout, but the curre
 
 ## Scheduled tasks
 
-### The agent created a task but it never runs
+### Scheduling access is unavailable
 
-Agent-created tasks start paused by design. Open **Schedules** in the same
-project chat, review the definition, and select **Arm**. The agent cannot arm
-or resume a task on your behalf.
+Install and start **Scheduled Tasks** in this project’s Applications page. New
+project turns receive the application skill and runtime access automatically;
+no project secret or manual skill selection is needed.
 
-### A recurring task is rejected as too frequent
+### A task has not fired
 
-The default minimum interval is five minutes. Widen the five-field cron
-expression. An operator can change `SCHEDULE_MIN_INTERVAL`, but lowering the
-guardrail increases unattended workload.
-
-### A task says queued or skipped
-
-Only one run can use a chat at a time. The default overlap policy coalesces
-missed occurrences into one pending follow-up. A task configured to skip
-records and consumes the busy occurrence instead. Open the chat, let the
-current run finish, and refresh **Schedules**.
-
-### A task is completed, exhausted, or in error and cannot resume
-
-Those are terminal states. `completed` means its standing goal was marked
-done; `exhausted` means it reached `maxRuns`; `error` usually means the owner,
-chat, or project authorization is no longer valid. Fix the underlying access
-or definition problem and create a new task.
-
-### I switched successfully but cannot see a branch
-
-History restore checks out the selected commit in detached HEAD. Create or switch to a branch in Terminal or IDE before making work you intend to retain.
+Confirm the application is running and the task is enabled. Check its stored
+time and timezone using the clock action. A busy chat waits for its current turn
+to finish; stopped applications deliver one overdue occurrence after starting.
+Refresh the application popup for the last error. Legacy built-in task
+definitions must be recreated through the application.
 
 ## Secrets and sharing
 
