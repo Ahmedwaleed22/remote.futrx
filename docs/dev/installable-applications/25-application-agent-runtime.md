@@ -76,6 +76,11 @@ container startup, transcript, usage, notifications, and one turn per chat.
 Application turns share a server-wide limit of two active turns and respect
 maintenance. These limits are platform execution policy.
 
+Usage records carry `applicationId` and `applicationRequestId`, and result push
+notifications use a generic application category with neutral wording. Core
+does not infer scheduling from application identity. Scheduled Tasks uses this
+same attribution contract; scheduling markers remain only for legacy history.
+
 The SDK does not expose cancellation, pause/resume, chat creation, or
 provider/model overrides. `Read` addresses the installation's own request ID,
 not an arbitrary existing turn. `Forget` removes execution metadata without

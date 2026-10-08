@@ -286,7 +286,7 @@ func (rnr *Service) runPromptAs(
 	emit = withTurnID(ledgerRunID, emit)
 	emitUnattributed := emit
 	emit = func(event ChatEvent) {
-		// The actor comes from the authenticated transport or stored schedule
+		// The actor comes from the authenticated transport or captured application
 		// owner, never from provider output or the client's prompt payload.
 		event.UserEmail = input.Actor.Email
 		emitUnattributed(event)
@@ -406,12 +406,13 @@ func (rnr *Service) runPromptAs(
 	}
 
 	ledger := ledgerRun{
-		runID:     ledgerRunID,
-		chatID:    id,
-		projectID: string(meta.ProjectID),
-		userEmail: input.Actor.Email,
-		model:     meta.Model,
-		scheduled: input.ApplicationInstanceID != "",
+		runID:                ledgerRunID,
+		chatID:               id,
+		projectID:            string(meta.ProjectID),
+		userEmail:            input.Actor.Email,
+		model:                meta.Model,
+		applicationID:        input.ApplicationID,
+		applicationRequestID: input.ApplicationRequestID,
 	}
 
 	run := func(runPrompt, runResumeID string) error {

@@ -204,7 +204,7 @@ lets you pause, resume, run and delete tasks.
       <img src="docs/assets/readme/feature-notifications.webp" alt="Remote per-device notification settings">
       <br>
       <strong>Push notifications</strong><br>
-      Opt in per device for agent questions, completed or failed runs, and scheduled-task results while you are away.
+      Opt in per device for agent questions, completed or failed runs, and application results while you are away.
     </td>
   </tr>
   <tr>

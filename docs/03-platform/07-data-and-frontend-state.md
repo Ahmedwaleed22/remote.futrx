@@ -330,7 +330,7 @@ Antigravity sign-in require the user to choose **Refresh models**.
 
 The capability payload also exposes immutable module metadata alongside live
 CLI discovery: execution scopes, authentication mode and instructions,
-resume/fork support, skill strategy, and browser/scheduled-tool feature flags.
+resume/fork support, skill strategy, and browser/application-tool feature flags.
 This metadata is decorated from the validated backend module catalog; it does
 not originate from provider CLI output.
 
