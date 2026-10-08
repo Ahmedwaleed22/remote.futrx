@@ -14,6 +14,7 @@ export function openTasks(remote, context, anchor, onClose = () => {}) {
       let loading = false;
       let showArchived = false;
       let renderedSnapshot;
+      let pendingDelete = false;
       const target = { projectId: context.projectId };
       const status = document.createElement("p");
       status.setAttribute("role", "status");
@@ -47,22 +48,80 @@ export function openTasks(remote, context, anchor, onClose = () => {}) {
         const text = document.createElement("span");
         text.textContent = label;
         button.append(actionIcon(ACTION_ICONS[label]), text);
-        button.addEventListener("click", async () => {
-          if (method === "DELETE" && !window.confirm(`Delete ${task.name}?`)) return;
+        const execute = async () => {
+          if (closed || button.disabled) return;
           button.disabled = true;
           feedback.textContent = "";
           try {
             await remote.backend.call(`tasks/${encodeURIComponent(task.id)}${suffix}`, {
               ...target, method, ...(data ? { body: data } : {}),
             });
+            if (method === "DELETE") pendingDelete = false;
             await load();
           } catch (error) { if (!closed) feedback.textContent = friendlyError(error); }
           finally { if (!closed) button.disabled = false; }
+        };
+        button.addEventListener("click", () => {
+          if (method !== "DELETE") return execute();
+          if (pendingDelete || closed) return;
+          pendingDelete = true;
+          const actions = button.parentElement;
+          const originalButtons = [...actions.children];
+          originalButtons.forEach((item) => { item.hidden = true; });
+          const confirmation = document.createElement("div");
+          confirmation.className = "scheduled-tasks-delete-confirmation";
+          confirmation.setAttribute("role", "group");
+          confirmation.setAttribute("aria-label", `Delete ${task.name}?`);
+          const heading = document.createElement("div");
+          heading.className = "scheduled-tasks-delete-heading";
+          const title = document.createElement("strong");
+          title.textContent = "Delete this task?";
+          heading.append(actionIcon(ACTION_ICONS.Delete, "scheduled-tasks-delete-icon"), title);
+          const taskName = document.createElement("p");
+          taskName.className = "scheduled-tasks-delete-name";
+          taskName.textContent = task.name;
+          const description = document.createElement("p");
+          description.textContent = "Its schedule will be permanently removed. This cannot be undone.";
+          const controls = document.createElement("div");
+          controls.className = "scheduled-tasks-delete-controls";
+          const cancel = document.createElement("button");
+          cancel.type = "button";
+          cancel.textContent = "Cancel";
+          const confirm = document.createElement("button");
+          confirm.type = "button";
+          confirm.className = "scheduled-tasks-delete-submit";
+          confirm.textContent = "Delete task";
+          const dismiss = () => {
+            confirmation.remove();
+            originalButtons.forEach((item) => { item.hidden = false; });
+            pendingDelete = false;
+            if (!closed) button.focus();
+          };
+          cancel.addEventListener("click", dismiss);
+          confirmation.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              if (!confirm.disabled) dismiss();
+            }
+          });
+          confirm.addEventListener("click", async () => {
+            if (confirm.disabled || closed) return;
+            confirm.disabled = true;
+            cancel.disabled = true;
+            confirm.textContent = "Deleting…";
+            await execute();
+            dismiss();
+          });
+          controls.append(cancel, confirm);
+          confirmation.append(heading, taskName, description, controls);
+          actions.append(confirmation);
+          cancel.focus();
         });
         return button;
       };
       async function load(quiet = false) {
-        if (closed || loading) return;
+        if (closed || loading || pendingDelete) return;
         loading = true; refresh.disabled = true; status.textContent = "";
         body.setAttribute("aria-busy", "true");
         if (!quiet) {

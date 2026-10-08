@@ -174,3 +174,74 @@ test('task actions pair decorative icons with readable labels and preserve error
     assert.match(rows[0].children.at(-2).textContent, /connection/);
   } finally { cleanup?.(); globalThis.document = previousDocument; }
 });
+
+for (const fail of [false, true]) {
+  test(`inline delete confirmation supports cancel, Escape, polling and ${fail ? 'request failure' : 'successful deletion'}`, async () => {
+    const original = { document: globalThis.document, setInterval: globalThis.setInterval, clearInterval: globalThis.clearInterval };
+    let cleanup, poll, focused, deleted = false;
+    const calls = [];
+    const element = () => ({
+      children: [], listeners: {}, attributes: {}, disabled: false,
+      classList: { add() {}, remove() {} },
+      setAttribute(name, value) { this.attributes[name] = value; },
+      append(...children) { children.forEach(child => { child.parentElement = this; this.children.push(child); }); },
+      replaceChildren(...children) { this.children = []; this.append(...children); },
+      remove() { this.parentElement.children = this.parentElement.children.filter(child => child !== this); },
+      focus() { focused = this; },
+      addEventListener(name, fn) { this.listeners[name] = fn; }, removeEventListener() {}, textContent: '',
+    });
+    const body = element();
+    const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+    globalThis.document = { createElement: element };
+    globalThis.setInterval = fn => { poll = fn; return 123; };
+    globalThis.clearInterval = () => {};
+    try {
+      openTasks({ backend: { call: async (path, options) => {
+        calls.push({ path, options });
+        if (options.method === 'DELETE') {
+          if (fail) throw new Error('Failed to fetch');
+          deleted = true;
+          return;
+        }
+        return deleted ? [] : [{ id: 'task/id', name: '<Daily review>', enabled: true, kind: 'cron', cron: '0 15 * * *', prompt: 'Review deployment' }];
+      } }, ui: { openPopup: ({ mount }) => { cleanup = mount(body); } } }, { projectId: 'project', chatId: 'chat' });
+      await flush();
+      const row = body.children[2].children[0];
+      const actions = row.children.at(-1);
+      const remove = actions.children.at(-1);
+      remove.listeners.click();
+      const confirmation = actions.children.at(-1);
+      assert.equal(confirmation.attributes.role, 'group');
+      assert.equal(confirmation.children[0].children[1].textContent, 'Delete this task?');
+      assert.equal(confirmation.children[1].textContent, '<Daily review>');
+      assert.equal(confirmation.children[0].children[0].attributes['aria-hidden'], 'true');
+      const [cancel] = confirmation.children[3].children;
+      assert.equal(focused, cancel);
+      assert.equal(remove.hidden, true);
+      poll(); await flush();
+      assert.equal(calls.length, 1);
+      cancel.listeners.click();
+      assert.equal(remove.hidden, false);
+      assert.equal(focused, remove);
+      assert.equal(calls.length, 1);
+      remove.listeners.click();
+      let stopped = false;
+      actions.children.at(-1).listeners.keydown({ key: 'Escape', preventDefault() {}, stopPropagation() { stopped = true; } });
+      assert.equal(stopped, true);
+      assert.equal(actions.children.length, 4);
+      remove.listeners.click();
+      const confirm = actions.children.at(-1).children[3].children[1];
+      const request = confirm.listeners.click();
+      assert.equal(confirm.disabled, true);
+      await confirm.listeners.click();
+      await request;
+      assert.deepEqual(calls[1], { path: 'tasks/task%2Fid', options: { projectId: 'project', method: 'DELETE' } });
+      assert.equal(calls.filter(call => call.options.method === 'DELETE').length, 1);
+      if (fail) {
+        assert.match(row.children.at(-2).textContent, /connection/);
+        assert.equal(remove.disabled, false);
+        assert.equal(remove.hidden, false);
+      } else assert.equal(body.children[2].children[0].children[1].textContent, 'No scheduled tasks');
+    } finally { cleanup?.(); Object.assign(globalThis, original); }
+  });
+}
