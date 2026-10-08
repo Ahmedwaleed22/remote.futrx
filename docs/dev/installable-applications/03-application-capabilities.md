@@ -9,6 +9,9 @@ application does from its files and manifest fields.
 | Infrastructure | `infra/install.sh` exists, `install` names another script inside `infra/`, `backend/container/` exists, or `service` is declared | Provisions the target container |
 | Network port | Infrastructure exists and `port.internal` is greater than zero | Allocates a host port and creates an LXD proxy device |
 | Backend | `backend/main.go` exists (`backend/api/` as an executable is accepted for compatibility) | Generates one host module from the root and child host packages, excludes `backend/container/`, and runs the backend executable |
+| Background backend | `backend.background: true` | Recovers running installations after host restarts and child crashes |
+| Agent execution | `backend.agentTurns: true` | Supplies installation-scoped start/read/forget for normal agent turns |
+| Agent tools | `backend.agentTools: true` | Supplies scoped access to application-defined backend commands during agent turns |
 | UI | `ui/` exists | Loads the browser extension |
 | Skills | `skills/*/SKILL.md` exists | Publishes the skills into the target project |
 
@@ -53,3 +56,7 @@ Running applications with container capabilities are reinstalled after project
 container replacement; stopped ones remain stopped. A later Start reinstalls
 when its declared service-unit check fails. See
 [Container recovery](24-application-container-recovery.md).
+
+Background backend and agent capabilities are independent opt-ins. See
+[25 — Application agent runtime](25-application-agent-runtime.md) for authority,
+receipts, tool permissions, and recovery.

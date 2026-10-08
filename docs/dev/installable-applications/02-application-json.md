@@ -316,11 +316,15 @@ under `backend/api/` remains accepted for older uploaded packages.
 
 | Field | Type | Default | Notes |
 |---|---|---|---|
+| `background` | bool | `false` | Restore running backend installations at startup and after child crashes, checked every 15 seconds. |
+| `agentTurns` | bool | `false` | Bind the installation-scoped `Runtime.AgentTurns` execution and transcript capability. |
+| `agentTools` | bool | `false` | Expose this backend and its discovered skills to scoped per-turn agent calls. |
 | `access` | string | `registered` | `registered` — any signed-in user may call the backend; `admin` — administrators only. |
 | `timeoutMs` | int | `15000` | Requests the bound for one call; `0` selects the default. Any nonnegative value is accepted for compatibility, but the effective runtime maximum is `300000` (five minutes). A backend that has not answered by then fails that call and keeps running. Event delivery has a separate 30-second maximum. |
 
-`access` is the only capability control the platform enforces on a backend's
-behalf. Anything finer is the backend's own job, using `Request.Caller` — see
+Execution and tools are explicit opt-ins. Finer permissions are the backend's
+own job, using `Request.Caller` and Remote-stamped `Request.Agent`. See
+[25 — Application agent runtime](25-application-agent-runtime.md) and
 [15 — Application backends](15-application-backends.md).
 
 An unknown backend `access` value or a negative `timeoutMs` fails

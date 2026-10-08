@@ -329,3 +329,17 @@ persistent files; review its exact deletion scope and its use during failed
 install Retry. `secret: true` hides stored env values in ordinary instance
 views, but JSON install editors display values and `defaultFile` contents
 become catalog defaults. Package defaults must not contain real credentials.
+
+## Agent runtime capabilities
+
+Backend `agentTurns` and `agentTools` flags opt into the shared agent runtime.
+Execution rechecks the captured owner's registration and project access; a
+project installation cannot execute or read turns in another project. Tool
+grants are turn-scoped, revocable, and expiring. Remote stamps `Request.Agent`
+and clears it on ordinary browser calls; applications enforce permissions
+using that context and `Request.Caller`.
+
+These controls prevent caller/context forgery through the supported API. They
+do not sandbox admitted host backend code, which supplies the owner it captured
+when accepting work. Review that attribution and the application's tool routes.
+See [25 — Application agent runtime](25-application-agent-runtime.md).

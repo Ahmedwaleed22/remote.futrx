@@ -6,6 +6,11 @@ resulting executable as a separate process, and forwards HTTP calls to it — so
 application can add a **server-side feature**, and its `ui/` can call that
 feature, without any change to the Remote codebase.
 
+Backends can also opt into background recovery, normal agent-turn execution,
+and application-defined agent tools. See
+[25 — Application agent runtime](25-application-agent-runtime.md). These are
+shared platform capabilities; workflow policy stays inside the application.
+
 ```
 applications/my-backend/
   application.json

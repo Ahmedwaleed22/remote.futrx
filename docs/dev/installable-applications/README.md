@@ -36,6 +36,7 @@ behind it; an application that only adds a button ships no container side at all
 | Look up a field in `application.json` | [02 — application.json reference](02-application-json.md) |
 | Look up an extension API method | [06 — Extension API reference](06-extension-api.md) |
 | Look up the application backend contract | [15 — Application backends](15-application-backends.md) |
+| Start/read agent turns or expose application tools | [25 — Application agent runtime](25-application-agent-runtime.md) |
 | Publish or consume backend events | [18 — Backend event lifecycle](18-application-events.md) |
 | Know where you are allowed to render | [05 — Slots](05-slots.md) |
 | Know who sees your extension | [08 — Scoping and visibility](08-scoping-and-visibility.md) |
@@ -93,3 +94,5 @@ Code references name the file and, where useful, the symbol —
 - [Json capability guide](22-application-json-settings.md)
 - [Files capability guide](23-application-file-openers.md)
 - [Recovery capability guide](24-application-container-recovery.md)
+
+25. [Application agent runtime](25-application-agent-runtime.md) — generic agent turns, scoped application tools, and background recovery.
