@@ -1,5 +1,6 @@
 import { ACTION_ICONS } from "./config.js";
 import { actionIcon, friendlyError, isArchived, renderTask, renderEmpty, renderSkeleton } from "./taskView.js";
+import { showDeleteConfirmation } from "./deleteConfirmation.js";
 import { openPopover } from "./popover.js";
 
 export function openTasks(remote, context, anchor, onClose = () => {}) {
@@ -65,58 +66,11 @@ export function openTasks(remote, context, anchor, onClose = () => {}) {
           if (method !== "DELETE") return execute();
           if (pendingDelete || closed) return;
           pendingDelete = true;
-          const actions = button.parentElement;
-          const originalButtons = [...actions.children];
-          originalButtons.forEach((item) => { item.hidden = true; });
-          const confirmation = document.createElement("div");
-          confirmation.className = "scheduled-tasks-delete-confirmation";
-          confirmation.setAttribute("role", "group");
-          confirmation.setAttribute("aria-label", `Delete ${task.name}?`);
-          const heading = document.createElement("div");
-          heading.className = "scheduled-tasks-delete-heading";
-          const title = document.createElement("strong");
-          title.textContent = "Delete this task?";
-          heading.append(actionIcon(ACTION_ICONS.Delete, "scheduled-tasks-delete-icon"), title);
-          const taskName = document.createElement("p");
-          taskName.className = "scheduled-tasks-delete-name";
-          taskName.textContent = task.name;
-          const description = document.createElement("p");
-          description.textContent = "Its schedule will be permanently removed. This cannot be undone.";
-          const controls = document.createElement("div");
-          controls.className = "scheduled-tasks-delete-controls";
-          const cancel = document.createElement("button");
-          cancel.type = "button";
-          cancel.textContent = "Cancel";
-          const confirm = document.createElement("button");
-          confirm.type = "button";
-          confirm.className = "scheduled-tasks-delete-submit";
-          confirm.textContent = "Delete task";
-          const dismiss = () => {
-            confirmation.remove();
-            originalButtons.forEach((item) => { item.hidden = false; });
-            pendingDelete = false;
-            if (!closed) button.focus();
-          };
-          cancel.addEventListener("click", dismiss);
-          confirmation.addEventListener("keydown", (event) => {
-            if (event.key === "Escape") {
-              event.preventDefault();
-              event.stopPropagation();
-              if (!confirm.disabled) dismiss();
-            }
+          showDeleteConfirmation(button, task.name, {
+            onConfirm: execute,
+            onDismiss: () => { pendingDelete = false; },
+            isClosed: () => closed,
           });
-          confirm.addEventListener("click", async () => {
-            if (confirm.disabled || closed) return;
-            confirm.disabled = true;
-            cancel.disabled = true;
-            confirm.textContent = "Deleting…";
-            await execute();
-            dismiss();
-          });
-          controls.append(cancel, confirm);
-          confirmation.append(heading, taskName, description, controls);
-          actions.append(confirmation);
-          cancel.focus();
         });
         return button;
       };
