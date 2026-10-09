@@ -41,6 +41,29 @@ one convergence cannot mix policy from two commits.
 | `lxc-ipv4-heal.timer` | Repairs running containers that lose IPv4 |
 | Main application PWA | Installable chat/control surface, Web Push, and a network-failure offline page |
 
+## Package repository failures
+
+Host package refreshes use APT's strict error mode: unavailable required
+repositories and signature verification errors stop installation or updates.
+
+If Caddy is already usable and its stable Cloudsmith repository returns
+HTTP 402, the updater retries with temporary copies of the APT source files
+that omit only that repository. Ubuntu/Debian, NodeSource, and custom sources
+retain their signature settings and must refresh successfully. The updater
+logs the recovery; it does not edit the host's source files or disable APT
+signature verification. Genuine Caddy signature errors do not qualify for
+this recovery. The same behavior applies to NodeSource's setup refreshes.
+
+Fresh installations download the official Caddy Debian package from its
+latest stable GitHub release, check its published SHA-512 checksum and package
+metadata, then install it through APT. They do not add a Cloudsmith source.
+Existing Caddy binaries and administrator-managed package sources are kept.
+
+Regression tests: `bash infra/tests/host-apt-test.sh` and
+`bash infra/tests/caddy-package-test.sh`. Validate the full updater on QA with
+the failing repository still configured; manually disabling it does not test
+the production recovery path.
+
 ## Build flow
 
 ```mermaid

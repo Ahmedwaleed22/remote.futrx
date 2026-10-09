@@ -14,6 +14,8 @@ set -euo pipefail
 
 step_01_host_deps() {
 export DEBIAN_FRONTEND=noninteractive
+# shellcheck source=../lib/host-apt.sh
+. "$INFRA_DIR/lib/host-apt.sh"
 
 # ───────────────── base apt deps ─────────────────
 # Only what Remote itself needs. Tools that exist for one optional installable
@@ -22,7 +24,7 @@ export DEBIAN_FRONTEND=noninteractive
 # someone installs that application. A host that installs none of them keeps
 # exactly the packages below.
 log "apt update + base packages"
-apt-get update -qq
+host_apt_get update -qq
 apt-get install -y -qq git curl ca-certificates gnupg jq tmux gettext-base dnsutils
 
 # ───────────────── swap (spike buffer) ─────────────────
@@ -64,8 +66,7 @@ fi
 if [ "$CURRENT_NODE_MAJOR" != "$NODE_MAJOR" ] \
    || dpkg --compare-versions "${CURRENT_NODE_VERSION:-0}" lt "$NODE_MIN_VERSION"; then
     log "Installing Node ${NODE_MAJOR}.x (>=${NODE_MIN_VERSION}) from NodeSource (was ${CURRENT_NODE_VERSION:-missing})"
-    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - >/dev/null
-    apt-get install -y -qq nodejs
+    install_nodesource_node "$NODE_MAJOR"
 fi
 ok "node $(node -v)  npm $(npm -v)"
 
@@ -105,13 +106,10 @@ ok "ports 80 + 443 OK"
 
 # ───────────────── Caddy ─────────────────
 if ! command -v caddy >/dev/null; then
-    log "Installing Caddy (Cloudsmith repo)"
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
-        | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
-        > /etc/apt/sources.list.d/caddy-stable.list
-    apt-get update -qq
-    apt-get install -y -qq caddy
+    log "Installing Caddy (verified official GitHub package)"
+    # shellcheck source=../lib/caddy-package.sh
+    . "$INFRA_DIR/lib/caddy-package.sh"
+    install_caddy_from_github
 fi
 ok "$(caddy version | head -1)"
 
