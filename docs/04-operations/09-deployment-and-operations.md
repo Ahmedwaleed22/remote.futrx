@@ -37,6 +37,7 @@ one convergence cannot mix policy from two commits.
 | Catalog-declared host agent CLIs | Local binaries for host-scoped execution and managed authentication |
 | `futrx-remote-dev-base` | Reusable Ubuntu workspace image |
 | `.lxd` DNS integration | Resolves container names through the LXD bridge |
+| Container API DNS pin | Resolves the installation's public hostname to the LXD gateway for container-to-host HTTPS |
 | `lxc-ipv4-heal.timer` | Repairs running containers that lose IPv4 |
 | Main application PWA | Installable chat/control surface, Web Push, and a network-failure offline page |
 
@@ -119,6 +120,88 @@ flowchart TD
 ```
 
 Caddy validates its rendered configuration before replacing the live file. On-demand certificate requests are accepted only for existing project previews and running web installations with permitted hostname formats. Configure `*.<host>` DNS for installed applications.
+
+## Container-to-host API DNS
+
+Application tools in project containers call the public installation origin at
+`https://<hostname>/agent-api/applications`. If the host's `/etc/hosts` maps that
+hostname to `127.0.1.1`, the bridge's dnsmasq can expose the loopback answer to
+containers. A container then connects to itself instead of the host API.
+
+During host dependency convergence, `infra/steps/01-host-deps.sh` installs
+`dnsutils` for `dig`, detects the `lxdbr0` IPv4 gateway, and invokes
+`infra/lib/container-api-dns.sh`. The helper preserves custom `raw.dnsmasq`
+settings outside its marked block and writes:
+
+```text
+# BEGIN remote.futrx container API DNS
+no-hosts
+host-record=<installation hostname>,<bridge gateway IPv4>
+# END remote.futrx container API DNS
+```
+
+`no-hosts` prevents the bridge DNS from importing the host's `/etc/hosts`.
+Other host aliases from that file therefore stop being exposed to containers;
+LXD container/DHCP records and explicit custom DNS records remain available.
+The exact-hostname pin avoids public-IP hairpin routing. The HTTPS URL and
+certificate hostname remain unchanged: traffic reaches Caddy through the
+gateway with normal TLS verification.
+
+The helper validates its inputs and ownership markers, replaces an old managed
+block when the hostname or gateway changes, and skips configuration writes
+when the desired block is already present. It queries the bridge resolver for
+both A and AAAA records, requiring only the gateway IPv4 and no IPv6 answer.
+Verification has up to five attempts. If it fails after a configuration change,
+the helper attempts to restore the previous configuration and reports failure;
+the installer stops host convergence. A failed rollback is also reported.
+
+Fresh installs and full infrastructure updates apply this configuration.
+`update.sh` already invokes `install.sh`, including with `--skip-workspaces`.
+`--skip-dns-check` skips public DNS validation, not this bridge DNS check.
+Application-only deployments do not apply it. The managed configuration is
+stored in LXD; no per-container hosts entry is needed. Containers configured
+to bypass the bridge resolver are outside this mechanism.
+
+### Verify resolution and HTTPS
+
+On the host, set the actual installation hostname and an existing disposable
+project container name:
+
+```bash
+API_HOST=remote.example.com
+TEST_CONTAINER=your-test-project-container
+BRIDGE=lxdbr0
+GATEWAY=$(sudo lxc network get "$BRIDGE" ipv4.address)
+GATEWAY=${GATEWAY%/*}
+
+dig @"$GATEWAY" "$API_HOST" A +short
+dig @"$GATEWAY" "$API_HOST" AAAA +short
+sudo lxc exec "$TEST_CONTAINER" -- getent ahostsv4 "$API_HOST"
+sudo lxc exec "$TEST_CONTAINER" -- \
+  curl --noproxy '*' --connect-timeout 5 --max-time 15 \
+  -sS -o /dev/null -w 'peer=%{remote_ip} status=%{http_code}\n' \
+  "https://$API_HOST/"
+```
+
+Expect the gateway IPv4 from the A lookup and container resolution, no AAAA
+answer, and a successful HTTPS connection without disabling certificate
+verification. Retry an application tool from a new agent turn to verify its
+authenticated API call; do not print or share `REMOTE_APPLICATION_GRANT`.
+
+For regression testing on a disposable QA host, back up `/etc/hosts` and the
+bridge's `raw.dnsmasq` before injecting a loopback mapping for the actual API
+hostname. Before applying the pin, reload bridge DNS and confirm loopback
+resolution and a refused container HTTPS connection. Apply the helper while
+leaving the bad hosts entry present, then repeat the checks above. Restore the
+host's original hosts file after testing. Test both fresh installation and
+full update paths separately; copying and invoking the helper alone does not
+verify installer integration.
+
+The hermetic regression suite is `bash infra/tests/container-api-dns-test.sh`,
+also run by CI. It covers configuration preservation, repeat runs, replacing
+an old pin, invalid input, configuration errors, wrong DNS answers, rollback,
+and both updater modes. Its LXD and DNS commands are simulated; a real host
+test is still required to verify network reloads and container HTTPS.
 
 ## Base-image build
 
@@ -263,46 +346,36 @@ Environment=AGENT_CAPABILITY_TIMEOUT=45s
 Restarting the service applies the value and also clears the process-local
 capability cache. Invalid or negative values fall back to 30 seconds.
 
+## Application agent workflows
+
+Applications independently opt into `backend.agentTurns` (start/read/forget),
+`backend.agentTools` (agent access to their backend commands), and
+`backend.background` (process recovery). Running background backends are
+restored at startup and checked every 15 seconds after child crashes; stopped
+installations stay stopped. Default backends recover on a later call or event.
+
+The shared application runtime admits two active agent turns server-wide,
+across all applications, and preserves the normal single-turn-per-chat and
+maintenance boundaries. Turns use the existing chat settings and the captured
+owner's current registration/project authority.
+
+Workflow state belongs in the application's `DataDir`; core stores execution
+receipts under `DATA_DIR/application-turns/`. Completed receipts survive server
+restarts; unfinished ones become interrupted and may be retried with the same
+request ID. Host-crash delivery is at least once, so application side effects
+must tolerate retries. Tool grants are issued per run, revoked when it ends,
+and expire after four hours. See the
+[agent runtime guide](../dev/installable-applications/25-application-agent-runtime.md).
+
 ## Scheduled-task guardrails
 
-Scheduled tasks are host-owned unattended runs, so the backend applies three
-independent limits:
-
-| Environment variable | Default | Meaning |
-| --- | ---: | --- |
-| `SCHEDULE_MIN_INTERVAL` | `5m` | Minimum time between starts of one recurring task; Go duration syntax |
-| `SCHEDULE_MAX_CONCURRENT` | `2` | Simultaneous scheduled runs across all chats |
-| `SCHEDULE_MAX_TASKS_PER_PROJECT` | `20` | Non-terminal standing tasks in one project |
-
-An explicit `0` disables a limit. **Run now** bypasses the interval and
-concurrency admission limits, but the forced run still counts while active.
-Terminal completed/exhausted/error definitions do not consume the
-per-project task quota.
-
-Create a systemd override rather than editing the installed unit template:
-
-```bash
-sudo systemctl edit remote.futrx
-```
-
-```ini
-[Service]
-Environment=SCHEDULE_MIN_INTERVAL=10m
-Environment=SCHEDULE_MAX_CONCURRENT=1
-Environment=SCHEDULE_MAX_TASKS_PER_PROJECT=10
-```
-
-Then apply it:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart remote.futrx
-```
-
-Restarting the backend interrupts control of interactive and scheduled runs.
-Use a maintenance window. Before raising the limits, account for the fact that
-each scheduled occurrence can start a project container and consume provider
-quota, CPU, memory, network, and disk without an open browser.
+Scheduled Tasks is installed and controlled through a project’s Applications
+page. Its instance data is retained by stop/start and upgrades and removed by
+uninstall. Scheduled work uses the shared application agent runtime and its
+admission limits. Each Scheduled Tasks installation keeps at most 100
+definitions. Use `maxRuns` for bounded monitoring. The retired core scheduler’s
+deployment environment settings are no longer used. See the
+[application README](../../applications/scheduled-tasks/README.md).
 
 ## Health and recovery
 
@@ -344,6 +417,8 @@ sudo bash /opt/remote.futrx/infra/upgrade-workspaces.sh --dry-run
 ## Code map
 
 - Installer: [`infra/install.sh`](../../infra/install.sh)
+- Container API DNS: [`infra/lib/container-api-dns.sh`](../../infra/lib/container-api-dns.sh)
+- Container API DNS tests: [`infra/tests/container-api-dns-test.sh`](../../infra/tests/container-api-dns-test.sh)
 - Application deployer: [`infra/deploy-app.sh`](../../infra/deploy-app.sh)
 - Updater: [`infra/update.sh`](../../infra/update.sh)
 - Workspace upgrade: [`infra/upgrade-workspaces.sh`](../../infra/upgrade-workspaces.sh)

@@ -17,12 +17,11 @@ import (
 )
 
 type ChatHandler struct {
-	chats     *servicechat.Service
-	access    *servicechat.AccessService
-	auth      *serviceauth.Service
-	files     *serviceworkspacefiles.Service
-	history   *servicegithistory.Service
-	schedules *ScheduleHandler
+	chats   *servicechat.Service
+	access  *servicechat.AccessService
+	auth    *serviceauth.Service
+	files   *serviceworkspacefiles.Service
+	history *servicegithistory.Service
 }
 
 func NewChatHandler(
@@ -39,11 +38,6 @@ func NewChatHandler(
 		files:   files,
 		history: history,
 	}
-}
-
-func (h *ChatHandler) WithSchedules(schedules *ScheduleHandler) *ChatHandler {
-	h.schedules = schedules
-	return h
 }
 
 func (h *ChatHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -138,12 +132,6 @@ func (h *ChatHandler) HandleResource(w http.ResponseWriter, r *http.Request) {
 			h.handleHistoryDiff(w, r, meta)
 		case "history/checkout":
 			h.handleHistoryCheckout(w, r, meta)
-		case "schedules":
-			if h.schedules == nil {
-				httptransport.SendErr(w, http.StatusNotFound, "not found")
-				return
-			}
-			h.schedules.HandleChatCollection(w, r, meta, email, isAdmin)
 		default:
 			httptransport.SendErr(w, http.StatusNotFound, "not found")
 		}

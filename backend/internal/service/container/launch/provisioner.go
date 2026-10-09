@@ -18,35 +18,24 @@ type WorkspaceProvisioner interface {
 	EnsureSkillLinks(ctx context.Context, containerName string) error
 }
 
-type ScheduleToolsProvisioner interface {
-	Ensure(ctx context.Context, containerName string) error
-}
-
 // Provisioner applies launch-time capabilities in their stable order. Every
 // step is deliberately best-effort so one unavailable capability cannot block
 // the remaining migrations or the newly launched container.
 type Provisioner struct {
-	credentials   RegisteredCredentialEnsurer
-	workspace     WorkspaceProvisioner
-	browser       BrowserProvisioner
-	scheduleTools ScheduleToolsProvisioner
+	credentials RegisteredCredentialEnsurer
+	workspace   WorkspaceProvisioner
+	browser     BrowserProvisioner
 }
 
 func NewProvisioner(
 	credentials RegisteredCredentialEnsurer,
 	workspace WorkspaceProvisioner,
 	browser BrowserProvisioner,
-	scheduleTools ...ScheduleToolsProvisioner,
 ) *Provisioner {
-	var scheduled ScheduleToolsProvisioner
-	if len(scheduleTools) > 0 {
-		scheduled = scheduleTools[0]
-	}
 	return &Provisioner{
-		credentials:   credentials,
-		workspace:     workspace,
-		browser:       browser,
-		scheduleTools: scheduled,
+		credentials: credentials,
+		workspace:   workspace,
+		browser:     browser,
 	}
 }
 
@@ -57,7 +46,4 @@ func (p *Provisioner) Provision(ctx context.Context, containerName, _ string) {
 	_ = p.browser.EnsureScript(ctx, containerName)
 	_ = p.browser.EnsureSkill(ctx, containerName)
 	_ = p.browser.EnsureNesting(ctx, containerName)
-	if p.scheduleTools != nil {
-		_ = p.scheduleTools.Ensure(ctx, containerName)
-	}
 }

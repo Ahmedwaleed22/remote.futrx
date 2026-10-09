@@ -72,9 +72,21 @@ type legacyApplicationManifestSchema struct {
 	Connection  svc.Connection            `json:"connection,omitempty"`
 	Base        string                    `json:"base,omitempty"`
 	UI          *svc.ApplicationUI        `json:"ui,omitempty"`
-	Backend     *svc.ApplicationBackend   `json:"backend,omitempty"`
+	Backend     *legacyApplicationBackend `json:"backend,omitempty"`
 	Container   *svc.ApplicationContainer `json:"container,omitempty"`
 	Skills      []string                  `json:"skills,omitempty"`
+}
+
+type legacyApplicationBackend struct {
+	Access    svc.BackendAccess `json:"access,omitempty"`
+	TimeoutMS int               `json:"timeoutMs,omitempty"`
+}
+
+func (b *legacyApplicationBackend) application() *svc.ApplicationBackend {
+	if b == nil {
+		return nil
+	}
+	return &svc.ApplicationBackend{Access: b.Access, TimeoutMS: b.TimeoutMS}
 }
 
 func readApplicationManifest(fsys fs.FS, name string) ([]byte, error) {
@@ -166,7 +178,7 @@ func (legacy legacyApplicationManifestSchema) application() svc.Application {
 		Connection:  legacy.Connection,
 		Base:        legacy.Base,
 		UI:          legacy.UI,
-		Backend:     legacy.Backend,
+		Backend:     legacy.Backend.application(),
 		Container:   legacy.Container,
 		Skills:      legacy.Skills,
 	}

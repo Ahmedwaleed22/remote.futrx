@@ -17,7 +17,6 @@ import (
 	containernetwork "github.com/futrx-com/remote.futrx.com/internal/integration/containers/network"
 	containerresources "github.com/futrx-com/remote.futrx.com/internal/integration/containers/resources"
 	containerruntimeassets "github.com/futrx-com/remote.futrx.com/internal/integration/containers/runtimeassets"
-	containerscheduletools "github.com/futrx-com/remote.futrx.com/internal/integration/containers/scheduletools"
 	containerworkspace "github.com/futrx-com/remote.futrx.com/internal/integration/containers/workspace"
 	"github.com/futrx-com/remote.futrx.com/internal/integration/hostfs"
 	servicebrowser "github.com/futrx-com/remote.futrx.com/internal/service/container/browser"
@@ -42,7 +41,6 @@ type ContainerStack struct {
 	Environment   *containerenvironment.Client
 	CLI           *servicecli.Provisioner
 	Browser       *servicebrowser.Service
-	ScheduleTools *containerscheduletools.Adapter
 	Listeners     *containerlisteners.Scanner
 	Network       *containernetwork.Repairer
 	Workspace     *containerworkspace.Provisioner
@@ -89,7 +87,6 @@ func (s ContainerStack) AgentDependencies() provisioning.ContainerDependencies {
 		Workspace:     s.Workspace,
 		RuntimeAssets: s.RuntimeAssets,
 		Browser:       s.Browser,
-		ScheduleTools: s.ScheduleTools,
 		Lifecycle:     s.Lifecycle,
 	}
 }
@@ -114,7 +111,6 @@ func NewContainerStack(
 		Runtime:     browserAdapter,
 		Tooling:     browserAdapter,
 	}, configconstants.ProjectPreviewAgentBrowserPort)
-	scheduleTools := containerscheduletools.NewAdapter(runner, publisher)
 	workspace := containerworkspace.NewProvisioner(
 		runner,
 		profiles,
@@ -132,7 +128,6 @@ func NewContainerStack(
 		credentials,
 		workspace,
 		browser,
-		scheduleTools,
 	)
 	resources := containerresources.NewManager(runner)
 	lifecycle := servicelifecycle.NewService(
@@ -171,7 +166,6 @@ func NewContainerStack(
 		Environment:   environment,
 		CLI:           cli,
 		Browser:       browser,
-		ScheduleTools: scheduleTools,
 		Listeners:     listeners,
 		Network:       network,
 		Workspace:     workspace,

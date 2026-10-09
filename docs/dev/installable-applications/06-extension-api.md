@@ -4,6 +4,12 @@ The `remote` object is what an application's entry module receives. It is the pu
 surface a extension author writes against, defined in
 [`frontend/src/app/extensions/extensionApi.ts`](../../../frontend/src/app/extensions/extensionApi.ts).
 
+Agent execution controls live in the host backend SDK as `Runtime.AgentTurns`,
+served through `rpc.ServeWithRuntime` with the manifest opt-in. A UI extension
+can ask its own backend to create or inspect work through `remote.backend.call`;
+the browser `remote` object has no agent-turn methods. See
+[25 — Application agent runtime](25-application-agent-runtime.md).
+
 ## The entry module
 
 `ui/scripts/main.js` (or whatever `ui.entry` names) is imported once per
