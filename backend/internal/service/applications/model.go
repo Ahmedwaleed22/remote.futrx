@@ -234,11 +234,15 @@ type Application struct {
 	// uploaded package, which is what tells the UI whether it can be removed.
 	Source ApplicationSource `json:"source,omitempty"`
 	Scopes []Scope           `json:"scopes"`
-	// GloballyInstalledInsideContainers makes a global install go into every
-	// project container instead of a dedicated one. Defaults to true.
-	GloballyInstalledInsideContainers bool     `json:"globallyInstalledInsideContainers"`
-	Port                              Port     `json:"port"`
-	Env                               []EnvVar `json:"env,omitempty"`
+	Port   Port              `json:"port"`
+	Env    []EnvVar          `json:"env,omitempty"`
+
+	// GloballyInstalledInsideContainers decides where a global install lands:
+	// true installs a project instance into every existing project container,
+	// false installs one global instance into a dedicated container. A manifest
+	// that omits it gets true.
+	GloballyInstalledInsideContainers bool `json:"globallyInstalledInsideContainers"`
+
 	// Service is the complete systemd service Remote realizes and controls in
 	// the target container.
 	Service *ApplicationService `json:"service,omitempty"`

@@ -31,32 +31,44 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 		return View{}, ErrScope
 	}
 	if req.Scope == ScopeGlobal && application.GloballyInstalledInsideContainers {
-		if s.projects == nil {
-			return View{}, ErrUnavailable
-		}
-		ids, err := s.projects.ListProjectIDs(ctx)
-		if err != nil {
-			return View{}, err
-		}
-		var view View
-		var errs []error
-		for _, id := range ids {
-			projectReq := req
-			projectReq.Scope, projectReq.ProjectID = ScopeProject, id
-			v, err := s.install(ctx, projectReq, application)
-			if err == nil {
-				view = v
-			} else if !errors.Is(err, ErrAlreadyInstalled) {
-				errs = append(errs, fmt.Errorf("project %s: %w", id, err))
-			}
-		}
-		return view, errors.Join(errs...)
+		return s.installIntoEveryProject(ctx, req, application)
 	}
-	return s.install(ctx, req, application)
+	return s.installInstance(ctx, req, application)
 }
 
-// install skips the scope check so a global install can target projects.
-func (s *Service) install(ctx context.Context, req InstallRequest, application Application) (View, error) {
+// installIntoEveryProject is the global placement for an application that
+// lives inside project containers: it creates an ordinary project instance in
+// each existing project rather than one instance in a dedicated container.
+// A project that already holds the application is skipped, so the request can
+// be repeated after a partial failure. The view is the last copy installed.
+func (s *Service) installIntoEveryProject(ctx context.Context, req InstallRequest, application Application) (View, error) {
+	if s.projects == nil {
+		return View{}, ErrUnavailable
+	}
+	projectIDs, err := s.projects.ListProjectIDs(ctx)
+	if err != nil {
+		return View{}, err
+	}
+	var installed View
+	var failures []error
+	for _, projectID := range projectIDs {
+		projectReq := req
+		projectReq.Scope, projectReq.ProjectID = ScopeProject, projectID
+		view, err := s.installInstance(ctx, projectReq, application)
+		switch {
+		case err == nil:
+			installed = view
+		case !errors.Is(err, ErrAlreadyInstalled):
+			failures = append(failures, fmt.Errorf("project %s: %w", projectID, err))
+		}
+	}
+	return installed, errors.Join(failures...)
+}
+
+// installInstance provisions and persists one instance at the request's
+// scope. It does not check that scope against the application, which is what
+// lets a global install place project instances of a global-only application.
+func (s *Service) installInstance(ctx context.Context, req InstallRequest, application Application) (View, error) {
 	if err := s.claimInstallSlot(ctx, req.Scope, req.ProjectID, application.ID); err != nil {
 		return View{}, err
 	}

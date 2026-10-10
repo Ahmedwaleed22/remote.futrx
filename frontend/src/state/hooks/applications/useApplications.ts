@@ -216,6 +216,9 @@ function useApplicationsCore({
     async (req: AppInstallRequest) => {
       if (!bindings) return;
       const inst = await bindings.install(req);
+      // A global install of an application that lives inside project containers
+      // answers with a project copy, or nothing when every project already
+      // holds one. Neither belongs in this surface's list, so reload it instead.
       if (inst.scope === scope) upsert(inst);
       else await reload();
       notifySettled();
