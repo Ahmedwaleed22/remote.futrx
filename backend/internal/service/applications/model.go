@@ -234,8 +234,11 @@ type Application struct {
 	// uploaded package, which is what tells the UI whether it can be removed.
 	Source ApplicationSource `json:"source,omitempty"`
 	Scopes []Scope           `json:"scopes"`
-	Port   Port              `json:"port"`
-	Env    []EnvVar          `json:"env,omitempty"`
+	// GloballyInstalledInsideContainers makes a global install go into every
+	// project container instead of a dedicated one. Defaults to true.
+	GloballyInstalledInsideContainers bool     `json:"globallyInstalledInsideContainers"`
+	Port                              Port     `json:"port"`
+	Env                               []EnvVar `json:"env,omitempty"`
 	// Service is the complete systemd service Remote realizes and controls in
 	// the target container.
 	Service *ApplicationService `json:"service,omitempty"`

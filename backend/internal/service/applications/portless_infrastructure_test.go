@@ -46,7 +46,8 @@ type staticProjects struct{ container string }
 func (p *staticProjects) ContainerName(context.Context, string) (string, error) {
 	return p.container, nil
 }
-func (p *staticProjects) EnsureRunning(context.Context, string) error { return nil }
+func (p *staticProjects) EnsureRunning(context.Context, string) error      { return nil }
+func (p *staticProjects) ListProjectIDs(context.Context) ([]string, error) { return nil, nil }
 
 func portlessInfrastructureApplication() Application {
 	return Application{

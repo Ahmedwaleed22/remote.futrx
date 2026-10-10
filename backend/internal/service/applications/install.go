@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -29,6 +30,33 @@ func (s *Service) Install(ctx context.Context, req InstallRequest) (View, error)
 	if !req.Scope.Valid() || !application.SupportsScope(req.Scope) {
 		return View{}, ErrScope
 	}
+	if req.Scope == ScopeGlobal && application.GloballyInstalledInsideContainers {
+		if s.projects == nil {
+			return View{}, ErrUnavailable
+		}
+		ids, err := s.projects.ListProjectIDs(ctx)
+		if err != nil {
+			return View{}, err
+		}
+		var view View
+		var errs []error
+		for _, id := range ids {
+			projectReq := req
+			projectReq.Scope, projectReq.ProjectID = ScopeProject, id
+			v, err := s.install(ctx, projectReq, application)
+			if err == nil {
+				view = v
+			} else if !errors.Is(err, ErrAlreadyInstalled) {
+				errs = append(errs, fmt.Errorf("project %s: %w", id, err))
+			}
+		}
+		return view, errors.Join(errs...)
+	}
+	return s.install(ctx, req, application)
+}
+
+// install skips the scope check so a global install can target projects.
+func (s *Service) install(ctx context.Context, req InstallRequest, application Application) (View, error) {
 	if err := s.claimInstallSlot(ctx, req.Scope, req.ProjectID, application.ID); err != nil {
 		return View{}, err
 	}

@@ -26,6 +26,8 @@ const maxApplicationManifestBytes = 256 << 10
 // explicit compatibility decision instead of exposing every field later added
 // to the service model automatically.
 type applicationManifestSchema struct {
+	GloballyInstalledInsideContainers bool `json:"globallyInstalledInsideContainers"`
+
 	HostTools     []svc.HostTool                        `json:"hostTools,omitempty"`
 	ID            string                                `json:"id"`
 	Name          string                                `json:"name"`
@@ -127,6 +129,7 @@ func decodeApplicationManifest(raw []byte, application *svc.Application) error {
 		return err
 	}
 
+	application.GloballyInstalledInsideContainers = true
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(application); err != nil {
@@ -161,6 +164,8 @@ func decodePersistedApplicationManifest(raw []byte, application *svc.Application
 
 func (legacy legacyApplicationManifestSchema) application() svc.Application {
 	return svc.Application{
+		GloballyInstalledInsideContainers: true,
+
 		HostTools:   legacy.HostTools,
 		ID:          legacy.ID,
 		Name:        legacy.Name,

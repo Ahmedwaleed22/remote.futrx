@@ -216,10 +216,11 @@ function useApplicationsCore({
     async (req: AppInstallRequest) => {
       if (!bindings) return;
       const inst = await bindings.install(req);
-      upsert(inst);
+      if (inst.scope === scope) upsert(inst);
+      else await reload();
       notifySettled();
     },
-    [bindings, upsert, notifySettled],
+    [bindings, upsert, notifySettled, scope, reload],
   );
 
   const start = useCallback(
