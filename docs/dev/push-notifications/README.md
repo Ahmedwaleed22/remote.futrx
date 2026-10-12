@@ -37,7 +37,7 @@ There are two paths into the same system:
 
 | Event | Notification |
 | --- | --- |
-| Agent calls `AskUserQuestion` | The agent needs an answer |
+| Agent calls `AskUserQuestion` or requests structured user input | The agent needs an answer |
 | Interactive turn completes | Turn finished |
 | Interactive run fails | Run failed |
 | Application-started turn completes or fails | Application result, including work started by Scheduled Tasks |

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"strings"
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
@@ -20,7 +21,7 @@ func notificationText(
 
 	switch kind {
 	case servicepush.KindQuestion:
-		return projectName + " - Agent needs your answer", "Open the chat to answer the question."
+		return projectName + " - Agent needs your answer", questionBody(event)
 	case servicepush.KindComplete:
 		return projectName + " - Agent finished", completionBody(event, "Open the chat to see the result.")
 	case servicepush.KindError:
@@ -52,6 +53,38 @@ func completionBody(event servicechat.Event, fallback string) string {
 	summary := strings.Join(strings.Fields(event.NotificationSummary), " ")
 	if summary == "" {
 		return fallback
+	}
+	return boundedSummary(summary)
+}
+
+func questionBody(event servicechat.Event) string {
+	const fallback = "Open the chat to answer the question."
+	var input struct {
+		Questions []struct {
+			Question string `json:"question"`
+			IsSecret bool   `json:"isSecret"`
+		} `json:"questions"`
+	}
+	if json.Unmarshal(event.Input, &input) != nil {
+		return fallback
+	}
+	var questions []string
+	for _, question := range input.Questions {
+		text := strings.Join(strings.Fields(question.Question), " ")
+		if text != "" && !question.IsSecret {
+			questions = append(questions, text)
+		}
+	}
+	if len(questions) == 0 {
+		return fallback
+	}
+	return boundedSummary(strings.Join(questions, " · "))
+}
+
+func boundedSummary(summary string) string {
+	runes := []rune(summary)
+	if len(runes) > 200 {
+		summary = string(runes[:199]) + "…"
 	}
 	return truncatePushText(summary, 240)
 }

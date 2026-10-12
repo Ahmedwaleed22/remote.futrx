@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	servicepush "github.com/futrx-com/remote.futrx.com/internal/service/push"
@@ -190,4 +191,52 @@ func TestErrorBodyFlattensAndTruncatesAgentOutput(t *testing.T) {
 func TestANilNotifierIsSafeToCall(t *testing.T) {
 	var notifier *chatPushNotifier
 	notifier.ChatEvent("beefcafe", servicechat.Event{Type: "complete"})
+}
+
+func TestNativeQuestionKindsExcludeApprovals(t *testing.T) {
+	for _, status := range []string{"user_input", "approval", "permission", "elicitation", "provider_request"} {
+		kind, urgent, ok := notificationKind(servicechat.Event{Type: "interaction_request", Status: status})
+		if status == "user_input" {
+			if kind != servicepush.KindQuestion || !urgent || !ok {
+				t.Fatalf("native question classification = %q, %v, %v", kind, urgent, ok)
+			}
+		} else if ok {
+			t.Fatalf("non-question interaction notified: %s", status)
+		}
+	}
+}
+
+func TestQuestionBodySummarizesTheBatchAndHandlesInvalidInput(t *testing.T) {
+	for _, tc := range []struct{ input, want string }{
+		{`{"questions":[{"question":"Choose a region?"},{"question":"How many\nreplicas?"}]}`, "Choose a region? · How many replicas?"},
+		{`{"questions":[{"question":"private question","isSecret":true},{"question":"Choose a region?"}]}`, "Choose a region?"},
+		{`{"questions":[{"question":"private question","isSecret":true}]}`, "Open the chat to answer the question."},
+		{`{"questions":[]}`, "Open the chat to answer the question."},
+		{`{"questions":[{"question":"  "}]}`, "Open the chat to answer the question."},
+		{`{"questions":[{"question":5}]}`, "Open the chat to answer the question."},
+		{`broken`, "Open the chat to answer the question."},
+	} {
+		if got := questionBody(servicechat.Event{Input: json.RawMessage(tc.input)}); got != tc.want {
+			t.Fatalf("question body = %q, want %q", got, tc.want)
+		}
+	}
+	for _, summary := range []string{strings.Repeat("a", 500), strings.Repeat("🌍", 500)} {
+		input, err := json.Marshal(map[string]any{"questions": []map[string]string{{"question": summary}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := questionBody(servicechat.Event{Input: input})
+		if len([]rune(body)) > 200 || len(body) > 240 || !utf8.ValidString(body) {
+			t.Fatalf("invalid bounded question body: %q", body)
+		}
+	}
+}
+
+func TestPlainQuestionSummaryUsesNormalCompletionNotification(t *testing.T) {
+	event := servicechat.Event{Type: "complete", NotificationSummary: "Choose the deployment region and replica count."}
+	kind, urgent, ok := notificationKind(event)
+	title, body := notificationText(kind, "Project", event)
+	if !ok || urgent || kind != servicepush.KindComplete || title != "Project - Agent finished" || body != event.NotificationSummary {
+		t.Fatalf("plain question notification = %q, %v, %q, %q", kind, urgent, title, body)
+	}
 }

@@ -30,13 +30,27 @@ flowchart LR
 | VAPID key pair | `DATA_DIR/webpush-vapid.json` | Until deliberately rotated |
 | Browser subscriptions | `DATA_DIR/push-subscriptions/` | Until disabled, retired, logout, or user removal |
 | Presence claims | Backend memory | Claims live for 55 seconds; revisions are bounded per user |
-| Parked-question state | Backend memory | Until a user, completion, or error event |
+| Parked-question state | Backend memory | Until answered or canceled; legacy questions survive completion |
+| Question notification batch claims | Backend memory | Until a new user prompt, chat deletion, or failed delivery |
+| Pending question IDs and legacy waiting state | Chat metadata on disk | Until answered, canceled, superseded, failed, interrupted, or rewound |
 | Browser permission and subscription | Browser profile | Controlled by the browser and user |
 | Per-account opt-in for this browser | `localStorage`, `remote.futrx.pushOptIn` (SHA-256 fingerprints, not addresses) | Until the account turns notifications off or signs out |
 
 At startup, Remote loads or creates the VAPID key, verifies the key pair, and
 constructs the Web Push client. If that fails, notifications are disabled but
 the rest of Remote still starts normally.
+
+Chat metadata exposes `awaitingAnswer` independently of push configuration.
+The sidebar and chat header show a solid accent-colored dot labeled "Needs
+your answer" before their normal working/unread indicators. Reading the chat
+does not answer its questions. Multiple pending input requests keep the dot
+visible until each resolves; approval and permission requests do not activate it.
+
+Browser reload restores waiting state from metadata. Native interaction
+requests are actionable only while their provider run is active, so they are
+hidden after a backend restart. Legacy `AskUserQuestion` remains waiting after
+successful completion because its answer starts a fresh prompt. Forks and
+rewinds begin without pending question state.
 
 ## Main source locations
 

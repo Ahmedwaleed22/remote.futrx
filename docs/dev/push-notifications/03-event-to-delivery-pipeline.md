@@ -19,6 +19,7 @@ flowchart LR
 | Persisted event | Result |
 | --- | --- |
 | `AskUserQuestion` starts | Urgent question notification |
+| `interaction_request` with `status=user_input` | Urgent question notification, including Codex and MiniMax |
 | Interactive `complete` | Turn-finished notification |
 | Interactive `error` | Run-failed notification |
 | Application `complete` or `error` (`applicationId` present) | Application result notification with neutral wording |
@@ -28,6 +29,27 @@ flowchart LR
 When a run stops after `AskUserQuestion`, Remote suppresses the immediately
 following terminal event. Otherwise that routine event would replace the more
 important question notification in the tray.
+
+A structured input request carries an entire question batch. Remote uses its
+question text for a concise body, bounded to 200 characters and 240 UTF-8 bytes,
+and falls back to "Open the chat to answer the question" when text is missing
+or invalid. Questions marked secret are excluded from that body.
+Duplicate turn/request or tool IDs share one alert; distinct batches may notify
+again even when the chat has an older unread notification. A failed delivery
+releases its own batch claim.
+
+Matching `interaction_resolved` answers acknowledge the question notification
+and resume the same run. Its later completion may notify normally. Other
+request resolutions do not acknowledge a pending question, and a terminal
+event following an unanswered question remains suppressed. Retryable errors
+also preserve the pending question and do not replace its alert.
+
+Plain-text question turns use the existing `<notification_summary>` block to
+describe the input needed. They retain normal completion notification titles,
+priority, and unread suppression. The notification instructions reach every
+provider on host and project runs, including resumed and recovered sessions.
+Plain-text questions do not activate `awaitingAnswer` because they have no
+structured request/answer lifecycle.
 
 Application identity does not imply scheduling. Scheduled Tasks and other
 applications use the same generic notification type. Application-started user
