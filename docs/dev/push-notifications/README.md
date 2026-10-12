@@ -44,15 +44,15 @@ The system has two parts:
 | A legacy scheduled run finishes or fails | Legacy scheduled task result |
 | User selects **Send a test** | Test notification |
 
-Each title starts with an emoji so you can recognize the status at a glance.
+Each title ends with an emoji so you can recognize the status at a glance.
 Agent titles include the project name, or `Remote` when the name is unavailable.
 
 | Status | Title |
 | --- | --- |
-| Needs an answer | ❓ Project - Agent needs your answer |
-| Turn finished | ✅ Project - Agent finished |
-| Run failed | ❌ Project - Agent encountered an error |
-| Settings test | 🔔 Notifications are working |
+| Needs an answer | Project - Agent needs your answer ❓ |
+| Turn finished | Project - Agent finished ✅ |
+| Run failed | Project - Agent encountered an error ❌ |
+| Settings test | Notifications are working 🔔 |
 
 Applications and legacy scheduled runs use the same success and error titles.
 If the agent asks a question in its normal reply and ends the turn, the title

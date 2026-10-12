@@ -106,7 +106,7 @@ func TestNotificationTextUsesProjectTitleAndResult(t *testing.T) {
 	projectName := "Upload project"
 
 	title, body := notificationText(servicepush.KindQuestion, projectName, servicechat.Event{})
-	if title != "❓ Upload project - Agent needs your answer" || body != "Open the chat to answer the question." {
+	if title != "Upload project - Agent needs your answer ❓" || body != "Open the chat to answer the question." {
 		t.Fatalf("question = %q / %q", title, body)
 	}
 
@@ -114,23 +114,23 @@ func TestNotificationTextUsesProjectTitleAndResult(t *testing.T) {
 		Type:    "error",
 		Message: "claude exit: status 1",
 	})
-	if title != "❌ Upload project - Agent encountered an error" || body != "claude exit: status 1" {
+	if title != "Upload project - Agent encountered an error ❌" || body != "claude exit: status 1" {
 		t.Fatalf("error = %q / %q", title, body)
 	}
 
 	title, body = notificationText(servicepush.KindScheduled, projectName, servicechat.Event{Type: "error"})
-	if title != "❌ Upload project - Agent encountered an error" || body != "Open the chat to review the error." {
+	if title != "Upload project - Agent encountered an error ❌" || body != "Open the chat to review the error." {
 		t.Fatalf("scheduled failure = %q / %q", title, body)
 	}
 	title, body = notificationText(servicepush.KindScheduled, projectName, servicechat.Event{Type: "complete", NotificationSummary: "Fixed the upload test"})
-	if title != "✅ Upload project - Agent finished" || body != "Fixed the upload test" {
+	if title != "Upload project - Agent finished ✅" || body != "Fixed the upload test" {
 		t.Fatalf("scheduled success = %q / %q", title, body)
 	}
 }
 
 func TestNotificationTextFallsBackWithoutSummaryOrProject(t *testing.T) {
 	title, body := notificationText(servicepush.KindComplete, "   ", servicechat.Event{})
-	if title != "✅ Remote - Agent finished" || body != "Open the chat to see the result." {
+	if title != "Remote - Agent finished ✅" || body != "Open the chat to see the result." {
 		t.Fatalf("notification = %q / %q", title, body)
 	}
 }
@@ -142,10 +142,10 @@ func TestApplicationNotificationTextUsesNeutralFallbackAndResults(t *testing.T) 
 		title string
 		body  string
 	}{
-		{"success without summary", servicechat.Event{Type: "complete"}, "✅ Remote - Agent finished", "An application-started turn finished."},
-		{"success with summary", servicechat.Event{Type: "complete", NotificationSummary: "Build passed"}, "✅ Remote - Agent finished", "Build passed"},
-		{"failure without detail", servicechat.Event{Type: "error"}, "❌ Remote - Agent encountered an error", "Open the chat to review the error."},
-		{"failure with detail", servicechat.Event{Type: "error", Message: "build failed"}, "❌ Remote - Agent encountered an error", "build failed"},
+		{"success without summary", servicechat.Event{Type: "complete"}, "Remote - Agent finished ✅", "An application-started turn finished."},
+		{"success with summary", servicechat.Event{Type: "complete", NotificationSummary: "Build passed"}, "Remote - Agent finished ✅", "Build passed"},
+		{"failure without detail", servicechat.Event{Type: "error"}, "Remote - Agent encountered an error ❌", "Open the chat to review the error."},
+		{"failure with detail", servicechat.Event{Type: "error", Message: "build failed"}, "Remote - Agent encountered an error ❌", "build failed"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			title, body := notificationText(servicepush.KindApplication, "Remote", tc.event)
@@ -236,7 +236,7 @@ func TestPlainQuestionSummaryUsesNormalCompletionNotification(t *testing.T) {
 	event := servicechat.Event{Type: "complete", NotificationSummary: "Choose the deployment region and replica count."}
 	kind, urgent, ok := notificationKind(event)
 	title, body := notificationText(kind, "Project", event)
-	if !ok || urgent || kind != servicepush.KindComplete || title != "✅ Project - Agent finished" || body != event.NotificationSummary {
+	if !ok || urgent || kind != servicepush.KindComplete || title != "Project - Agent finished ✅" || body != event.NotificationSummary {
 		t.Fatalf("plain question notification = %q, %v, %q, %q", kind, urgent, title, body)
 	}
 }

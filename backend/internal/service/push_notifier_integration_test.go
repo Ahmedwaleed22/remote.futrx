@@ -262,7 +262,7 @@ func TestAppendingATerminalEventRaisesANotification(t *testing.T) {
 	if len(sent) != 1 {
 		t.Fatalf("captured %d notifications, want 1", len(sent))
 	}
-	if sent[0].Title != "✅ Remote - Agent finished" || sent[0].Body != "Open the chat to see the result." {
+	if sent[0].Title != "Remote - Agent finished ✅" || sent[0].Body != "Open the chat to see the result." {
 		t.Fatalf("notification = %+v", sent[0])
 	}
 	if sent[0].ChatID != "beefcafe" {
@@ -290,7 +290,7 @@ func TestProjectCompletionUsesProjectNameAndPrivateSummary(t *testing.T) {
 	}
 	repo.push.push.Wait()
 	sent := sender.captured()
-	if len(sent) != 1 || sent[0].Title != "✅ Website - Agent finished" || sent[0].Body != "Fixed settings refresh and chat links." || sent[0].ChatID != "abcdef12" {
+	if len(sent) != 1 || sent[0].Title != "Website - Agent finished ✅" || sent[0].Body != "Fixed settings refresh and chat links." || sent[0].ChatID != "abcdef12" {
 		t.Fatalf("notification = %+v", sent)
 	}
 }
@@ -411,7 +411,7 @@ func TestScheduledRunsAreLabelledSeparately(t *testing.T) {
 	if len(sent) != 1 || sent[0].Kind != servicepush.KindScheduled {
 		t.Fatalf("notifications = %+v", sent)
 	}
-	if sent[0].Title != "✅ Remote - Agent finished" || sent[0].Body != "A scheduled task finished." {
+	if sent[0].Title != "Remote - Agent finished ✅" || sent[0].Body != "A scheduled task finished." {
 		t.Fatalf("body = %q", sent[0].Body)
 	}
 }

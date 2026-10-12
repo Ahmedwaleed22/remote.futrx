@@ -18,12 +18,12 @@ func notificationText(
 	if projectName == "" {
 		projectName = "Remote"
 	}
-	finishedTitle := "✅ " + projectName + " - Agent finished"
-	errorTitle := "❌ " + projectName + " - Agent encountered an error"
+	finishedTitle := projectName + " - Agent finished ✅"
+	errorTitle := projectName + " - Agent encountered an error ❌"
 
 	switch kind {
 	case servicepush.KindQuestion:
-		return "❓ " + projectName + " - Agent needs your answer", questionBody(event)
+		return projectName + " - Agent needs your answer ❓", questionBody(event)
 	case servicepush.KindComplete:
 		return finishedTitle, completionBody(event, "Open the chat to see the result.")
 	case servicepush.KindError:
