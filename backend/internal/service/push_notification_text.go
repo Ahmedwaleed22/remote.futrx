@@ -18,24 +18,26 @@ func notificationText(
 	if projectName == "" {
 		projectName = "Remote"
 	}
+	finishedTitle := projectName + " - Agent finished"
+	errorTitle := projectName + " - Agent encountered an error"
 
 	switch kind {
 	case servicepush.KindQuestion:
 		return projectName + " - Agent needs your answer", questionBody(event)
 	case servicepush.KindComplete:
-		return projectName + " - Agent finished", completionBody(event, "Open the chat to see the result.")
+		return finishedTitle, completionBody(event, "Open the chat to see the result.")
 	case servicepush.KindError:
-		return projectName + " - Agent encountered an error", errorBody(event.Message)
+		return errorTitle, errorBody(event.Message)
 	case servicepush.KindApplication:
 		if event.Type == "error" {
-			return projectName + " - Agent encountered an error", errorBody(event.Message)
+			return errorTitle, errorBody(event.Message)
 		}
-		return projectName + " - Agent finished", completionBody(event, "An application-started turn finished.")
+		return finishedTitle, completionBody(event, "An application-started turn finished.")
 	case servicepush.KindScheduled:
 		if event.Type == "error" {
-			return projectName + " - Agent encountered an error", errorBody(event.Message)
+			return errorTitle, errorBody(event.Message)
 		}
-		return projectName + " - Agent finished", completionBody(event, "A scheduled task finished.")
+		return finishedTitle, completionBody(event, "A scheduled task finished.")
 	default:
 		return projectName, ""
 	}
