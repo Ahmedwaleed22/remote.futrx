@@ -43,3 +43,17 @@ There are two paths into the same system:
 | Application-started turn completes or fails | Application result, including work started by Scheduled Tasks |
 | Legacy scheduled run completes or fails | Legacy scheduled task result |
 | User selects **Send a test** | Test notification |
+
+Titles begin with an emoji so the notification's status is visible at a glance.
+Agent titles include the project name, or `Remote` when no project is available.
+
+| Status | Title |
+| --- | --- |
+| Needs an answer | ❓ Project - Agent needs your answer |
+| Turn finished | ✅ Project - Agent finished |
+| Run failed | ❌ Project - Agent encountered an error |
+| Settings test | 🔔 Notifications are working |
+
+Application-started and legacy scheduled turns use the same success and error
+titles. A plain-text question in a completed turn keeps the completion title;
+only structured question requests use the question title.
