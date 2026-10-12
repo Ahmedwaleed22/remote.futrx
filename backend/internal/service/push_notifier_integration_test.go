@@ -669,10 +669,10 @@ func TestDeletingAChatForgetsItsNotificationState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	repo.push.mu.Lock()
-	defer repo.push.mu.Unlock()
-	if len(repo.push.parked) != 0 || len(repo.push.notified) != 0 || len(repo.push.questionBatches) != 0 {
-		t.Fatalf("parked = %v, notified = %v, batches = %v; want all empty", repo.push.parked, repo.push.notified, repo.push.questionBatches)
+	repo.push.state.mu.Lock()
+	defer repo.push.state.mu.Unlock()
+	if len(repo.push.state.parked) != 0 || len(repo.push.state.notified) != 0 || len(repo.push.state.questionBatches) != 0 {
+		t.Fatalf("parked = %v, notified = %v, batches = %v; want all empty", repo.push.state.parked, repo.push.state.notified, repo.push.state.questionBatches)
 	}
 }
 

@@ -55,6 +55,7 @@ rewinds begin without pending question state.
 ## Main source locations
 
 - [`backend/internal/service/push_notifier.go`](../../../backend/internal/service/push_notifier.go)
+- [`backend/internal/service/chat_notification_state.go`](../../../backend/internal/service/chat_notification_state.go) owns in-memory question tracking, unread suppression, and delivery claims.
 - [`backend/internal/service/push/`](../../../backend/internal/service/push/)
 - [`backend/internal/integration/webpush/`](../../../backend/internal/integration/webpush/)
 - [`backend/internal/stores/filepush/`](../../../backend/internal/stores/filepush/)
