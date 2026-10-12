@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/futrx-com/remote.futrx.com/internal/agent"
-	"github.com/futrx-com/remote.futrx.com/internal/agent/provisioning"
 	agentmodule "github.com/futrx-com/remote.futrx.com/internal/service/agent/module"
 	servicechat "github.com/futrx-com/remote.futrx.com/internal/service/chat"
 	serviceproject "github.com/futrx-com/remote.futrx.com/internal/service/project"
@@ -425,7 +424,7 @@ func (rnr *Service) runPromptAs(
 			Provider:       providerID,
 			AccountID:      meta.AccountID,
 			ConversationID: string(id),
-			Prompt:         runPrompt + "\n\n" + provisioning.NotificationInstructions(),
+			Prompt:         runPrompt,
 			Cwd:            cwd,
 			Model:          meta.Model,
 			Mode:           agent.RunMode(meta.Mode),

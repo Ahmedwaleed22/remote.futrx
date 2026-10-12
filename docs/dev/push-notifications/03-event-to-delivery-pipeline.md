@@ -46,8 +46,10 @@ also preserve the pending question and do not replace its alert.
 
 Plain-text question turns use the existing `<notification_summary>` block to
 describe the input needed. They retain normal completion notification titles,
-priority, and unread suppression. The notification instructions reach every
-provider on host and project runs, including resumed and recovered sessions.
+priority, and unread suppression. The notification instructions live in the
+provisioned agent instruction files rather than being appended to individual
+prompts. Runs without those instructions use the generic completion body when
+the agent supplies no summary.
 Plain-text questions do not activate `awaitingAnswer` because they have no
 structured request/answer lifecycle.
 

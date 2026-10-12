@@ -25,17 +25,11 @@ func TestInstructionsTemplateUsesInstalledHostname(t *testing.T) {
 	}
 }
 
-func TestNotificationInstructionsIncludeQuestionsWithoutSandboxInstructions(t *testing.T) {
-	contract := NotificationInstructions()
+func TestInstructionsTemplateIncludesQuestionNotificationContract(t *testing.T) {
+	contract := string(InstructionsTemplate("example.com"))
 	for _, want := range []string{"<notification_summary>", "the user a question", "input needed", "200 characters", "Do not put secrets"} {
 		if !strings.Contains(contract, want) {
 			t.Fatalf("notification contract does not contain %q: %s", want, contract)
 		}
-	}
-	if !strings.Contains(string(InstructionsTemplate("example.com")), contract) {
-		t.Fatal("prompt instructions differ from provisioned notification instructions")
-	}
-	if strings.Contains(contract, "LXC") || strings.Contains(contract, publicHostnamePlaceholder) {
-		t.Fatal("host notification instructions include project sandbox details")
 	}
 }
